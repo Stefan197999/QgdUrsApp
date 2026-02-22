@@ -55,12 +55,6 @@
       <button id="tabSmartTargets" class="tab-menu-item" onclick="selectTab('smartTargets','OBIECTIVE LUNARE')">🎯 OBIECTIVE LUNARE</button>
       <button id="tabPromoBudgets" class="tab-menu-item" onclick="selectTab('promoBudgets','BUGETE PROMO')">💰 BUGETE PROMO</button>
       <button id="tabDashboardAll" class="tab-menu-item" onclick="selectTab('dashboardAll','DASHBOARD VÂNZĂRI')">📊 DASHBOARD VÂNZĂRI</button>
-      <div style="border-top:1px solid var(--border);margin:4px 0;position:relative"><span style="position:absolute;top:-8px;left:8px;background:var(--bg);padding:0 6px;font-size:.6rem;color:var(--muted)">MASPEX</span></div>
-      <button id="tabMaspexVanzari" class="tab-menu-item" onclick="selectTab('maspexVanzari','VÂNZĂRI MASPEX')">📊 VÂNZĂRI MASPEX</button>
-      <button id="tabMaspexObiective" class="tab-menu-item" onclick="selectTab('maspexObiective','OBIECTIVE DN')">🎯 OBIECTIVE DN</button>
-      <button id="tabMaspexAudit" class="tab-menu-item" onclick="selectTab('maspexAudit','AUDIT SKU')">✅ AUDIT SKU</button>
-      <button id="tabMaspexCatalog" class="tab-menu-item" onclick="selectTab('maspexCatalog','CATALOG PRODUSE')">📦 CATALOG PRODUSE</button>
-      <div style="border-top:1px solid var(--border);margin:4px 0"></div>
       <button id="tabUploadRapoarte" class="tab-menu-item" onclick="selectTab('uploadRapoarte','ÎNCĂRCARE RAPOARTE')" style="display:none">📤 ÎNCĂRCARE RAPOARTE</button>
     </div>
   </div>
@@ -257,29 +251,6 @@
       </div>
     </div>
 
-    <div class="home-grid-section-label">MASPEX</div>
-    <div class="home-grid-items">
-      <div class="grid-icon-card" onclick="openFromGrid('maspexVanzari','VÂNZĂRI MASPEX')" style="--icon-bg:linear-gradient(135deg,#4dd0e1,#006064)">
-        <div class="grid-icon-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></div>
-        <span>Vânzări Maspex</span>
-      </div>
-      <div class="grid-icon-card" onclick="openFromGrid('maspexObiective','OBIECTIVE DN')" style="--icon-bg:linear-gradient(135deg,#aed581,#33691e)">
-        <div class="grid-icon-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg></div>
-        <span>Obiective DN</span>
-      </div>
-      <div class="grid-icon-card" onclick="openFromGrid('maspexAudit','AUDIT SKU')" style="--icon-bg:linear-gradient(135deg,#f0ce56,#c49000)">
-        <div class="grid-icon-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></div>
-        <span>Audit SKU</span>
-      </div>
-      <div class="grid-icon-card" onclick="openFromGrid('maspexCatalog','CATALOG PRODUSE')" style="--icon-bg:linear-gradient(135deg,#ffab91,#bf360c)">
-        <div class="grid-icon-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg></div>
-        <span>Catalog Produse</span>
-      </div>
-      <div class="grid-icon-card" onclick="openFromGrid('bugetGt','BUGET GT')" style="--icon-bg:linear-gradient(135deg,#26c6da,#00838f)">
-        <div class="grid-icon-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="18" rx="2"/><path d="M8 7v10M12 7v10M16 7v10"/></svg></div>
-        <span>Buget GT</span>
-      </div>
-    </div>
   </div>
 </div>
 
@@ -1029,7 +1000,6 @@
               <option value="BB">BB</option>
               <option value="JTI">JTI</option>
               <option value="URSUS">URSUS</option>
-              <option value="MASPEX">MASPEX</option>
               <option value="NECUNOSCUT">Alții</option>
             </select>
             <select id="scadFilterAgent" onchange="onScadAgentChange()" style="font-size:.78rem;padding:2px 6px;min-width:160px;max-width:280px;background:var(--bg2);color:var(--fg);border:1px solid var(--border);border-radius:4px">
@@ -1383,154 +1353,6 @@
     </div>
 
     <!-- ═══════════════════════════════════════════
-         MASPEX MODULE PANELS
-         ═══════════════════════════════════════════ -->
-
-    <!-- TAB: VÂNZĂRI MASPEX -->
-    <div id="panelMaspexVanzari" class="tab-panel" style="display:none">
-      <details class="panel" open>
-        <summary>📊 VÂNZĂRI MASPEX <button class="help-btn" onclick="event.stopPropagation();showHelp('maspexVanzari')">?</button></summary>
-        <div class="panel-inner">
-          <div id="maspexVanzariUploadForm" style="display:none;margin-bottom:.5rem;padding:.5rem;border:1px solid var(--border);border-radius:8px;background:var(--bg2)">
-            <p style="font-size:.75rem;color:var(--muted);margin-bottom:.4rem">UPLOAD RAPORT VÂNZĂRI (Excel zilnic)</p>
-            <div class="btn-row">
-              <input type="file" id="maspexVanzariFile" accept=".xlsx,.xls" style="font-size:.8rem;max-width:220px">
-              <button class="btn success small" onclick="uploadMaspexVanzari()">📤 Import</button>
-            </div>
-            <div id="maspexVanzariUploadStatus" style="font-size:.8rem;margin-top:.3rem"></div>
-          </div>
-          <div class="filter-row">
-            <label>Luna</label>
-            <select id="maspexVanzariMonth" onchange="loadMaspexVanzari()" style="padding:6px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--fg);font-size:.85rem"></select>
-          </div>
-          <div class="btn-row"><button class="btn ghost small" onclick="loadMaspexVanzari()">🔄 Reîncarcă</button></div>
-        </div>
-      </details>
-      <div id="maspexVanzariInfo" style="padding:.3rem 1rem;font-size:.78rem;color:var(--muted)"></div>
-      <div id="maspexVanzariList" style="padding:.5rem 1rem"></div>
-    </div>
-
-    <!-- TAB: OBIECTIVE DN -->
-    <div id="panelMaspexObiective" class="tab-panel" style="display:none">
-      <details class="panel" open>
-        <summary>🎯 OBIECTIVE DN MASPEX <button class="help-btn" onclick="event.stopPropagation();showHelp('maspexObiective')">?</button></summary>
-        <div class="panel-inner">
-          <div id="maspexObiectiveUploadForm" style="display:none;margin-bottom:.5rem;padding:.5rem;border:1px solid var(--border);border-radius:8px;background:var(--bg2)">
-            <p style="font-size:.75rem;color:var(--muted);margin-bottom:.4rem">UPLOAD OBIECTIVE DN (Excel lunar)</p>
-            <div class="btn-row">
-              <input type="file" id="maspexObiectiveFile" accept=".xlsx,.xls" style="font-size:.8rem;max-width:180px">
-              <button class="btn success small" onclick="uploadMaspexObiective()">📤 Import</button>
-            </div>
-            <div id="maspexObiectiveUploadStatus" style="font-size:.8rem;margin-top:.3rem"></div>
-          </div>
-          <div class="filter-row">
-            <label>Luna</label>
-            <select id="maspexObiectiveMonth" onchange="loadMaspexObiective()" style="padding:6px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--fg);font-size:.85rem"></select>
-          </div>
-          <div class="btn-row"><button class="btn ghost small" onclick="loadMaspexObiective()">🔄 Reîncarcă</button></div>
-        </div>
-      </details>
-      <div id="maspexObiectiveInfo" style="padding:.3rem 1rem;font-size:.78rem;color:var(--muted)"></div>
-      <div id="maspexObiectiveTotals" style="padding:.3rem 1rem"></div>
-      <div id="maspexObiectiveList" style="padding:.5rem 1rem"></div>
-    </div>
-
-    <!-- TAB: AUDIT SKU -->
-    <div id="panelMaspexAudit" class="tab-panel" style="display:none">
-      <details class="panel" open>
-        <summary>✅ AUDIT SKU MASPEX <button class="help-btn" onclick="event.stopPropagation();showHelp('maspexAudit')">?</button></summary>
-        <div class="panel-inner">
-          <div id="maspexAuditUploadForm" style="display:none;margin-bottom:.5rem;padding:.5rem;border:1px solid var(--border);border-radius:8px;background:var(--bg2)">
-            <p style="font-size:.75rem;color:var(--muted);margin-bottom:.4rem">UPLOAD AUDIT SKU (Excel, 2 sheets: Dry + Wet)</p>
-            <div class="btn-row">
-              <input type="file" id="maspexAuditFile" accept=".xlsx,.xls" style="font-size:.8rem;max-width:180px">
-              <button class="btn success small" onclick="uploadMaspexAudit()">📤 Import</button>
-            </div>
-            <div id="maspexAuditUploadStatus" style="font-size:.8rem;margin-top:.3rem"></div>
-          </div>
-          <div id="maspexAuditSalesUploadForm" style="display:none;margin-bottom:.5rem;padding:.5rem;border:1px solid var(--border);border-radius:8px;background:var(--bg2)">
-            <p style="font-size:.75rem;color:var(--muted);margin-bottom:.4rem">UPLOAD VÂNZĂRI AUDIT (Excel — raport vânzări ultimele 6 luni)</p>
-            <div class="btn-row">
-              <input type="file" id="maspexAuditSalesFile" accept=".xlsx,.xls" style="font-size:.8rem;max-width:180px">
-              <button class="btn success small" onclick="uploadMaspexAuditSales()">📤 Import vânzări audit</button>
-            </div>
-            <div id="maspexAuditSalesUploadStatus" style="font-size:.8rem;margin-top:.3rem"></div>
-          </div>
-          <div class="filter-row" style="gap:.5rem;flex-wrap:wrap">
-            <div>
-              <label>Luna</label>
-              <select id="maspexAuditMonth" onchange="loadMaspexAudit()" style="padding:6px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--fg);font-size:.85rem"></select>
-            </div>
-            <div>
-              <label>Gamă</label>
-              <select id="maspexAuditSheet" onchange="loadMaspexAudit()" style="padding:6px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--fg);font-size:.85rem">
-                <option value="DRY">DRY</option>
-                <option value="WET">WET</option>
-              </select>
-            </div>
-            <div>
-              <label>Filtru</label>
-              <select id="maspexAuditFilter" onchange="filterMaspexAudit()" style="padding:6px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--fg);font-size:.85rem">
-                <option value="all">Toate</option>
-                <option value="urgent">🔴 De facturat urgent</option>
-                <option value="invoice">🧾 De facturat (toate)</option>
-                <option value="nosales">⚠️ Fără vânzări</option>
-                <option value="below80">&lt;80%</option>
-                <option value="ok">≥80% OK</option>
-              </select>
-            </div>
-            <div>
-              <label>Caută</label>
-              <input type="text" id="maspexAuditSearch" placeholder="Client..." oninput="filterMaspexAudit()" style="padding:6px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--fg);font-size:.85rem;width:120px">
-            </div>
-          </div>
-          <div class="btn-row"><button class="btn ghost small" onclick="loadMaspexAudit()">🔄 Reîncarcă</button></div>
-        </div>
-      </details>
-      <div id="maspexAuditInfo" style="padding:.3rem 1rem;font-size:.78rem;color:var(--muted)"></div>
-      <div id="maspexAuditList" style="padding:.5rem 1rem"></div>
-    </div>
-
-    <!-- TAB: CATALOG PRODUSE -->
-    <div id="panelMaspexCatalog" class="tab-panel" style="display:none">
-      <details class="panel" open>
-        <summary>📦 CATALOG PRODUSE QUATRO <button class="help-btn" onclick="event.stopPropagation();showHelp('maspexCatalog')">?</button></summary>
-        <div class="panel-inner">
-          <div id="maspexCatalogUploadForm" style="display:none;margin-bottom:.5rem;padding:.5rem;border:1px solid var(--border);border-radius:8px;background:var(--bg2)">
-            <p style="font-size:.75rem;color:var(--muted);margin-bottom:.4rem">UPLOAD CATALOG PRODUSE (Excel)</p>
-            <div class="btn-row">
-              <input type="file" id="maspexCatalogFile" accept=".xlsx,.xls" style="font-size:.8rem;max-width:220px">
-              <button class="btn success small" onclick="uploadMaspexCatalog()">📤 Import Excel</button>
-              <button class="btn small" onclick="seedMaspexCatalog()" style="background:#8e44ad;color:#fff">🌱 Seed Catalog 2025</button>
-            </div>
-            <div id="maspexCatalogUploadStatus" style="font-size:.8rem;margin-top:.3rem"></div>
-          </div>
-          <div class="filter-row" style="gap:.5rem">
-            <div>
-              <label>Divizie</label>
-              <select id="maspexCatalogDivizie" onchange="loadMaspexCatalog()" style="padding:6px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--fg);font-size:.85rem">
-                <option value="">Toate</option>
-                <option value="WET">WET</option>
-                <option value="DRY">DRY</option>
-                <option value="WET RIO">WET RIO</option>
-                <option value="ICE TEA">ICE TEA</option>
-                <option value="ALCOOL">ALCOOL</option>
-                <option value="BUGET">BUGET</option>
-              </select>
-            </div>
-            <div>
-              <label>Grupă</label>
-              <input type="text" id="maspexCatalogGrupa" placeholder="Caută..." oninput="loadMaspexCatalog()" style="padding:6px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--fg);font-size:.85rem;width:120px">
-            </div>
-          </div>
-          <div class="btn-row"><button class="btn ghost small" onclick="loadMaspexCatalog()">🔄 Reîncarcă</button></div>
-        </div>
-      </details>
-      <div id="maspexCatalogInfo" style="padding:.3rem 1rem;font-size:.78rem;color:var(--muted)"></div>
-      <div id="maspexCatalogList" style="padding:.5rem 1rem"></div>
-    </div>
-
-    <!-- ═══════════════════════════════════════════
          UPLOAD RAPOARTE PANEL (upload role)
          ═══════════════════════════════════════════ -->
     <div id="panelUploadRapoarte" class="tab-panel" style="display:none">
@@ -1596,52 +1418,6 @@
             <div id="uploadRapPromoBudgetStatus" style="font-size:.8rem;margin-top:.3rem"></div>
           </div>
 
-          <div style="border-top:1px solid var(--border);margin:4px 0;position:relative"><span style="position:absolute;top:-8px;left:8px;background:var(--bg);padding:0 6px;font-size:.6rem;color:var(--muted)">MASPEX</span></div>
-
-          <!-- Upload Vânzări Maspex -->
-          <div style="background:var(--bg2);border-radius:8px;padding:12px;border:1px solid var(--border)">
-            <p style="font-weight:600;margin:0 0 6px;font-size:.85rem">📊 Vânzări Maspex</p>
-            <p style="font-size:.75rem;color:var(--muted);margin:0 0 8px">Upload raport vânzări zilnice Maspex</p>
-            <div class="btn-row">
-              <input type="file" id="uploadRapMaspexVanzariFile" accept=".xlsx,.xls" style="font-size:.8rem;max-width:220px">
-              <button class="btn success small" onclick="doUploadRapMaspexVanzari()">📤 Import</button>
-            </div>
-            <div id="uploadRapMaspexVanzariStatus" style="font-size:.8rem;margin-top:.3rem"></div>
-          </div>
-
-          <!-- Upload Obiective DN Maspex -->
-          <div style="background:var(--bg2);border-radius:8px;padding:12px;border:1px solid var(--border)">
-            <p style="font-weight:600;margin:0 0 6px;font-size:.85rem">🎯 Obiective DN Maspex</p>
-            <p style="font-size:.75rem;color:var(--muted);margin:0 0 8px">Upload obiective lunare DN</p>
-            <div class="btn-row">
-              <input type="month" id="uploadRapMaspexObiectiveMonth" style="padding:5px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--fg);font-size:.8rem">
-              <input type="file" id="uploadRapMaspexObiectiveFile" accept=".xlsx,.xls" style="font-size:.8rem;max-width:220px">
-              <button class="btn success small" onclick="doUploadRapMaspexObiective()">📤 Import</button>
-            </div>
-            <div id="uploadRapMaspexObiectiveStatus" style="font-size:.8rem;margin-top:.3rem"></div>
-          </div>
-
-          <!-- Upload Audit SKU Maspex -->
-          <div style="background:var(--bg2);border-radius:8px;padding:12px;border:1px solid var(--border)">
-            <p style="font-weight:600;margin:0 0 6px;font-size:.85rem">✅ Audit SKU Maspex</p>
-            <p style="font-size:.75rem;color:var(--muted);margin:0 0 8px">Upload audit SKU (sheet-uri Dry + Wet)</p>
-            <div class="btn-row">
-              <input type="file" id="uploadRapMaspexAuditFile" accept=".xlsx,.xls" style="font-size:.8rem;max-width:220px">
-              <button class="btn success small" onclick="doUploadRapMaspexAudit()">📤 Import</button>
-            </div>
-            <div id="uploadRapMaspexAuditStatus" style="font-size:.8rem;margin-top:.3rem"></div>
-          </div>
-
-          <!-- Upload Catalog Maspex -->
-          <div style="background:var(--bg2);border-radius:8px;padding:12px;border:1px solid var(--border)">
-            <p style="font-weight:600;margin:0 0 6px;font-size:.85rem">📦 Catalog Produse Maspex</p>
-            <p style="font-size:.75rem;color:var(--muted);margin:0 0 8px">Upload catalog produse Quatro</p>
-            <div class="btn-row">
-              <input type="file" id="uploadRapMaspexCatalogFile" accept=".xlsx,.xls" style="font-size:.8rem;max-width:220px">
-              <button class="btn success small" onclick="doUploadRapMaspexCatalog()">📤 Import</button>
-            </div>
-            <div id="uploadRapMaspexCatalogStatus" style="font-size:.8rem;margin-top:.3rem"></div>
-          </div>
 
         </div>
       </details>
