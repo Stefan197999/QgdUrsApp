@@ -6,46 +6,103 @@
 <title>QgdSalesUrs - Login</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:'Segoe UI',Arial,sans-serif;background:linear-gradient(135deg,#0a1628 0%,#1a2744 50%,#0d1b2a 100%);min-height:100vh;display:flex;align-items:center;justify-content:center;overflow:hidden}
+body{font-family:'Segoe UI',Arial,sans-serif;background:linear-gradient(135deg,#0a0e14 0%,#121a24 50%,#0d1117 100%);min-height:100vh;display:flex;align-items:center;justify-content:center;overflow:hidden}
 
 .bubbles{position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:0;overflow:hidden}
-.bubble{position:absolute;bottom:-30px;background:rgba(0,150,255,.06);border-radius:50%;animation:rise linear infinite}
+.bubble{position:absolute;bottom:-30px;background:rgba(200,169,81,.06);border-radius:50%;animation:rise linear infinite}
 @keyframes rise{0%{transform:translateY(0) scale(1);opacity:.5}100%{transform:translateY(-110vh) scale(.2);opacity:0}}
 
 .login-box{
-  background:linear-gradient(180deg,#1c2636 0%,#182030 100%);
-  padding:2rem 2.2rem 2.2rem;border-radius:18px;
+  background:linear-gradient(180deg,#1c2128 0%,#181d24 100%);
+  padding:1.5rem 2rem 2rem;border-radius:18px;
   box-shadow:0 25px 80px rgba(0,0,0,.6),0 0 0 1px rgba(255,255,255,.05);
-  width:92%;max-width:440px;position:relative;z-index:10;
+  width:92%;max-width:480px;position:relative;z-index:10;overflow:visible;
 }
 
-.logo-area{text-align:center;margin-bottom:1rem}
-.logo-area .icon{font-size:3.5rem;margin-bottom:.3rem}
-h1{text-align:center;color:#4da6ff;margin-bottom:.15rem;font-size:1.6rem;font-weight:800;letter-spacing:1px;text-shadow:0 2px 10px rgba(77,166,255,.3)}
-.subtitle{text-align:center;color:#8b949e;font-size:.78rem;margin-bottom:1.2rem;letter-spacing:.5px}
+h1{text-align:center;color:#C8A951;margin-bottom:.1rem;font-size:1.55rem;font-weight:800;letter-spacing:1px;text-shadow:0 2px 10px rgba(200,169,81,.3)}
+.subtitle{text-align:center;color:#8b949e;font-size:.75rem;margin-bottom:.4rem;letter-spacing:.5px}
 
-label{display:block;font-size:.8rem;color:#8b949e;margin-bottom:.2rem;margin-top:.7rem;text-transform:uppercase;letter-spacing:.5px;font-weight:600}
+/* ══════ BOTTLES AREA ══════ */
+.bottles-wrap{
+  position:relative;width:100%;margin:0 auto .4rem;
+  cursor:pointer;user-select:none;
+  display:flex;justify-content:center;align-items:center;
+}
+.bottles-wrap img.hero-img{
+  width:100%;max-width:440px;height:auto;
+  display:block;margin:0 auto;
+  filter:drop-shadow(0 4px 16px rgba(0,0,0,.5));
+  transition:transform .3s;
+}
+.bottles-wrap:hover img.hero-img{transform:scale(1.01)}
+.tap-hint{
+  position:absolute;bottom:2px;left:50%;transform:translateX(-50%);
+  font-size:.7rem;color:#8b949e;opacity:1;transition:opacity .5s;
+  white-space:nowrap;background:rgba(0,0,0,.6);padding:2px 12px;border-radius:10px;z-index:20;
+}
+.tap-hint.hidden{opacity:0;pointer-events:none}
+
+/* Cap overlay */
+.cap-el{
+  position:absolute;z-index:10;cursor:pointer;
+  width:16px;height:8px;border-radius:3px 3px 1px 1px;
+  box-shadow:0 1px 3px rgba(0,0,0,.4);
+  transition:transform .05s;
+}
+.cap-el:hover{transform:scale(1.2)}
+.cap-el.popped{pointer-events:none;animation:capFly .9s cubic-bezier(.2,.8,.3,1) forwards}
+@keyframes capFly{
+  0%{transform:translateY(0) rotate(0deg);opacity:1}
+  25%{transform:translateY(-90px) rotate(200deg);opacity:1}
+  100%{transform:translateY(-250px) translateX(var(--dx)) rotate(900deg);opacity:0}
+}
+
+/* Foam */
+.foam-wrap{position:absolute;z-index:8;pointer-events:none;opacity:0}
+.foam-wrap.active{animation:foamAppear 3.5s ease-out forwards}
+@keyframes foamAppear{0%{opacity:0}8%{opacity:1}100%{opacity:0;transform:translateY(14px)}}
+.foam-blob{position:absolute;background:rgba(255,252,230,.85);border-radius:50%;box-shadow:0 0 3px rgba(255,252,230,.4)}
+.foam-blob.drip{border-radius:40%;animation:dripAnim 3s ease-in forwards}
+@keyframes dripAnim{0%{height:0;opacity:.7}50%{height:var(--dh);opacity:.5}100%{height:var(--dh);opacity:0}}
+
+/* Mist */
+.mist-wrap{position:absolute;z-index:7;pointer-events:none;opacity:0}
+.mist-wrap.active{animation:mistAnim 2.5s ease-out forwards}
+@keyframes mistAnim{0%{opacity:0;transform:translateY(0) scaleX(1)}15%{opacity:.6}100%{opacity:0;transform:translateY(-35px) scaleX(3)}}
+.mist-p{position:absolute;background:rgba(255,255,255,.15);border-radius:50%;filter:blur(3px)}
+
+/* Sparkles */
+.sparkle{position:absolute;width:4px;height:4px;background:#C8A951;border-radius:50%;pointer-events:none;opacity:0;z-index:12}
+.sparkle.go{animation:sparkGo .8s ease-out forwards}
+@keyframes sparkGo{0%{transform:scale(0);opacity:1}100%{transform:scale(2.5) translate(var(--sx),var(--sy));opacity:0}}
+
+/* ══════ FORM ══════ */
+label{display:block;font-size:.78rem;color:#8b949e;margin-bottom:.2rem;margin-top:.65rem;text-transform:uppercase;letter-spacing:.5px;font-weight:600}
 input{
-  width:100%;padding:.65rem .8rem;border:2px solid #30363d;border-radius:8px;
-  font-size:.95rem;transition:all .2s;background:#0d1117;color:#e6edf3;
+  width:100%;padding:.6rem .8rem;border:2px solid #30363d;border-radius:8px;
+  font-size:.92rem;transition:all .2s;background:#0d1117;color:#e6edf3;
 }
 input::placeholder{color:#484f58}
-input:focus{outline:none;border-color:#4da6ff;box-shadow:0 0 0 3px rgba(77,166,255,.1)}
+input:focus{outline:none;border-color:#C8A951;box-shadow:0 0 0 3px rgba(200,169,81,.1)}
 button[type="submit"]{
-  width:100%;padding:.8rem;
-  background:linear-gradient(135deg,#1a6bc4,#2d8cf0,#1a6bc4);
+  width:100%;padding:.75rem;
+  background:linear-gradient(135deg,#8B6914,#C8A951,#8B6914);
   color:#fff;border:none;border-radius:8px;font-size:1rem;cursor:pointer;
-  margin-top:1.2rem;transition:all .2s;font-weight:700;letter-spacing:.5px;
-  box-shadow:0 4px 20px rgba(45,140,240,.3);text-shadow:0 1px 2px rgba(0,0,0,.3);
+  margin-top:1rem;transition:all .2s;font-weight:700;letter-spacing:.5px;
+  box-shadow:0 4px 20px rgba(200,169,81,.3);text-shadow:0 1px 2px rgba(0,0,0,.3);
 }
-button[type="submit"]:hover{background:linear-gradient(135deg,#2d8cf0,#4da6ff,#2d8cf0);transform:translateY(-1px);box-shadow:0 6px 25px rgba(45,140,240,.4)}
+button[type="submit"]:hover{background:linear-gradient(135deg,#C8A951,#E0C068,#C8A951);transform:translateY(-1px);box-shadow:0 6px 25px rgba(200,169,81,.4)}
 button[type="submit"]:active{transform:translateY(0)}
 .error{color:#e74c3c;font-size:.8rem;text-align:center;margin-top:.7rem;display:none}
-.footer{text-align:center;font-size:.65rem;color:#3d444d;margin-top:.8rem;letter-spacing:.3px}
+.footer{text-align:center;font-size:.63rem;color:#3d444d;margin-top:.7rem;letter-spacing:.3px}
 
 @media(max-width:480px){
-  .login-box{padding:1.3rem 1.3rem 1.8rem;max-width:98%}
-  h1{font-size:1.35rem}
+  .login-box{padding:1.2rem 1.2rem 1.6rem;max-width:98%}
+  h1{font-size:1.3rem}
+  .cap-el{width:12px;height:6px}
+}
+@media(max-width:360px){
+  .cap-el{width:10px;height:5px}
 }
 </style>
 </head>
@@ -54,11 +111,13 @@ button[type="submit"]:active{transform:translateY(0)}
 <div class="bubbles" id="bubbles"></div>
 
 <div class="login-box">
-  <div class="logo-area">
-    <div class="icon">🍺</div>
-  </div>
   <h1>QgdSalesUrs</h1>
   <p class="subtitle">Quatro Grup Distribution · Ursus Division</p>
+
+  <div class="bottles-wrap" id="bottlesWrap" onclick="startAnimation()">
+    <img class="hero-img" id="heroImg" src="/img/ursus_bottles.png" alt="Ursus Bottles" draggable="false">
+    <span class="tap-hint" id="tapHint">apasă pentru deschidere 🍺</span>
+  </div>
 
   <form id="loginForm">
     <label for="username">Utilizator</label>
@@ -72,7 +131,249 @@ button[type="submit"]:active{transform:translateY(0)}
 </div>
 
 <script>
-/* Background bubbles */
+/* ═══════════════════════════════════════════════════════
+   CAP POSITIONS — % relative to image (800×800)
+   3 rows of bottles, caps at the top of each bottle neck
+   Row 1: Ursus, Ursus Dark, Nefiltrata, Pilsner, IPA, Cooler Lime, Cooler Pink, Cooler Red
+   Row 2: Timisoreana, Timisoreana, Peroni, Peroni 0.0, Peroni Capri, Can1, Can2
+   Row 3: Pilsner Urquell, Asahi, Kozel, Kozel Dark, Ciucas, Azuga
+   ═══════════════════════════════════════════════════════ */
+const capDefs = [
+  /* ── ROW 1 (8 bottles) ── */
+  { pctX: 5.5,  pctY: 4,   color:'#2D7A2D', light:'#4DA04D' },  // Ursus green
+  { pctX: 16,   pctY: 3,   color:'#2D4A2D', light:'#4D7A4D' },  // Ursus dark
+  { pctX: 27,   pctY: 3.5, color:'#C8A951', light:'#E0C068' },  // Nefiltrata
+  { pctX: 37.5, pctY: 3.5, color:'#C8A951', light:'#E0C068' },  // Pilsner
+  { pctX: 48,   pctY: 4,   color:'#B85C1A', light:'#D8842A' },  // IPA
+  { pctX: 59,   pctY: 2.5, color:'#3AAA3A', light:'#5CCC5C' },  // Cooler Lime
+  { pctX: 72,   pctY: 2.5, color:'#D85090', light:'#F070B0' },  // Cooler Pink
+  { pctX: 85,   pctY: 2.5, color:'#D83030', light:'#F05050' },  // Cooler Red
+
+  /* ── ROW 2 (7 bottles/cans) ── */
+  { pctX: 4,    pctY: 36,  color:'#C8A951', light:'#E0C068' },  // Timisoreana
+  { pctX: 16.5, pctY: 36,  color:'#C8A951', light:'#E0C068' },  // Timisoreana 2
+  { pctX: 30,   pctY: 35,  color:'#1A3A8A', light:'#3A5AAA' },  // Peroni
+  { pctX: 42.5, pctY: 35,  color:'#1A3A8A', light:'#3A5AAA' },  // Peroni 0.0
+  { pctX: 55,   pctY: 35,  color:'#1A8A5A', light:'#3AAA7A' },  // Peroni Capri
+  { pctX: 72,   pctY: 35,  color:'#1A3A8A', light:'#3A5AAA' },  // Can Arancia
+  { pctX: 86,   pctY: 35,  color:'#C8A020', light:'#E0C040' },  // Can Limone
+
+  /* ── ROW 3 (6 bottles) ── */
+  { pctX: 5,    pctY: 67,  color:'#2D6A2D', light:'#4D9A4D' },  // Pilsner Urquell
+  { pctX: 19,   pctY: 67,  color:'#808080', light:'#A0A0A0' },  // Asahi
+  { pctX: 34,   pctY: 66,  color:'#2D5A2D', light:'#4D8A4D' },  // Kozel
+  { pctX: 49,   pctY: 66,  color:'#3A1A0A', light:'#6A3A2A' },  // Kozel Dark
+  { pctX: 65,   pctY: 67,  color:'#B22234', light:'#D43050' },  // Ciucas
+  { pctX: 80,   pctY: 67,  color:'#2D5A7A', light:'#4D7A9A' },  // Azuga
+];
+
+const wrap = document.getElementById('bottlesWrap');
+const heroImg = document.getElementById('heroImg');
+const capEls = [];
+const foamEls = [];
+const mistEls = [];
+const popped = new Array(capDefs.length).fill(false);
+let animStarted = false;
+let capsBuilt = false;
+
+function buildCaps() {
+  if (capsBuilt) return;
+  capsBuilt = true;
+  positionCaps();
+}
+
+function positionCaps() {
+  const imgRect = heroImg.getBoundingClientRect();
+  const wrapRect = wrap.getBoundingClientRect();
+  const offX = imgRect.left - wrapRect.left;
+  const offY = imgRect.top - wrapRect.top;
+  const imgW = imgRect.width;
+  const imgH = imgRect.height;
+
+  capDefs.forEach((cd, i) => {
+    const cx = offX + (cd.pctX / 100) * imgW;
+    const cy = offY + (cd.pctY / 100) * imgH;
+
+    if (capEls[i]) {
+      /* Reposition existing */
+      if (!popped[i]) {
+        capEls[i].style.left = (cx - 8) + 'px';
+        capEls[i].style.top = cy + 'px';
+      }
+      foamEls[i].style.left = (cx - 15) + 'px';
+      foamEls[i].style.top = (cy - 2) + 'px';
+      mistEls[i].style.left = (cx - 18) + 'px';
+      mistEls[i].style.top = (cy - 12) + 'px';
+      return;
+    }
+
+    /* Create cap */
+    const cap = document.createElement('div');
+    cap.className = 'cap-el';
+    cap.style.cssText = `left:${cx-8}px;top:${cy}px;background:linear-gradient(180deg,${cd.light},${cd.color});`;
+    cap.innerHTML = `<div style="position:absolute;top:2px;left:2px;right:2px;height:1.5px;background:rgba(255,255,255,.25);border-radius:1px"></div>`;
+    cap.onclick = (e) => { e.stopPropagation(); triggerPop(i); };
+    wrap.appendChild(cap);
+    capEls.push(cap);
+
+    /* Foam */
+    const foam = document.createElement('div');
+    foam.className = 'foam-wrap';
+    foam.style.cssText = `left:${cx-15}px;top:${cy-2}px;width:30px;height:30px;`;
+    wrap.appendChild(foam);
+    foamEls.push(foam);
+
+    /* Mist */
+    const mist = document.createElement('div');
+    mist.className = 'mist-wrap';
+    mist.style.cssText = `left:${cx-18}px;top:${cy-12}px;width:36px;height:26px;`;
+    wrap.appendChild(mist);
+    mistEls.push(mist);
+  });
+}
+
+heroImg.addEventListener('load', buildCaps);
+if (heroImg.complete) buildCaps();
+window.addEventListener('resize', () => { if (capsBuilt) positionCaps(); });
+
+/* ═══ AUDIO — Web Audio API (works on user gesture) ═══ */
+let audioCtx;
+function ensureAudio() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  return audioCtx;
+}
+
+function playPop() {
+  const ctx = ensureAudio();
+  const now = ctx.currentTime;
+
+  /* 1. METALLIC POP — cap coming off */
+  const popLen = 0.12;
+  const popBuf = ctx.createBuffer(1, ctx.sampleRate * popLen, ctx.sampleRate);
+  const pd = popBuf.getChannelData(0);
+  for (let i = 0; i < pd.length; i++) {
+    const t = i / ctx.sampleRate;
+    pd[i] = (Math.random() * 2 - 1) * Math.exp(-t * 60) * 0.9;
+    pd[i] += Math.sin(2 * Math.PI * 3200 * t) * Math.exp(-t * 40) * 0.3;
+    pd[i] += Math.sin(2 * Math.PI * 1800 * t) * Math.exp(-t * 50) * 0.2;
+  }
+  const popSrc = ctx.createBufferSource();
+  popSrc.buffer = popBuf;
+  const popBP = ctx.createBiquadFilter();
+  popBP.type = 'bandpass'; popBP.frequency.value = 2500; popBP.Q.value = 0.8;
+  const popG = ctx.createGain();
+  popG.gain.setValueAtTime(1.0, now);
+  popG.gain.exponentialRampToValueAtTime(0.01, now + popLen);
+  popSrc.connect(popBP); popBP.connect(popG); popG.connect(ctx.destination);
+  popSrc.start(now);
+
+  /* 2. BOTTLE THUD */
+  const osc = ctx.createOscillator();
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(220, now);
+  osc.frequency.exponentialRampToValueAtTime(80, now + 0.15);
+  const oscG = ctx.createGain();
+  oscG.gain.setValueAtTime(0.25, now);
+  oscG.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+  osc.connect(oscG); oscG.connect(ctx.destination);
+  osc.start(now); osc.stop(now + 0.25);
+
+  /* 3. FIZZ / DEPRESSURIZATION — pssshhh */
+  const fizzLen = 1.2;
+  const fizzBuf = ctx.createBuffer(1, ctx.sampleRate * fizzLen, ctx.sampleRate);
+  const fd = fizzBuf.getChannelData(0);
+  for (let i = 0; i < fd.length; i++) {
+    const t = i / ctx.sampleRate;
+    const env = Math.min(t * 15, 1) * Math.exp(-t * 2.5) * 0.3;
+    fd[i] = (Math.random() * 2 - 1) * env;
+  }
+  const fizzSrc = ctx.createBufferSource();
+  fizzSrc.buffer = fizzBuf;
+  const fizzHP = ctx.createBiquadFilter();
+  fizzHP.type = 'highpass'; fizzHP.frequency.value = 5000;
+  const fizzG = ctx.createGain();
+  fizzG.gain.setValueAtTime(0.5, now + 0.04);
+  fizzG.gain.linearRampToValueAtTime(0.05, now + fizzLen);
+  fizzSrc.connect(fizzHP); fizzHP.connect(fizzG); fizzG.connect(ctx.destination);
+  fizzSrc.start(now + 0.02);
+}
+
+/* ═══ POP A SINGLE BOTTLE ═══ */
+function triggerPop(index) {
+  if (popped[index]) return;
+  popped[index] = true;
+
+  const cap = capEls[index];
+  const foam = foamEls[index];
+  const mist = mistEls[index];
+
+  /* Cap flies off */
+  const dx = (Math.random() - 0.5) * 100;
+  cap.style.setProperty('--dx', dx + 'px');
+  cap.classList.add('popped');
+
+  /* Sound */
+  playPop();
+
+  /* Mist (gas escape) */
+  mist.innerHTML = '';
+  for (let j = 0; j < 6; j++) {
+    const p = document.createElement('div');
+    p.className = 'mist-p';
+    const s = 5 + Math.random() * 12;
+    p.style.cssText = `width:${s}px;height:${s*.7}px;left:${Math.random()*28}px;top:${Math.random()*18}px;`;
+    mist.appendChild(p);
+  }
+  mist.classList.add('active');
+
+  /* Foam blobs + drips */
+  setTimeout(() => {
+    foam.innerHTML = '';
+    for (let j = 0; j < 8; j++) {
+      const bl = document.createElement('div');
+      bl.className = 'foam-blob';
+      const s = 2 + Math.random() * 6;
+      bl.style.cssText = `width:${s}px;height:${s}px;left:${2+Math.random()*24}px;top:${Math.random()*12}px;animation:foamBub ${1.5+Math.random()}s ease-out ${Math.random()*.3}s forwards;`;
+      foam.appendChild(bl);
+    }
+    for (let j = 0; j < 2; j++) {
+      const dr = document.createElement('div');
+      dr.className = 'foam-blob drip';
+      dr.style.cssText = `width:${2+Math.random()*3}px;height:0;left:${6+Math.random()*16}px;top:${12+Math.random()*4}px;--dh:${15+Math.random()*25}px;animation-delay:${.3+Math.random()*.5}s;`;
+      foam.appendChild(dr);
+    }
+    foam.classList.add('active');
+  }, 80);
+
+  /* Sparkles */
+  const capRect = cap.getBoundingClientRect();
+  const wrapRect = wrap.getBoundingClientRect();
+  const spX = capRect.left - wrapRect.left + 8;
+  const spY = capRect.top - wrapRect.top;
+  for (let j = 0; j < 8; j++) {
+    const sp = document.createElement('div');
+    sp.className = 'sparkle go';
+    sp.style.cssText = `left:${spX}px;top:${spY}px;--sx:${(Math.random()-.5)*50}px;--sy:${-15-Math.random()*50}px;animation-delay:${Math.random()*.2}s;`;
+    wrap.appendChild(sp);
+  }
+}
+
+/* ═══ START ANIMATION (on click — enables audio) ═══ */
+function startAnimation() {
+  if (animStarted) return;
+  animStarted = true;
+  buildCaps();
+  document.getElementById('tapHint').classList.add('hidden');
+  ensureAudio();
+
+  /* Pop all bottles sequentially — row by row, ~120ms apart */
+  capDefs.forEach((_, i) => {
+    setTimeout(() => triggerPop(i), i * 120);
+  });
+}
+
+/* ═══ Background bubbles ═══ */
 (function() {
   const c = document.getElementById('bubbles');
   for (let i = 0; i < 20; i++) {
@@ -84,7 +385,12 @@ button[type="submit"]:active{transform:translateY(0)}
   }
 })();
 
-/* Login */
+/* Inline keyframes for foam blobs */
+const style = document.createElement('style');
+style.textContent = `@keyframes foamBub{0%{transform:scale(0);opacity:.9}30%{transform:scale(1);opacity:.8}100%{transform:scale(.4) translateY(8px);opacity:0}}`;
+document.head.appendChild(style);
+
+/* ═══ LOGIN ═══ */
 document.getElementById("loginForm").addEventListener("submit", async e => {
   e.preventDefault();
   const err = document.getElementById("loginError");
