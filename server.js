@@ -8242,10 +8242,6 @@ app.post("/api/admin/cleanup-test-data", auth, (req, res) => {
     // 21. Reset user-edited fields on clients (notes, photo_url, contact_person, email)
     db.prepare("UPDATE clients SET notes=NULL, photo_url=NULL WHERE notes IS NOT NULL OR photo_url IS NOT NULL").run();
 
-    // 22. MASPEX audit — NU se șterg! Sunt importate din Excel (date importante)
-    // try { report.maspex_audit_magazines = db.prepare("SELECT COUNT(*) as c FROM maspex_audit_magazines").get().c; db.prepare("DELETE FROM maspex_audit_magazines").run(); } catch(e) {}
-    // try { report.maspex_audit_sku = db.prepare("SELECT COUNT(*) as c FROM maspex_audit_sku").get().c; db.prepare("DELETE FROM maspex_audit_sku").run(); } catch(e) {}
-
     res.json({ ok: true, message: "Test data cleaned", report });
   } catch(e) {
     console.error("[Error]", e.message); res.status(500).json({ error: "Operație eșuată. Contactează administratorul." });

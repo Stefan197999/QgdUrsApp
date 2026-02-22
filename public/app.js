@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════
-   QMaps Audit Ursus – Frontend Application v2
+   QMaps Audit BB – Frontend Application v2
    Census | Audit | Reports – with improved UX
    ═══════════════════════════════════════════════════════════════ */
 
@@ -90,6 +90,7 @@ function openFromGrid(tab, label) {
 }
 
 /* ── Tab dropdown menu ── */
+const tabLabels = { census: "CENSUS", audit: "AUDIT", obiective: "OBIECTIVE", incasari: "ÎNCASĂRI", vizite: "VIZITE", reports: "RAPOARTE", comunicare: "COMUNICARE", taskuri: "TASKURI", gps: "GPS TRACKING", competitie: "COMPETIȚIE", frigider: "FRIGIDER", promotii: "PROMOȚII", calendar: "CALENDAR", expirari: "EXPIRĂRI", solduri: "SCADENȚAR", escaladari: "ESCALADĂRI SPV", alertaClient: "ALERTĂ CLIENT", riscFinanciar: "RISC FINANCIAR", cuiVerify: "VERIFICARE CUI", perfTargete: "PERFORMANȚĂ TARGETE", ranking: "RANKING AGENȚI", discounturi: "CONTROL DISCOUNTURI", contracte: "CONTRACTE B2B", contracteB2C: "CONTRACTE B2C", smartTargets: "OBIECTIVE LUNARE", promoBudgets: "BUGETE PROMO", dashboardAll: "DASHBOARD VÂNZĂRI", uploadRapoarte: "ÎNCĂRCARE RAPOARTE", bugetGt: "BUGET GT" };
 
 function toggleTabMenu() {
   const menu = document.getElementById("tabDropdownMenu");
@@ -150,13 +151,16 @@ function switchTab(tab) {
   else if (tab === "dashboardAll") loadDashboardAll();
   else if (tab === "bugetGt") loadGtCentralizator();
 
+  /* Hide map for full-width tabs */
   const mapWrap = document.querySelector(".map-wrap");
   const sidebar = document.querySelector(".sidebar");
   if (mapWrap) {
+    const isFullWidth = tab === "uploadRapoarte" || tab === "bugetGt" || tab === "obiective" || tab === "dashboardAll";
     mapWrap.style.display = isFullWidth ? "none" : "";
     if (sidebar) sidebar.style.maxWidth = isFullWidth ? "100%" : "";
     if (sidebar) sidebar.style.flex = isFullWidth ? "1" : "";
   }
+  if (tab !== "uploadRapoarte" && tab !== "obiective" && tab !== "dashboardAll") setTimeout(() => map.invalidateSize(), 100);
 }
 
 /* ── Auth check ── */
@@ -170,6 +174,7 @@ async function checkAuth() {
     currentRole = d.role || "agent";
     currentSalesRep = d.sales_rep || "";
     if (d.csrf_token) _csrfToken = d.csrf_token;
+    const roleLabel = currentRole === "admin" ? "ADMIN" : currentRole === "spv" ? "SPV" : currentRole === "upload" ? "UPLOAD" : "AGENT";
     document.getElementById("userLabel").textContent = `${currentDisplayName} (${roleLabel})`;
 
     /* ── UPLOAD ROLE: only show "Încărcare Rapoarte" tab ── */
@@ -191,6 +196,7 @@ async function checkAuth() {
       if (propBtn) propBtn.style.display = "none";
       // Set default months
       const now = new Date().toISOString().slice(0,7);
+      ["uploadRapTargetMonth","uploadRapDiscountMonth","uploadRapPromoBudgetMonth"].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.value = now;
       });
@@ -243,12 +249,6 @@ async function checkAuth() {
       // Start GPS tracking for agents
       startGpsTracking();
     }
-    if (currentRole === "admin" || currentRole === "spv") {
-        const el = document.getElementById(id);
-        if (el) el.style.display = "";
-      });
-    }
-
     // Show agent-specific views for escalations and alerts
     if (currentRole === "agent") {
       const escAgent = document.getElementById("escAgentView");
@@ -256,7 +256,6 @@ async function checkAuth() {
       const alertAgent = document.getElementById("alertAgentView");
       if (alertAgent) alertAgent.style.display = "";
     }
-
 
     /* ── Show nearby clients section for all roles (except upload) ── */
     const nearbySection = document.getElementById("nearbySection");
@@ -2722,7 +2721,6 @@ async function importRuteExcel(input) {
         const tb2c = document.getElementById('tabContracteB2C');
         if (tb2c) tb2c.style.display = '';
       }
-
       // Show post-login dashboard
       showPostLoginDashboard();
 
@@ -4928,6 +4926,7 @@ const helpTexts = {
   promotii: { title: "Promoții", body: `<div class="help-section"><h4>Descriere</h4><p>Gestionare promoții active. SPV/Admin creează promoția cu perioada și detaliile. Agenții confirmă implementarea la client.</p></div>` },
   calendar: { title: "Calendar / Planificare", body: `<div class="help-section"><h4>Descriere</h4><p>Calendar vizual cu grid lunar. Selectează o zi din calendar, apoi bifează clienții pe care vrei să-i vizitezi. Generează rută Google Maps pentru clienții selectați.</p></div><div class="help-section"><h4>Funcții noi</h4><p>Filtre județ → oraș cascadă. Checkbox "Arată clienți nealocați" pentru a vedea și clienții NEALOCAT.</p></div>` },
   expirari: { title: "Expirări / Freshness", body: `<div class="help-section"><h4>Descriere</h4><p>Raportare produse cu termen de valabilitate aproape expirat sau expirate. Sistemul generează alerte automate.</p></div>` },
+  solduri: { title: "Scadențar — Import Mentor", body: `<div class="help-section"><h4>Descriere</h4><p>Scadențar combinat importat din WinMentor (Quatro) cu toate diviziile: BB, JTI, URSUS. Divizia se detectează automat din agentul asociat fiecărei facturi.</p></div><div class="help-section"><h4>Funcții</h4><p>Filtrare pe: divizie, agent, partener, interval depășire. Carduri sumar pe divizie cu total rest și nr. agenți. Alerte parteneri cu solduri în mai multe divizii. Tabel detaliat cu facturi, zile depășire, blocat DA/NU.</p></div><div class="help-section"><h4>Upload (Admin/SPV)</h4><p>Apasă „📤 Upload Scadențar" și selectează fișierul Excel „Scadențar Quatro" exportat din WinMentor. La fiecare import, datele anterioare sunt înlocuite.</p></div>` },
   escaladari: { title: "Escaladări SPV", body: `<div class="help-section"><h4>Descriere</h4><p>Agentul solicită SPV să vină pe teren. Se creează alertă cu timer. SPV face check-in cu foto+GPS pentru confirmare.</p></div>` },
   alertaClient: { title: "Alertă Client", body: `<div class="help-section"><h4>Descriere</h4><p>Agent generează alertă risc operațional/financiar pentru un client. SPV confirmă luarea la cunoștință.</p></div>` },
   riscFinanciar: { title: "Risc Financiar", body: `<div class="help-section"><h4>Descriere</h4><p>Upload raport Coface cu clienți risc mare. Lista e vizibilă tuturor utilizatorilor.</p></div>` },
@@ -5524,154 +5523,6 @@ async function showRankingPopup() {
     console.error("Ranking popup error:", e);
   }
 }
-
-/* ═══════════════════════════════════════════════════════════════
-   ═══════════════════════════════════════════════════════════════ */
-
-
-
-
-
-
-/* ══════════════ B) OBIECTIVE DN ══════════════ */
-
-
-
-
-/* ══════════════ C) AUDIT SKU ══════════════ */
-
-
-  items.forEach(el => {
-    const text = el.textContent.toLowerCase();
-    const borderLeft = el.style.borderLeft || "";
-    const hasUrgent = borderLeft.includes("e74c3c"); /* red = urgent invoice */
-    const hasNoSales = borderLeft.includes("e67e22"); /* orange = no sales */
-    const hasAnyInvoice = text.includes("de facturat") || text.includes("status facturare");
-    const pctMatch = text.match(/(\d+\.?\d*)%/);
-    const pct = pctMatch ? parseFloat(pctMatch[1]) : 100;
-    let show = true;
-    if (filter === "urgent" && !hasUrgent) show = false;
-    if (filter === "invoice" && !hasAnyInvoice) show = false;
-    if (filter === "nosales" && !hasNoSales && !text.includes("fără vânzări")) show = false;
-    if (filter === "below80" && pct >= 80) show = false;
-    if (filter === "ok" && pct < 80) show = false;
-    if (search && !text.includes(search)) show = false;
-    el.style.display = show ? "" : "none";
-  });
-}
-
-/* ══════════════ D) CATALOG PRODUSE ══════════════ */
-
-/* ═══ MAPARE CORECTĂ — verificată vizual pagină cu pagină ═══
-   P1=Tymbark intro, P24=Tedi intro, P39=Figo intro, P42=Tiger intro,
-   P44=Nestea intro, P49=Just Plants intro, P52=Alcalia intro,
-   P54=Bucovina intro, P63=La Vitta intro, P65=Vălenii intro,
-   P74=La Festa intro, P83=Coffeeta intro, P86=Salatini intro,
-   P103=Ekland intro, P107=Inka intro, P109=Van intro,
-   P111=Brumi intro, P114=Arnos intro, P122=Nemo intro,
-   P125=Rollini intro, P128=Żubrówka intro */
-
-/* Brand intro pages (shown as first image for every grupa of that brand) */
-
-
-
-/* Open catalog image in fullscreen overlay with zoom */
-
-
-
-/* ═══════════════════════════════════════════
-   UPLOAD RAPOARTE — funcții dedicate pentru rolul upload
-   ═══════════════════════════════════════════ */
-
-async function doUploadRapSolduri() {
-  const fileEl = document.getElementById("uploadRapSolduriFile");
-  const statusEl = document.getElementById("uploadRapSolduriStatus");
-  if (!fileEl.files[0]) return toast("Selectează fișier Excel", "warn");
-  statusEl.textContent = "Se importă...";
-  const fd = new FormData();
-  fd.append("file", fileEl.files[0]);
-  try {
-    const r = await fetch("/api/scadentar/upload", { method: "POST", body: fd });
-    const d = await r.json();
-    if (!r.ok) throw new Error(d.error);
-    statusEl.textContent = `✅ ${d.message}`;
-    fileEl.value = "";
-  } catch (ex) { statusEl.textContent = "❌ " + ex.message; }
-}
-
-async function doUploadRapCoface() {
-  const fileEl = document.getElementById("uploadRapCofaceFile");
-  const statusEl = document.getElementById("uploadRapCofaceStatus");
-  if (!fileEl.files[0]) return toast("Selectează fișier Excel", "warn");
-  statusEl.textContent = "Se importă...";
-  const fd = new FormData();
-  fd.append("file", fileEl.files[0]);
-  try {
-    const r = await fetch("/api/financial-risk/upload", { method: "POST", body: fd });
-    const d = await r.json();
-    if (!r.ok) throw new Error(d.error);
-    statusEl.textContent = `✅ ${d.message}`;
-    fileEl.value = "";
-  } catch (ex) { statusEl.textContent = "❌ " + ex.message; }
-}
-
-async function doUploadRapTargete() {
-  const fileEl = document.getElementById("uploadRapTargeteFile");
-  const monthEl = document.getElementById("uploadRapTargetMonth");
-  const statusEl = document.getElementById("uploadRapTargeteStatus");
-  if (!fileEl.files[0]) return toast("Selectează fișier Excel", "warn");
-  statusEl.textContent = "Se importă...";
-  const fd = new FormData();
-  fd.append("file", fileEl.files[0]);
-  fd.append("month", monthEl.value || new Date().toISOString().slice(0, 7));
-  fd.append("producer", "BB");
-  try {
-    const r = await fetch("/api/producer-targets/upload", { method: "POST", body: fd });
-    const d = await r.json();
-    if (d.ok) { statusEl.textContent = `✅ ${d.count} targete importate`; }
-    else statusEl.textContent = `❌ ${d.error}`;
-  } catch (ex) { statusEl.textContent = `❌ ${ex.message}`; }
-  fileEl.value = "";
-}
-
-async function doUploadRapDiscount() {
-  const fileEl = document.getElementById("uploadRapDiscountFile");
-  const monthEl = document.getElementById("uploadRapDiscountMonth");
-  const statusEl = document.getElementById("uploadRapDiscountStatus");
-  if (!fileEl.files[0]) return toast("Selectează fișier Excel", "warn");
-  statusEl.textContent = "Se importă...";
-  const fd = new FormData();
-  fd.append("file", fileEl.files[0]);
-  fd.append("month", monthEl.value || new Date().toISOString().slice(0, 7));
-  try {
-    const r = await fetch("/api/discounts/upload", { method: "POST", body: fd });
-    const d = await r.json();
-    if (d.ok) { statusEl.textContent = `✅ ${d.count} înregistrări importate`; }
-    else statusEl.textContent = `❌ ${d.error}`;
-  } catch (ex) { statusEl.textContent = `❌ ${ex.message}`; }
-  fileEl.value = "";
-}
-
-async function doUploadRapPromoBudget() {
-  const fileEl = document.getElementById("uploadRapPromoBudgetFile");
-  const monthEl = document.getElementById("uploadRapPromoBudgetMonth");
-  const statusEl = document.getElementById("uploadRapPromoBudgetStatus");
-  if (!fileEl.files[0]) return toast("Selectează fișier Excel", "warn");
-  statusEl.textContent = "Se importă...";
-  const fd = new FormData();
-  fd.append("file", fileEl.files[0]);
-  fd.append("month", monthEl.value || new Date().toISOString().slice(0, 7));
-  try {
-    const r = await fetch("/api/promo-budgets/upload", { method: "POST", body: fd });
-    const d = await r.json();
-    if (d.ok) { statusEl.textContent = `✅ ${d.count} bugete importate`; }
-    else statusEl.textContent = `❌ ${d.error}`;
-  } catch (ex) { statusEl.textContent = `❌ ${ex.message}`; }
-  fileEl.value = "";
-}
-
-
-
 
 
 /* ═══════════════════════════════════════════════════════════════
