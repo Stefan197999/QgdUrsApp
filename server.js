@@ -191,6 +191,9 @@ try { db.exec("CREATE INDEX IF NOT EXISTS idx_gps_time ON gps_locations(recorded
 try { db.exec("ALTER TABLE clients ADD COLUMN email TEXT DEFAULT ''"); } catch(e) {}
 try { db.exec("ALTER TABLE clients ADD COLUMN telefon TEXT DEFAULT ''"); } catch(e) {}
 try { db.exec("ALTER TABLE clients ADD COLUMN client_activ_quatro INTEGER DEFAULT 0"); } catch(e) {}
+try { db.exec("ALTER TABLE clients ADD COLUMN on_component TEXT DEFAULT ''"); } catch(e) {}
+try { db.exec("ALTER TABLE clients ADD COLUMN numar_vitrine INTEGER DEFAULT 0"); } catch(e) {}
+try { db.exec("ALTER TABLE clients ADD COLUMN numar_dozatoare INTEGER DEFAULT 0"); } catch(e) {}
 try { db.exec("ALTER TABLE clients ADD COLUMN contact_person TEXT DEFAULT ''"); } catch(e) {}
 try { db.exec("ALTER TABLE clients ADD COLUMN agent_jti TEXT DEFAULT ''"); } catch(e) {}
 try { db.exec("ALTER TABLE clients ADD COLUMN sursa TEXT DEFAULT 'BB'"); } catch(e) {}
@@ -1495,7 +1498,7 @@ const clientsData = JSON.parse(fs.readFileSync("./seed/clients.json", "utf8"));
 // Check if deduplicated census loaded (2883 unique clients, not 3600+ duplicated)
 let hasJtiOnly = false;
 try { hasJtiOnly = db.prepare("SELECT count(*) as c FROM clients WHERE sursa='JTI'").get().c > 0; } catch(e) {}
-const needReseed = clientCount > 3000; // Old bloated census with duplicates
+const needReseed = clientCount > 5000; // Old bloated census with duplicates
 if (clientCount > 0 && (!hasJtiOnly || needReseed)) {
   console.log(`[CENSUS] Re-seed: ${!hasJtiOnly ? 'fără sursa JTI' : `${clientCount} clienți (duplicate)`}. Șterg și reincarc cu ${clientsData.length} clienți unici...`);
   db.exec('PRAGMA foreign_keys = OFF');
@@ -1505,10 +1508,10 @@ if (clientCount > 0 && (!hasJtiOnly || needReseed)) {
 const clientCountNow = db.prepare("SELECT COUNT(*) as c FROM clients").get().c;
 if (clientCountNow === 0) {
   console.log("Importing clients from JSON...");
-  const ins = db.prepare(`INSERT INTO clients (code,firma,nume_poc,cif,adresa,oras,judet,municipality,agent,stare_poc,sales_rep,format,subformat,canal,lat,lon,agent_jti,sursa) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`);
+  const ins = db.prepare(`INSERT INTO clients (code,firma,nume_poc,cif,adresa,oras,judet,municipality,agent,stare_poc,sales_rep,format,subformat,canal,lat,lon,agent_jti,sursa,on_component,numar_vitrine,numar_dozatoare) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`);
   const tx = db.transaction(() => {
     for (const c of clientsData) {
-      ins.run(c.code, c.firma, c.nume_poc, c.cif, c.adresa, c.oras, c.judet || "IASI", c.municipality, c.agent, c.stare_poc, c.sales_rep, c.format, c.subformat, c.canal, c.lat, c.lon, c.agent_jti || '', c.sursa || 'BB');
+      ins.run(c.code, c.firma, c.nume_poc, c.cif, c.adresa, c.oras, c.judet || "IASI", c.municipality, c.agent, c.stare_poc, c.sales_rep, c.format, c.subformat, c.canal, c.lat, c.lon, c.agent_jti || '', c.sursa || 'URSUS', c.on_component || '', c.numar_vitrine || 0, c.numar_dozatoare || 0);
     }
   });
   tx();
@@ -1526,10 +1529,10 @@ if (clientCountNow === 0) {
   });
   if (newClients.length > 0) {
     console.log(`Syncing ${newClients.length} new clients from JSON...`);
-    const ins = db.prepare(`INSERT INTO clients (code,firma,nume_poc,cif,adresa,oras,judet,municipality,agent,stare_poc,sales_rep,format,subformat,canal,lat,lon,agent_jti,sursa) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`);
+    const ins = db.prepare(`INSERT INTO clients (code,firma,nume_poc,cif,adresa,oras,judet,municipality,agent,stare_poc,sales_rep,format,subformat,canal,lat,lon,agent_jti,sursa,on_component,numar_vitrine,numar_dozatoare) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`);
     const tx = db.transaction(() => {
       for (const c of newClients) {
-        ins.run(c.code, c.firma, c.nume_poc, c.cif, c.adresa, c.oras, c.judet || "IASI", c.municipality, c.agent, c.stare_poc, c.sales_rep, c.format, c.subformat, c.canal, c.lat, c.lon, c.agent_jti || '', c.sursa || 'BB');
+        ins.run(c.code, c.firma, c.nume_poc, c.cif, c.adresa, c.oras, c.judet || "IASI", c.municipality, c.agent, c.stare_poc, c.sales_rep, c.format, c.subformat, c.canal, c.lat, c.lon, c.agent_jti || '', c.sursa || 'URSUS', c.on_component || '', c.numar_vitrine || 0, c.numar_dozatoare || 0);
       }
     });
     tx();

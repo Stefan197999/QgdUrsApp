@@ -520,8 +520,10 @@ function showClientDetail(id) {
       <tr><td style="font-weight:600;padding:4px 8px">Format</td><td>${esc(c.format||'')}</td></tr>
       <tr><td style="font-weight:600;padding:4px 8px">SubFormat</td><td>${esc(c.subformat)}</td></tr>
       <tr><td style="font-weight:600;padding:4px 8px">Agent DTR</td><td>${esc(c.agent)}</td></tr>
-      <tr><td style="font-weight:600;padding:4px 8px">Sales Rep</td><td>${esc(c.sales_rep)}</td></tr>
       <tr><td style="font-weight:600;padding:4px 8px">Stare POC</td><td>${esc(c.stare_poc||'')}</td></tr>
+      <tr><td style="font-weight:600;padding:4px 8px">On Component</td><td>${esc(c.on_component||'—')}</td></tr>
+      <tr><td style="font-weight:600;padding:4px 8px">Nr. Vitrine</td><td>${c.numar_vitrine||0}</td></tr>
+      <tr><td style="font-weight:600;padding:4px 8px">Nr. Dozatoare</td><td>${c.numar_dozatoare||0}</td></tr>
       <tr><td style="font-weight:600;padding:4px 8px">Client Activ Quatro</td><td><span class="chip ${c.client_activ_quatro ? 'ok' : 'bad'}">${c.client_activ_quatro ? 'DA - Cumpără Ursus' : 'NU - Fără vânzări 2025'}</span></td></tr>
       <tr><td style="font-weight:600;padding:4px 8px">Coordonate</td><td>${c.lat}, ${c.lon}</td></tr>
       <tr><td style="font-weight:600;padding:4px 8px">👤 Persoană contact</td><td>${esc(c.contact_person||'—')}</td></tr>
