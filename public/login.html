@@ -139,32 +139,33 @@ button[type="submit"]:active{transform:translateY(0)}
    Row 3: Pilsner Urquell, Asahi, Kozel, Kozel Dark, Ciucas, Azuga
    ═══════════════════════════════════════════════════════ */
 const capDefs = [
-  /* ── ROW 1 (8 bottles) ── */
-  { pctX: 5.5,  pctY: 4,   color:'#2D7A2D', light:'#4DA04D' },  // Ursus green
-  { pctX: 16,   pctY: 3,   color:'#2D4A2D', light:'#4D7A4D' },  // Ursus dark
-  { pctX: 27,   pctY: 3.5, color:'#C8A951', light:'#E0C068' },  // Nefiltrata
-  { pctX: 37.5, pctY: 3.5, color:'#C8A951', light:'#E0C068' },  // Pilsner
-  { pctX: 48,   pctY: 4,   color:'#B85C1A', light:'#D8842A' },  // IPA
-  { pctX: 59,   pctY: 2.5, color:'#3AAA3A', light:'#5CCC5C' },  // Cooler Lime
-  { pctX: 72,   pctY: 2.5, color:'#D85090', light:'#F070B0' },  // Cooler Pink
-  { pctX: 85,   pctY: 2.5, color:'#D83030', light:'#F05050' },  // Cooler Red
+  /* ── ROW 1 (9 bottles) ── */
+  { pctX: 12.5, pctY: 4.2,  color:'#2D7A2D', light:'#4DA04D' },  // Ursus green
+  { pctX: 22.1, pctY: 4.4,  color:'#2D4A2D', light:'#4D7A4D' },  // Ursus dark
+  { pctX: 31.9, pctY: 9.0,  color:'#C8A951', light:'#E0C068' },  // Nefiltrata
+  { pctX: 41.8, pctY: 8.2,  color:'#C8A951', light:'#E0C068' },  // Pilsner
+  { pctX: 51.6, pctY: 8.4,  color:'#B85C1A', light:'#D8842A' },  // IPA
+  { pctX: 61.4, pctY: 8.1,  color:'#2D7A2D', light:'#4DA04D' },  // Ursus bottle
+  { pctX: 70.6, pctY: 6.2,  color:'#3AAA3A', light:'#5CCC5C' },  // Cooler Lime
+  { pctX: 78.8, pctY: 6.6,  color:'#D85090', light:'#F070B0' },  // Cooler Pink
+  { pctX: 87.5, pctY: 6.2,  color:'#D83030', light:'#F05050' },  // Cooler Red
 
   /* ── ROW 2 (7 bottles/cans) ── */
-  { pctX: 4,    pctY: 36,  color:'#C8A951', light:'#E0C068' },  // Timisoreana
-  { pctX: 16.5, pctY: 36,  color:'#C8A951', light:'#E0C068' },  // Timisoreana 2
-  { pctX: 30,   pctY: 35,  color:'#1A3A8A', light:'#3A5AAA' },  // Peroni
-  { pctX: 42.5, pctY: 35,  color:'#1A3A8A', light:'#3A5AAA' },  // Peroni 0.0
-  { pctX: 55,   pctY: 35,  color:'#1A8A5A', light:'#3AAA7A' },  // Peroni Capri
-  { pctX: 72,   pctY: 35,  color:'#1A3A8A', light:'#3A5AAA' },  // Can Arancia
-  { pctX: 86,   pctY: 35,  color:'#C8A020', light:'#E0C040' },  // Can Limone
+  { pctX: 24.9, pctY: 38.8, color:'#C8A951', light:'#E0C068' },  // Timisoreana
+  { pctX: 33.9, pctY: 38.6, color:'#C8A951', light:'#E0C068' },  // Timisoreana 2
+  { pctX: 42.3, pctY: 38.6, color:'#1A3A8A', light:'#3A5AAA' },  // Peroni
+  { pctX: 51.2, pctY: 38.8, color:'#1A3A8A', light:'#3A5AAA' },  // Peroni 0.0
+  { pctX: 60.4, pctY: 38.5, color:'#1A8A5A', light:'#3AAA7A' },  // Peroni Capri
+  { pctX: 68.8, pctY: 45.9, color:'#1A3A8A', light:'#3A5AAA' },  // Can Arancia
+  { pctX: 77.7, pctY: 46.2, color:'#C8A020', light:'#E0C040' },  // Can Limone
 
   /* ── ROW 3 (6 bottles) ── */
-  { pctX: 5,    pctY: 67,  color:'#2D6A2D', light:'#4D9A4D' },  // Pilsner Urquell
-  { pctX: 19,   pctY: 67,  color:'#808080', light:'#A0A0A0' },  // Asahi
-  { pctX: 34,   pctY: 66,  color:'#2D5A2D', light:'#4D8A4D' },  // Kozel
-  { pctX: 49,   pctY: 66,  color:'#3A1A0A', light:'#6A3A2A' },  // Kozel Dark
-  { pctX: 65,   pctY: 67,  color:'#B22234', light:'#D43050' },  // Ciucas
-  { pctX: 80,   pctY: 67,  color:'#2D5A7A', light:'#4D7A9A' },  // Azuga
+  { pctX: 29.4, pctY: 68.9, color:'#2D6A2D', light:'#4D9A4D' },  // Pilsner Urquell
+  { pctX: 39.3, pctY: 68.4, color:'#808080', light:'#A0A0A0' },  // Asahi
+  { pctX: 48.9, pctY: 69.0, color:'#2D5A2D', light:'#4D8A4D' },  // Kozel
+  { pctX: 58.6, pctY: 69.0, color:'#3A1A0A', light:'#6A3A2A' },  // Kozel Dark
+  { pctX: 67.3, pctY: 69.1, color:'#B22234', light:'#D43050' },  // Ciucas
+  { pctX: 75.8, pctY: 69.5, color:'#2D5A7A', light:'#4D7A9A' },  // Azuga
 ];
 
 const wrap = document.getElementById('bottlesWrap');
@@ -367,9 +368,9 @@ function startAnimation() {
   document.getElementById('tapHint').classList.add('hidden');
   ensureAudio();
 
-  /* Pop all bottles sequentially — row by row, ~120ms apart */
+  /* Pop all bottles sequentially — 0.2s apart */
   capDefs.forEach((_, i) => {
-    setTimeout(() => triggerPop(i), i * 120);
+    setTimeout(() => triggerPop(i), i * 200);
   });
 }
 
