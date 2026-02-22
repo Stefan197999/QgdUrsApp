@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: qgd-urs-app
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: node server.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DB_PATH
+        value: /opt/render/project/src/data/app.db
+      - key: UPLOAD_DIR
+        value: /opt/render/project/src/uploads
+    disk:
+      name: ursus-data
+      mountPath: /opt/render/project/src/data
+      sizeGB: 1
+    healthCheckPath: /api/me

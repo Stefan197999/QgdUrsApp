@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QgdSalesBB - Login</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',Arial,sans-serif;background:linear-gradient(135deg,#0a0e14 0%,#121a24 50%,#0d1117 100%);min-height:100vh;display:flex;align-items:center;justify-content:center;overflow:hidden}
+
+.bubbles{position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:0;overflow:hidden}
+.bubble{position:absolute;bottom:-30px;background:rgba(255,215,0,.06);border-radius:50%;animation:rise linear infinite}
+@keyframes rise{0%{transform:translateY(0) scale(1);opacity:.5}100%{transform:translateY(-110vh) scale(.2);opacity:0}}
+
+.login-box{
+  background:linear-gradient(180deg,#1c2128 0%,#181d24 100%);
+  padding:1.8rem 2.2rem 2.2rem;border-radius:18px;
+  box-shadow:0 25px 80px rgba(0,0,0,.6),0 0 0 1px rgba(255,255,255,.05);
+  width:92%;max-width:440px;position:relative;z-index:10;overflow:visible;
+}
+
+h1{text-align:center;color:#FFD700;margin-bottom:.15rem;font-size:1.6rem;font-weight:800;letter-spacing:1px;text-shadow:0 2px 10px rgba(255,215,0,.3)}
+.subtitle{text-align:center;color:#8b949e;font-size:.78rem;margin-bottom:.6rem;letter-spacing:.5px}
+
+/* ══════ BOTTLES ROW ══════ */
+.bottles-wrap{
+  position:relative;width:100%;height:190px;margin:0 auto .5rem;
+  display:flex;justify-content:center;align-items:flex-end;gap:0;
+  cursor:pointer;user-select:none;
+}
+.tap-hint{
+  position:absolute;bottom:-2px;left:50%;transform:translateX(-50%);
+  font-size:.72rem;color:#8b949e;opacity:1;transition:opacity .5s;
+  white-space:nowrap;background:rgba(0,0,0,.5);padding:2px 12px;border-radius:10px;z-index:20;
+}
+.tap-hint.hidden{opacity:0;pointer-events:none}
+
+.bottle-slot{
+  position:relative;display:flex;flex-direction:column;align-items:center;
+  width:80px;
+}
+.bottle-slot img{
+  height:175px;width:auto;max-width:78px;
+  object-fit:contain;filter:drop-shadow(0 4px 12px rgba(0,0,0,.6));
+  transition:transform .2s;
+}
+.bottle-slot:hover img{transform:scale(1.03)}
+
+/* Cap overlay */
+.cap-el{
+  position:absolute;z-index:10;cursor:pointer;
+  width:20px;height:10px;border-radius:3px 3px 1px 1px;
+  box-shadow:0 1px 3px rgba(0,0,0,.4);
+  transition:transform .05s;
+}
+.cap-el:hover{transform:scale(1.15)}
+.cap-el.popped{pointer-events:none;animation:capFly .9s cubic-bezier(.2,.8,.3,1) forwards}
+@keyframes capFly{
+  0%{transform:translateY(0) rotate(0deg);opacity:1}
+  25%{transform:translateY(-100px) rotate(200deg);opacity:1}
+  100%{transform:translateY(-280px) translateX(var(--dx)) rotate(900deg);opacity:0}
+}
+
+/* Foam */
+.foam-wrap{position:absolute;z-index:8;pointer-events:none;opacity:0}
+.foam-wrap.active{animation:foamAppear 3.5s ease-out forwards}
+@keyframes foamAppear{0%{opacity:0}8%{opacity:1}100%{opacity:0;transform:translateY(18px)}}
+.foam-blob{position:absolute;background:rgba(255,252,230,.85);border-radius:50%;box-shadow:0 0 4px rgba(255,252,230,.4)}
+.foam-blob.drip{border-radius:40%;animation:dripAnim 3s ease-in forwards}
+@keyframes dripAnim{0%{height:0;opacity:.7}50%{height:var(--dh);opacity:.5}100%{height:var(--dh);opacity:0}}
+
+/* Mist */
+.mist-wrap{position:absolute;z-index:7;pointer-events:none;opacity:0}
+.mist-wrap.active{animation:mistAnim 2.5s ease-out forwards}
+@keyframes mistAnim{0%{opacity:0;transform:translateY(0) scaleX(1)}15%{opacity:.6}100%{opacity:0;transform:translateY(-40px) scaleX(3.5)}}
+.mist-p{position:absolute;background:rgba(255,255,255,.15);border-radius:50%;filter:blur(4px)}
+
+/* Sparkles */
+.sparkle{position:absolute;width:5px;height:5px;background:#FFD700;border-radius:50%;pointer-events:none;opacity:0;z-index:12}
+.sparkle.go{animation:sparkGo .8s ease-out forwards}
+@keyframes sparkGo{0%{transform:scale(0);opacity:1}100%{transform:scale(2.5) translate(var(--sx),var(--sy));opacity:0}}
+
+/* ══════ FORM ══════ */
+label{display:block;font-size:.8rem;color:#8b949e;margin-bottom:.2rem;margin-top:.7rem;text-transform:uppercase;letter-spacing:.5px;font-weight:600}
+input{
+  width:100%;padding:.65rem .8rem;border:2px solid #30363d;border-radius:8px;
+  font-size:.95rem;transition:all .2s;background:#0d1117;color:#e6edf3;
+}
+input::placeholder{color:#484f58}
+input:focus{outline:none;border-color:#FFD700;box-shadow:0 0 0 3px rgba(255,215,0,.1)}
+button[type="submit"]{
+  width:100%;padding:.8rem;
+  background:linear-gradient(135deg,#B8860B,#DAA520,#B8860B);
+  color:#fff;border:none;border-radius:8px;font-size:1rem;cursor:pointer;
+  margin-top:1.2rem;transition:all .2s;font-weight:700;letter-spacing:.5px;
+  box-shadow:0 4px 20px rgba(218,165,32,.3);text-shadow:0 1px 2px rgba(0,0,0,.3);
+}
+button[type="submit"]:hover{background:linear-gradient(135deg,#DAA520,#FFD700,#DAA520);transform:translateY(-1px);box-shadow:0 6px 25px rgba(218,165,32,.4)}
+button[type="submit"]:active{transform:translateY(0)}
+.error{color:#e74c3c;font-size:.8rem;text-align:center;margin-top:.7rem;display:none}
+.footer{text-align:center;font-size:.65rem;color:#3d444d;margin-top:.8rem;letter-spacing:.3px}
+
+@media(max-width:480px){
+  .login-box{padding:1.3rem 1.3rem 1.8rem;max-width:98%}
+  .bottles-wrap{height:155px}
+  .bottle-slot{width:65px}
+  .bottle-slot img{height:140px;max-width:63px}
+  h1{font-size:1.35rem}
+}
+@media(max-width:360px){
+  .bottle-slot{width:58px}
+  .bottle-slot img{height:125px;max-width:56px}
+  .bottles-wrap{height:140px}
+}
+</style>
+</head>
+<body>
+
+<div class="bubbles" id="bubbles"></div>
+
+<div class="login-box">
+  <h1>QgdSalesBB</h1>
+  <p class="subtitle">Quatro Grup Distribution · Sales Management</p>
+
+  <div class="bottles-wrap" id="bottlesWrap" onclick="startAnimation()">
+    <span class="tap-hint" id="tapHint">apasă pentru deschidere 🍺</span>
+  </div>
+
+  <form id="loginForm">
+    <label for="username">Utilizator</label>
+    <input id="username" type="text" placeholder="Utilizator" required autofocus>
+    <label for="password">Parolă</label>
+    <input id="password" type="password" placeholder="Parolă" required>
+    <button type="submit">Intră în aplicație</button>
+  </form>
+  <p id="loginError" class="error"></p>
+  <p class="footer">© 2026 QgdSalesBB · Quatro Grup Distribution</p>
+</div>
+
+<script>
+/* ═══ BOTTLE DEFINITIONS — real PNG images from bergenbiersa.ro ═══ */
+const bottles = [
+  { name: 'Bergenbier',     src: '/img/bergenbier.png',  capColor: '#C5A030', capLight: '#E8C84A', capTop: 5 },
+  { name: 'Staropramen',    src: '/img/staropramen.png', capColor: '#2D5A2D', capLight: '#4D8A4D', capTop: 8 },
+  { name: "Beck's",         src: '/img/becks.png',       capColor: '#1A5C1A', capLight: '#3D8A3D', capTop: 5 },
+  { name: 'Stella Artois',  src: '/img/stella.png',      capColor: '#C5A030', capLight: '#E8C84A', capTop: 5 },
+  { name: 'Noroc',          src: '/img/noroc.png',       capColor: '#B22234', capLight: '#D43050', capTop: 5 }
+];
+
+const wrap = document.getElementById('bottlesWrap');
+const popped = [false,false,false,false,false];
+let animStarted = false;
+
+/* ═══ BUILD BOTTLES ═══ */
+bottles.forEach((b, i) => {
+  const slot = document.createElement('div');
+  slot.className = 'bottle-slot';
+
+  // Real image
+  const img = document.createElement('img');
+  img.src = b.src;
+  img.alt = b.name;
+  img.draggable = false;
+  slot.appendChild(img);
+
+  // Cap element on top of the bottle
+  const cap = document.createElement('div');
+  cap.className = 'cap-el';
+  cap.style.cssText = `top:${b.capTop}px;left:50%;transform:translateX(-50%);
+    background:linear-gradient(180deg,${b.capLight},${b.capColor});`;
+  cap.innerHTML = `<div style="position:absolute;top:3px;left:2px;right:2px;height:2px;background:rgba(255,255,255,.25);border-radius:1px"></div>`;
+  cap.onclick = (e) => { e.stopPropagation(); triggerPop(i); };
+  slot.appendChild(cap);
+
+  // Foam container
+  const foam = document.createElement('div');
+  foam.className = 'foam-wrap';
+  foam.style.cssText = `top:${b.capTop - 2}px;left:50%;transform:translateX(-50%);width:35px;height:35px;`;
+  slot.appendChild(foam);
+
+  // Mist container
+  const mist = document.createElement('div');
+  mist.className = 'mist-wrap';
+  mist.style.cssText = `top:${b.capTop - 15}px;left:50%;transform:translateX(-50%);width:40px;height:30px;`;
+  slot.appendChild(mist);
+
+  slot.dataset.i = i;
+  slot.dataset.capTop = b.capTop;
+  wrap.insertBefore(slot, document.getElementById('tapHint'));
+});
+
+/* ═══ AUDIO — Web Audio API (works on user gesture) ═══ */
+let audioCtx;
+function ensureAudio() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  return audioCtx;
+}
+
+function playPop() {
+  const ctx = ensureAudio();
+  const now = ctx.currentTime;
+
+  // 1. METALLIC POP
+  const popLen = 0.12;
+  const popBuf = ctx.createBuffer(1, ctx.sampleRate * popLen, ctx.sampleRate);
+  const pd = popBuf.getChannelData(0);
+  for (let i = 0; i < pd.length; i++) {
+    const t = i / ctx.sampleRate;
+    pd[i] = (Math.random() * 2 - 1) * Math.exp(-t * 60) * 0.9;
+    pd[i] += Math.sin(2 * Math.PI * 3200 * t) * Math.exp(-t * 40) * 0.3;
+    pd[i] += Math.sin(2 * Math.PI * 1800 * t) * Math.exp(-t * 50) * 0.2;
+  }
+  const popSrc = ctx.createBufferSource();
+  popSrc.buffer = popBuf;
+  const popBP = ctx.createBiquadFilter();
+  popBP.type = 'bandpass'; popBP.frequency.value = 2500; popBP.Q.value = 0.8;
+  const popG = ctx.createGain();
+  popG.gain.setValueAtTime(1.0, now);
+  popG.gain.exponentialRampToValueAtTime(0.01, now + popLen);
+  popSrc.connect(popBP); popBP.connect(popG); popG.connect(ctx.destination);
+  popSrc.start(now);
+
+  // 2. BOTTLE THUD
+  const osc = ctx.createOscillator();
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(220, now);
+  osc.frequency.exponentialRampToValueAtTime(80, now + 0.15);
+  const oscG = ctx.createGain();
+  oscG.gain.setValueAtTime(0.25, now);
+  oscG.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+  osc.connect(oscG); oscG.connect(ctx.destination);
+  osc.start(now); osc.stop(now + 0.25);
+
+  // 3. FIZZ
+  const fizzLen = 1.2;
+  const fizzBuf = ctx.createBuffer(1, ctx.sampleRate * fizzLen, ctx.sampleRate);
+  const fd = fizzBuf.getChannelData(0);
+  for (let i = 0; i < fd.length; i++) {
+    const t = i / ctx.sampleRate;
+    const env = Math.min(t * 15, 1) * Math.exp(-t * 2.5) * 0.3;
+    fd[i] = (Math.random() * 2 - 1) * env;
+  }
+  const fizzSrc = ctx.createBufferSource();
+  fizzSrc.buffer = fizzBuf;
+  const fizzHP = ctx.createBiquadFilter();
+  fizzHP.type = 'highpass'; fizzHP.frequency.value = 5000;
+  const fizzG = ctx.createGain();
+  fizzG.gain.setValueAtTime(0.5, now + 0.04);
+  fizzG.gain.linearRampToValueAtTime(0.05, now + fizzLen);
+  fizzSrc.connect(fizzHP); fizzHP.connect(fizzG); fizzG.connect(ctx.destination);
+  fizzSrc.start(now + 0.02);
+}
+
+/* ═══ POP A SINGLE BOTTLE ═══ */
+function triggerPop(index) {
+  if (popped[index]) return;
+  popped[index] = true;
+
+  const slot = document.querySelectorAll('.bottle-slot')[index];
+  const cap = slot.querySelector('.cap-el');
+  const foam = slot.querySelector('.foam-wrap');
+  const mist = slot.querySelector('.mist-wrap');
+  const capTop = parseFloat(slot.dataset.capTop);
+
+  // Cap flies off
+  const dx = (Math.random() - 0.5) * 120;
+  cap.style.setProperty('--dx', dx + 'px');
+  cap.classList.add('popped');
+
+  // Sound
+  playPop();
+
+  // Mist (gas)
+  mist.innerHTML = '';
+  for (let j = 0; j < 8; j++) {
+    const p = document.createElement('div');
+    p.className = 'mist-p';
+    const s = 6 + Math.random() * 14;
+    p.style.cssText = `width:${s}px;height:${s*.7}px;left:${Math.random()*32}px;top:${Math.random()*22}px;`;
+    mist.appendChild(p);
+  }
+  mist.classList.add('active');
+
+  // Foam blobs + drips
+  setTimeout(() => {
+    foam.innerHTML = '';
+    for (let j = 0; j < 10; j++) {
+      const bl = document.createElement('div');
+      bl.className = 'foam-blob';
+      const s = 3 + Math.random() * 8;
+      bl.style.cssText = `width:${s}px;height:${s}px;left:${3+Math.random()*28}px;top:${Math.random()*15}px;animation:foamBub ${1.5+Math.random()}s ease-out ${Math.random()*.3}s forwards;`;
+      foam.appendChild(bl);
+    }
+    for (let j = 0; j < 3; j++) {
+      const dr = document.createElement('div');
+      dr.className = 'foam-blob drip';
+      dr.style.cssText = `width:${3+Math.random()*3}px;height:0;left:${8+Math.random()*18}px;top:${15+Math.random()*5}px;--dh:${18+Math.random()*30}px;animation-delay:${.3+Math.random()*.5}s;`;
+      foam.appendChild(dr);
+    }
+    foam.classList.add('active');
+  }, 80);
+
+  // Sparkles
+  for (let j = 0; j < 10; j++) {
+    const sp = document.createElement('div');
+    sp.className = 'sparkle go';
+    sp.style.cssText = `left:${35+Math.random()*10}px;top:${capTop}px;--sx:${(Math.random()-.5)*60}px;--sy:${-20-Math.random()*60}px;animation-delay:${Math.random()*.2}s;`;
+    slot.appendChild(sp);
+  }
+}
+
+/* ═══ START ANIMATION (on click — enables audio) ═══ */
+function startAnimation() {
+  if (animStarted) return;
+  animStarted = true;
+  document.getElementById('tapHint').classList.add('hidden');
+  ensureAudio();
+
+  // Pop bottles sequentially
+  [0, 250, 500, 750, 1000].forEach((delay, i) => {
+    setTimeout(() => triggerPop(i), delay);
+  });
+}
+
+/* ═══ Background bubbles ═══ */
+(function() {
+  const c = document.getElementById('bubbles');
+  for (let i = 0; i < 20; i++) {
+    const b = document.createElement('div');
+    b.className = 'bubble';
+    const s = 8 + Math.random() * 25;
+    b.style.cssText = `width:${s}px;height:${s}px;left:${Math.random()*100}%;animation-duration:${5+Math.random()*10}s;animation-delay:${Math.random()*6}s;`;
+    c.appendChild(b);
+  }
+})();
+
+/* Inline keyframes for foam blobs */
+const style = document.createElement('style');
+style.textContent = `@keyframes foamBub{0%{transform:scale(0);opacity:.9}30%{transform:scale(1);opacity:.8}100%{transform:scale(.4) translateY(8px);opacity:0}}`;
+document.head.appendChild(style);
+
+/* ═══ LOGIN ═══ */
+document.getElementById("loginForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  const err = document.getElementById("loginError");
+  err.style.display = "none";
+  try {
+    const r = await fetch("/api/login", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({
+        username: document.getElementById("username").value.trim(),
+        password: document.getElementById("password").value
+      })
+    });
+    const d = await r.json();
+    if (!r.ok || !d.ok) throw new Error(d.error || "Autentificare esuata");
+    // Store previous login for What's New popup
+    if (d.previous_login) {
+      try { sessionStorage.setItem("previous_login", d.previous_login); } catch(e) {}
+    }
+    // Store CSRF token
+    if (d.csrf_token) {
+      try { sessionStorage.setItem("csrf_token", d.csrf_token); } catch(e) {}
+    }
+    window.location.href = "/index.html";
+  } catch(ex) {
+    err.textContent = ex.message;
+    err.style.display = "block";
+  }
+});
+</script>
+</body>
+</html>

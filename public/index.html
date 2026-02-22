@@ -1,0 +1,2184 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+<title>QgdSalesBB</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css">
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+
+<!-- Loading -->
+<div id="loadingOverlay" class="loading-overlay">
+  <div class="spinner" style="width:40px;height:40px"></div>
+  <p>Se încarcă datele...</p>
+</div>
+
+<!-- Topbar -->
+<header class="topbar">
+  <button id="homeBtn" class="back-to-menu-btn" onclick="showHomeGrid()" title="Înapoi la meniu">◀ Meniu</button>
+  <h1>QgdSalesBB</h1>
+  <div class="tab-dropdown-wrap">
+    <button id="tabDropdownBtn" class="tab-dropdown-btn" onclick="toggleTabMenu()">VIZITE ▾</button>
+    <div id="tabDropdownMenu" class="tab-dropdown-menu">
+      <button id="tabCensus" class="tab-menu-item" onclick="selectTab('census','CENSUS')">CENSUS</button>
+      <button id="tabAudit" class="tab-menu-item" onclick="selectTab('audit','AUDIT')">AUDIT</button>
+      <button id="tabObiective" class="tab-menu-item" onclick="selectTab('obiective','OBIECTIVE')">OBIECTIVE</button>
+      <button id="tabIncasari" class="tab-menu-item" onclick="selectTab('incasari','ÎNCASĂRI')">ÎNCASĂRI</button>
+      <button id="tabVizite" class="tab-menu-item active" onclick="selectTab('vizite','VIZITE')">VIZITE</button>
+      <button id="tabReports" class="tab-menu-item" onclick="selectTab('reports','RAPOARTE')">RAPOARTE</button>
+      <div style="border-top:1px solid var(--border);margin:4px 0"></div>
+      <button id="tabComunicare" class="tab-menu-item" onclick="selectTab('comunicare','COMUNICARE')">📢 COMUNICARE</button>
+      <button id="tabTaskuri" class="tab-menu-item" onclick="selectTab('taskuri','TASKURI')">✅ TASKURI</button>
+      <button id="tabGps" class="tab-menu-item" onclick="selectTab('gps','GPS TRACKING')" style="display:none">📍 GPS TRACKING</button>
+      <button id="tabCompetitie" class="tab-menu-item" onclick="selectTab('competitie','COMPETIȚIE')">🏆 COMPETIȚIE</button>
+      <button id="tabFrigider" class="tab-menu-item" onclick="selectTab('frigider','FRIGIDER')">🧊 FRIGIDER</button>
+      <button id="tabPromotii" class="tab-menu-item" onclick="selectTab('promotii','PROMOȚII')">🎯 PROMOȚII</button>
+      <button id="tabCalendar" class="tab-menu-item" onclick="selectTab('calendar','CALENDAR')">📅 CALENDAR</button>
+      <button id="tabExpirari" class="tab-menu-item" onclick="selectTab('expirari','EXPIRĂRI')">⏰ EXPIRĂRI</button>
+      <div style="border-top:1px solid var(--border);margin:4px 0"></div>
+      <button id="tabSolduri" class="tab-menu-item" onclick="selectTab('solduri','SCADENȚAR')">📊 SCADENȚAR</button>
+      <button id="tabEscaladari" class="tab-menu-item" onclick="selectTab('escaladari','ESCALADĂRI SPV')">🚨 ESCALADĂRI SPV</button>
+      <button id="tabAlertaClient" class="tab-menu-item" onclick="selectTab('alertaClient','ALERTĂ CLIENT')">⚠️ ALERTĂ CLIENT</button>
+      <button id="tabRiscFinanciar" class="tab-menu-item" onclick="selectTab('riscFinanciar','RISC FINANCIAR')">📊 RISC FINANCIAR</button>
+      <button id="tabCuiVerify" class="tab-menu-item" onclick="selectTab('cuiVerify','VERIFICARE CUI')">🔍 VERIFICARE CUI</button>
+      <div style="border-top:1px solid var(--border);margin:4px 0"></div>
+      <button id="tabPerfTargete" class="tab-menu-item" onclick="selectTab('perfTargete','PERFORMANȚĂ TARGETE')">📈 PERFORMANȚĂ TARGETE</button>
+      <button id="tabRanking" class="tab-menu-item" onclick="selectTab('ranking','RANKING AGENȚI')">🏅 RANKING AGENȚI</button>
+      <button id="tabDiscounturi" class="tab-menu-item" onclick="selectTab('discounturi','CONTROL DISCOUNTURI')">💸 CONTROL DISCOUNTURI</button>
+      <div style="border-top:1px solid var(--border);margin:4px 0"></div>
+      <button id="tabContracte" class="tab-menu-item" onclick="selectTab('contracte','CONTRACTE B2B')">📝 CONTRACTE B2B</button>
+      <button id="tabContracteB2C" class="tab-menu-item" onclick="selectTab('contracteB2C','CONTRACTE B2C')" style="display:none">🛒 CONTRACTE B2C</button>
+      <button id="tabSmartTargets" class="tab-menu-item" onclick="selectTab('smartTargets','OBIECTIVE LUNARE')">🎯 OBIECTIVE LUNARE</button>
+      <button id="tabPromoBudgets" class="tab-menu-item" onclick="selectTab('promoBudgets','BUGETE PROMO')">💰 BUGETE PROMO</button>
+      <button id="tabDashboardAll" class="tab-menu-item" onclick="selectTab('dashboardAll','DASHBOARD VÂNZĂRI')">📊 DASHBOARD VÂNZĂRI</button>
+      <div style="border-top:1px solid var(--border);margin:4px 0;position:relative"><span style="position:absolute;top:-8px;left:8px;background:var(--bg);padding:0 6px;font-size:.6rem;color:var(--muted)">MASPEX</span></div>
+      <button id="tabMaspexVanzari" class="tab-menu-item" onclick="selectTab('maspexVanzari','VÂNZĂRI MASPEX')">📊 VÂNZĂRI MASPEX</button>
+      <button id="tabMaspexObiective" class="tab-menu-item" onclick="selectTab('maspexObiective','OBIECTIVE DN')">🎯 OBIECTIVE DN</button>
+      <button id="tabMaspexAudit" class="tab-menu-item" onclick="selectTab('maspexAudit','AUDIT SKU')">✅ AUDIT SKU</button>
+      <button id="tabMaspexCatalog" class="tab-menu-item" onclick="selectTab('maspexCatalog','CATALOG PRODUSE')">📦 CATALOG PRODUSE</button>
+      <div style="border-top:1px solid var(--border);margin:4px 0"></div>
+      <button id="tabUploadRapoarte" class="tab-menu-item" onclick="selectTab('uploadRapoarte','ÎNCĂRCARE RAPOARTE')" style="display:none">📤 ÎNCĂRCARE RAPOARTE</button>
+    </div>
+  </div>
+  <span id="userLabel" class="user"></span>
+  <button id="routeToggleBtn" onclick="toggleRouteMode()" title="Mod traseu – selectează mai mulți clienți">🗺 Traseu</button>
+  <button id="proposalsBtn" onclick="openProposalsDialog()" title="Propuneri clienți inactivi" style="display:none">📋 Propuneri</button>
+  <!-- Notification bell -->
+  <div style="position:relative;display:inline-block">
+    <button onclick="toggleNotifPanel()" title="Notificări" id="notifBellBtn">🔔<span id="notifBadge" class="notif-badge" style="display:none">0</span></button>
+    <div id="notifPanel" class="notif-panel" style="display:none">
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:.5rem .7rem;border-bottom:1px solid var(--border)">
+        <strong style="font-size:.85rem">Notificări</strong>
+        <button class="btn small" onclick="markAllNotifRead()" style="font-size:.72rem;padding:2px 8px">Marchează citite</button>
+      </div>
+      <div id="notifList" style="max-height:350px;overflow-y:auto;font-size:.82rem"></div>
+    </div>
+  </div>
+  <button onclick="refreshData()" title="Reîncarcă datele de pe server">🔄</button>
+  <button id="btnCleanup" onclick="cleanupTestData()" title="Curăță date test" style="display:none;background:#e74c3c;color:#fff">🧹</button>
+  <button onclick="toggleSidebar()">☰</button>
+  <button onclick="logout()">Logout</button>
+</header>
+
+<!-- Help Overlay -->
+<div id="helpOverlay" class="help-overlay" style="display:none" onclick="if(event.target===this)closeHelp()">
+  <div class="help-content">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.8rem">
+      <h3 id="helpTitle" style="margin:0;color:var(--accent)"></h3>
+      <button onclick="closeHelp()" style="background:none;border:none;font-size:1.2rem;cursor:pointer">✕</button>
+    </div>
+    <div id="helpBody" style="font-size:.88rem;line-height:1.5"></div>
+  </div>
+</div>
+
+<!-- Ce e nou? Overlay -->
+<div id="whatsNewOverlay" class="help-overlay" style="display:none" onclick="if(event.target===this)closeWhatsNew()">
+  <div class="help-content" style="max-width:500px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.8rem">
+      <h3 style="margin:0;color:var(--accent)">🆕 Ce e nou?</h3>
+      <button onclick="closeWhatsNew()" style="background:none;border:none;font-size:1.2rem;cursor:pointer">✕</button>
+    </div>
+    <div id="whatsNewBody" style="font-size:.85rem;line-height:1.5;max-height:400px;overflow-y:auto"></div>
+    <button onclick="closeWhatsNew()" class="btn primary" style="margin-top:.8rem;width:100%">Am înțeles!</button>
+  </div>
+</div>
+
+<!-- Purchases Modal -->
+<div id="purchaseOverlay" class="help-overlay" style="display:none" onclick="if(event.target===this)closePurchaseModal()">
+  <div class="help-content" style="max-width:500px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem">
+      <h3 id="purchaseTitle" style="margin:0;color:var(--accent);font-size:.95rem"></h3>
+      <button onclick="closePurchaseModal()" style="background:none;border:none;font-size:1.2rem;cursor:pointer">✕</button>
+    </div>
+    <div id="purchaseBody" style="font-size:.82rem;line-height:1.4;max-height:450px;overflow-y:auto"></div>
+  </div>
+</div>
+
+<!-- ═══════ HOME GRID MENU ═══════ -->
+<div id="homeGrid" class="home-grid">
+  <div class="home-grid-header">
+    <span class="home-grid-title">QgdSalesBB</span>
+    <span id="homeUserLabel" class="home-user-label"></span>
+  </div>
+  <div class="home-grid-scroll">
+    <div class="home-grid-section-label">OPERAȚIUNI</div>
+    <div class="home-grid-items">
+      <div class="grid-icon-card" onclick="openFromGrid('census','CENSUS')" style="--icon-bg:linear-gradient(135deg,#4fc3f7,#0288d1)">
+        <div class="grid-icon-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
+        <span>Census</span>
+      </div>
+      <div class="grid-icon-card" onclick="openFromGrid('audit','AUDIT')" style="--icon-bg:linear-gradient(135deg,#81c784,#2e7d32)">
+        <div class="grid-icon-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></div>
+        <span>Audit</span>
+      </div>
+      <div class="grid-icon-card" onclick="openFromGrid('obiective','OBIECTIVE')" style="--icon-bg:linear-gradient(135deg,#ffb74d,#e65100)">
+        <div class="grid-icon-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg></div>
+        <span>Obiective</span>
+      </div>
+      <div class="grid-icon-card" onclick="openFromGrid('incasari','ÎNCASĂRI')" style="--icon-bg:linear-gradient(135deg,#a5d6a7,#388e3c)">
+        <div class="grid-icon-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M12 8v8M8 12h8"/></svg></div>
+        <span>Încasări</span>
+      </div>
+      <div class="grid-icon-card" onclick="openFromGrid('vizite','VIZITE')" style="--icon-bg:linear-gradient(135deg,#90caf9,#1565c0)">
+        <div class="grid-icon-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg></div>
+        <span>Vizite</span>
+      </div>
+      <div class="grid-icon-card" onclick="openFromGrid('reports','RAPOARTE')" style="--icon-bg:linear-gradient(135deg,#ce93d8,#7b1fa2)">
+        <div class="grid-icon-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></div>
+        <span>Rapoarte</span>
+      </div>
+    </div>
+
+    <div class="home-grid-section-label">COMUNICARE & TASKURI</div>
+    <div class="home-grid-items">
+      <div class="grid-icon-card" onclick="openFromGrid('comunicare','COMUNICARE')" style="--icon-bg:linear-gradient(135deg,#f48fb1,#c2185b)">
+        <div class="grid-icon-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
+        <span>Comunicare</span>
+      </div>
+      <div class="grid-icon-card" onclick="openFromGrid('taskuri','TASKURI')" style="--icon-bg:linear-gradient(135deg,#80deea,#00838f)">
+        <div class="grid-icon-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div>
+        <span>Taskuri</span>
+      </div>
+      <div class="grid-icon-card" onclick="openFromGrid('competitie','COMPETIȚIE')" style="--icon-bg:linear-gradient(135deg,#fff176,#f9a825)">
+        <div class="grid-icon-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 22V2h4v20"/><rect x="6" y="14" width="12" height="4" rx="1"/></svg></div>
+        <span>Competiție</span>
+      </div>
+      <div class="grid-icon-card" onclick="openFromGrid('calendar','CALENDAR')" style="--icon-bg:linear-gradient(135deg,#b39ddb,#4527a0)">
+        <div class="grid-icon-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div>
+        <span>Calendar</span>
+      </div>
+    </div>
+
+    <div class="home-grid-section-label">PRODUSE & PROMOȚII</div>
+    <div class="home-grid-items">
+      <div class="grid-icon-card" onclick="openFromGrid('frigider','FRIGIDER')" style="--icon-bg:linear-gradient(135deg,#80cbc4,#00695c)">
+        <div class="grid-icon-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="4" y1="10" x2="20" y2="10"/><line x1="10" y1="6" x2="10" y2="6.01"/><line x1="10" y1="14" x2="10" y2="14.01"/></svg></div>
+        <span>Frigider</span>
+      </div>
+      <div class="grid-icon-card" onclick="openFromGrid('promotii','PROMOȚII')" style="--icon-bg:linear-gradient(135deg,#ef9a9a,#b71c1c)">
+        <div class="grid-icon-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg></div>
+        <span>Promoții</span>
+      </div>
+      <div class="grid-icon-card" onclick="openFromGrid('expirari','EXPIRĂRI')" style="--icon-bg:linear-gradient(135deg,#ffcc80,#ef6c00)">
+        <div class="grid-icon-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
+        <span>Expirări</span>
+      </div>
+      <div class="grid-icon-card" onclick="openFromGrid('discounturi','CONTROL DISCOUNTURI')" style="--icon-bg:linear-gradient(135deg,#c5e1a5,#558b2f)">
+        <div class="grid-icon-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="5" x2="5" y2="19"/><circle cx="6.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/></svg></div>
+        <span>Discounturi</span>
+      </div>
+    </div>
+
+    <div class="home-grid-section-label">FINANCIAR & RISC</div>
+    <div class="home-grid-items">
+      <div class="grid-icon-card" onclick="openFromGrid('solduri','SCADENȚAR')" style="--icon-bg:linear-gradient(135deg,#ffab91,#d84315)">
+        <div class="grid-icon-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>
+        <span>Scadențar</span>
+      </div>
+      <div class="grid-icon-card" onclick="openFromGrid('escaladari','ESCALADĂRI SPV')" style="--icon-bg:linear-gradient(135deg,#ef5350,#b71c1c)">
+        <div class="grid-icon-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
+        <span>Escaladări</span>
+      </div>
+      <div class="grid-icon-card" onclick="openFromGrid('alertaClient','ALERTĂ CLIENT')" style="--icon-bg:linear-gradient(135deg,#ffa726,#e65100)">
+        <div class="grid-icon-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></div>
+        <span>Alerte Client</span>
+      </div>
+      <div class="grid-icon-card" onclick="openFromGrid('riscFinanciar','RISC FINANCIAR')" style="--icon-bg:linear-gradient(135deg,#e57373,#c62828)">
+        <div class="grid-icon-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+        <span>Risc Financiar</span>
+      </div>
+      <div class="grid-icon-card" onclick="openFromGrid('cuiVerify','VERIFICARE CUI')" style="--icon-bg:linear-gradient(135deg,#9fa8da,#283593)">
+        <div class="grid-icon-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div>
+        <span>Verificare CUI</span>
+      </div>
+    </div>
+
+    <div class="home-grid-section-label">PERFORMANȚĂ</div>
+    <div class="home-grid-items">
+      <div class="grid-icon-card" onclick="openFromGrid('perfTargete','PERFORMANȚĂ TARGETE')" style="--icon-bg:linear-gradient(135deg,#4db6ac,#00695c)">
+        <div class="grid-icon-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div>
+        <span>Performanță</span>
+      </div>
+      <div class="grid-icon-card" onclick="openFromGrid('ranking','RANKING AGENȚI')" style="--icon-bg:linear-gradient(135deg,#ffd54f,#ff8f00)">
+        <div class="grid-icon-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></div>
+        <span>Ranking</span>
+      </div>
+      <div class="grid-icon-card" onclick="openFromGrid('dashboardAll','DASHBOARD VÂNZĂRI')" style="--icon-bg:linear-gradient(135deg,#7986cb,#1a237e)">
+        <div class="grid-icon-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg></div>
+        <span>Dashboard</span>
+      </div>
+    </div>
+
+    <div class="home-grid-section-label">ADMINISTRARE</div>
+    <div class="home-grid-items">
+      <div class="grid-icon-card" onclick="openFromGrid('contracte','CONTRACTE B2B')" style="--icon-bg:linear-gradient(135deg,#a1887f,#4e342e)">
+        <div class="grid-icon-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg></div>
+        <span>Contracte B2B</span>
+      </div>
+      <div id="gridContracteB2C" class="grid-icon-card" onclick="openFromGrid('contracteB2C','CONTRACTE B2C')" style="display:none;--icon-bg:linear-gradient(135deg,#f48fb1,#ad1457)">
+        <div class="grid-icon-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg></div>
+        <span>Contracte B2C</span>
+      </div>
+      <div class="grid-icon-card" onclick="openFromGrid('smartTargets','OBIECTIVE LUNARE')" style="--icon-bg:linear-gradient(135deg,#66bb6a,#2e7d32)">
+        <div class="grid-icon-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></div>
+        <span>Obiective Lunare</span>
+      </div>
+      <div class="grid-icon-card" onclick="openFromGrid('promoBudgets','BUGETE PROMO')" style="--icon-bg:linear-gradient(135deg,#ba68c8,#6a1b9a)">
+        <div class="grid-icon-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="18" rx="2"/><path d="M2 9h20"/><path d="M10 3v18"/></svg></div>
+        <span>Bugete Promo</span>
+      </div>
+      <div class="grid-icon-card" id="gridUploadRapoarte" onclick="openFromGrid('uploadRapoarte','ÎNCĂRCARE RAPOARTE')" style="--icon-bg:linear-gradient(135deg,#78909c,#37474f);display:none">
+        <div class="grid-icon-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg></div>
+        <span>Încărcare Rapoarte</span>
+      </div>
+    </div>
+
+    <div class="home-grid-section-label">MASPEX</div>
+    <div class="home-grid-items">
+      <div class="grid-icon-card" onclick="openFromGrid('maspexVanzari','VÂNZĂRI MASPEX')" style="--icon-bg:linear-gradient(135deg,#4dd0e1,#006064)">
+        <div class="grid-icon-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></div>
+        <span>Vânzări Maspex</span>
+      </div>
+      <div class="grid-icon-card" onclick="openFromGrid('maspexObiective','OBIECTIVE DN')" style="--icon-bg:linear-gradient(135deg,#aed581,#33691e)">
+        <div class="grid-icon-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg></div>
+        <span>Obiective DN</span>
+      </div>
+      <div class="grid-icon-card" onclick="openFromGrid('maspexAudit','AUDIT SKU')" style="--icon-bg:linear-gradient(135deg,#f0ce56,#c49000)">
+        <div class="grid-icon-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></div>
+        <span>Audit SKU</span>
+      </div>
+      <div class="grid-icon-card" onclick="openFromGrid('maspexCatalog','CATALOG PRODUSE')" style="--icon-bg:linear-gradient(135deg,#ffab91,#bf360c)">
+        <div class="grid-icon-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg></div>
+        <span>Catalog Produse</span>
+      </div>
+      <div class="grid-icon-card" onclick="openFromGrid('bugetGt','BUGET GT')" style="--icon-bg:linear-gradient(135deg,#26c6da,#00838f)">
+        <div class="grid-icon-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="18" rx="2"/><path d="M8 7v10M12 7v10M16 7v10"/></svg></div>
+        <span>Buget GT</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Layout -->
+<div class="layout" id="mainLayout" style="display:none">
+  <aside class="sidebar" id="sidebar">
+
+    <!-- ═══════════════════════════════════════════
+         TAB 1: CENSUS (all clients, navigate, info)
+         ═══════════════════════════════════════════ -->
+    <div id="panelCensus" class="tab-panel" style="display:none">
+      <details class="panel" open>
+        <summary>CENSUS CLIENȚI <button class="help-btn" onclick="event.stopPropagation();showHelp('census')">?</button></summary>
+        <div class="panel-inner">
+          <div class="filter-row">
+            <label>Caută (firmă / oraș / cod / POC)</label>
+            <input id="censusSearch" type="search" placeholder="Ex: IASI, CALIST, 356750...">
+          </div>
+          <div class="split">
+            <section>
+              <p class="label">AGENT DTR</p>
+              <input id="censusAgentSearch" type="search" placeholder="Caută...">
+              <div id="censusAgentFilter" class="checklist"></div>
+            </section>
+            <section>
+              <p class="label">SALES REP</p>
+              <input id="censusSrSearch" type="search" placeholder="Caută...">
+              <div id="censusSrFilter" class="checklist"></div>
+            </section>
+          </div>
+          <div class="split" style="margin-top:.5rem">
+            <section>
+              <p class="label">ORAȘ</p>
+              <input id="censusCitySearch" type="search" placeholder="Caută...">
+              <div id="censusCityFilter" class="checklist"></div>
+            </section>
+            <section>
+              <p class="label">CANAL</p>
+              <div id="censusCanalFilter" class="checklist"></div>
+              <p class="label" style="margin-top:.4rem">FORMAT</p>
+              <div id="censusFormatFilter" class="checklist" style="max-height:100px"></div>
+            </section>
+          </div>
+          <div class="split" style="margin-top:.5rem">
+            <section>
+              <p class="label">STARE POC</p>
+              <div id="censusStareFilter" class="checklist" style="max-height:80px"></div>
+            </section>
+            <section>
+              <p class="label">MUNICIPALITY</p>
+              <div id="censusMunicFilter" class="checklist" style="max-height:80px"></div>
+            </section>
+            <section>
+              <p class="label">CLIENT ACTIV QUATRO</p>
+              <div id="censusActivFilter" class="checklist" style="max-height:60px"></div>
+            </section>
+            <section>
+              <p class="label">🛒 ACHIZIȚII LUNA</p>
+              <div id="censusAchizitiiFilter" class="checklist" style="max-height:60px"></div>
+            </section>
+          </div>
+          <div class="btn-row">
+            <button class="btn primary small" onclick="applyCensusFilters()">Aplică filtre</button>
+            <button class="btn ghost small" onclick="resetCensusFilters()">Reset</button>
+            <button class="btn ghost small" onclick="showOnlyMapVisible('census')">Doar pe hartă</button>
+          </div>
+        </div>
+      </details>
+
+      <div class="stats-bar">
+        <span id="censusStats">Clienți: 0</span>
+      </div>
+
+      <!-- Nearby clients GPS section -->
+      <div id="nearbySection" style="padding:8px 12px;display:none">
+        <button id="btnFindNearby" class="btn primary" style="width:100%;padding:10px;font-size:.85rem;border-radius:8px" onclick="findNearbyClients()">
+          📍 Găsește clienți în apropiere
+        </button>
+        <div id="nearbyStatus" style="font-size:12px;margin-top:6px;text-align:center"></div>
+        <div id="nearbyRadius" style="display:flex;align-items:center;gap:6px;margin-top:6px;font-size:12px">
+          <label style="white-space:nowrap">Rază:</label>
+          <select id="nearbyRadiusSelect" style="padding:3px 6px;border-radius:4px;border:1px solid var(--border);font-size:12px">
+            <option value="100">100m</option>
+            <option value="200" selected>200m</option>
+            <option value="500">500m</option>
+            <option value="1000">1 km</option>
+          </select>
+        </div>
+        <div id="nearbyResults" style="margin-top:8px"></div>
+      </div>
+
+      <ul id="censusClientList" class="client-list"></ul>
+    </div>
+
+    <!-- ═══════════════════════════════════════════
+         TAB 2: AUDIT (product checklist, photo)
+         ═══════════════════════════════════════════ -->
+    <div id="panelAudit" class="tab-panel" style="display:none">
+      <details class="panel" open>
+        <summary>AUDIT URSUS <button class="help-btn" onclick="event.stopPropagation();showHelp('audit')">?</button></summary>
+        <div class="panel-inner">
+          <div class="filter-row">
+            <label>Caută client audit</label>
+            <input id="auditSearch" type="search" placeholder="Ex: IASI, CALIST...">
+          </div>
+          <div class="split">
+            <section>
+              <p class="label">AGENT DTR</p>
+              <input id="auditAgentSearch" type="search" placeholder="Caută...">
+              <div id="auditAgentFilter" class="checklist"></div>
+            </section>
+            <section>
+              <p class="label">SALES REP</p>
+              <input id="auditSrSearch" type="search" placeholder="Caută...">
+              <div id="auditSrFilter" class="checklist"></div>
+            </section>
+          </div>
+          <div class="split" style="margin-top:.5rem">
+            <section>
+              <p class="label">ORAȘ</p>
+              <input id="auditCitySearch" type="search" placeholder="Caută...">
+              <div id="auditCityFilter" class="checklist"></div>
+            </section>
+            <section>
+              <p class="label">CANAL</p>
+              <div id="auditCanalFilter" class="checklist"></div>
+              <p class="label" style="margin-top:.4rem">FORMAT</p>
+              <div id="auditFormatFilter" class="checklist" style="max-height:100px"></div>
+            </section>
+            <section>
+              <p class="label">🛒 ACHIZIȚII LUNA</p>
+              <div id="auditAchizitiiFilter" class="checklist" style="max-height:60px"></div>
+            </section>
+          </div>
+          <div class="btn-row">
+            <button class="btn primary small" onclick="applyAuditFilters()">Aplică filtre</button>
+            <button class="btn ghost small" onclick="resetAuditFilters()">Reset</button>
+            <button class="btn ghost small" onclick="showOnlyMapVisible('audit')">Doar pe hartă</button>
+          </div>
+        </div>
+      </details>
+
+      <div class="audit-status-filters" style="padding:.4rem 1rem">
+        <span class="status-chip active" data-status="all" onclick="setAuditStatus('all')">Toți</span>
+        <span class="status-chip" data-status="unvisited" onclick="setAuditStatus('unvisited')">Nevizitați</span>
+        <span class="status-chip" data-status="open" onclick="setAuditStatus('open')">Vizită deschisă</span>
+        <span class="status-chip" data-status="done" onclick="setAuditStatus('done')">Audit complet</span>
+      </div>
+
+      <div class="stats-bar">
+        <span id="auditStats">Clienți: 0</span>
+        <span id="scoreStats"></span>
+      </div>
+
+      <ul id="auditClientList" class="client-list"></ul>
+    </div>
+
+    <!-- ═══════════════════════════════════════════
+         TAB 3: OBIECTIVE (Target vs Realizat)
+         ═══════════════════════════════════════════ -->
+    <div id="panelObiective" class="tab-panel" style="display:none">
+      <details class="panel" open>
+        <summary>TARGET vs REALIZAT <button class="help-btn" onclick="event.stopPropagation();showHelp('obiective')">?</button></summary>
+        <div class="panel-inner">
+          <div class="filter-row">
+            <label>Luna</label>
+            <input id="obiectiveMonth" type="month" value="">
+          </div>
+          <div class="btn-row">
+            <button class="btn primary small" onclick="loadObiective()">Încarcă</button>
+          </div>
+          <div id="adminImportBtns" style="display:none;margin:.5rem 0;padding:.5rem;border:1px solid var(--border);border-radius:8px;background:var(--bg2)">
+            <p style="font-size:.75rem;color:var(--muted);margin-bottom:.4rem">ADMIN: IMPORT DATE</p>
+
+            <div style="margin-bottom:.6rem">
+              <label style="font-size:.75rem;font-weight:600">1. Vânzări luna curentă</label>
+              <p style="font-size:.7rem;color:var(--muted);margin:2px 0 4px">Fișier: <strong>VANZARE URSUS 01-18.02.xlsx</strong> (din Rapoarte vanzari → vanzare zilnic URSUS)<br>Actualizează: Valoric, Hectolitri, GT</p>
+              <div class="btn-row">
+                <input type="file" id="salesFileInput" accept=".xlsx,.xls,.XLSX" style="font-size:.8rem;max-width:200px">
+                <button class="btn success small" onclick="importSalesFile()">Import Vânzări</button>
+              </div>
+              <div id="importStatus" style="font-size:.8rem;margin-top:.2rem"></div>
+            </div>
+
+            <div>
+              <label style="font-size:.75rem;font-weight:600">2. Clienți unici facturați 2 luni (minim 2 SKU)</label>
+              <p style="font-size:.7rem;color:var(--muted);margin:2px 0 4px">Fișier: <strong>VANZARE URSUS pe 2 luni</strong> (ex: ianuarie + februarie)<br>Actualizează: coloana Clienți 2 SKU din Obiective</p>
+              <div class="btn-row">
+                <input type="file" id="sales2luniFile" accept=".xlsx,.xls,.XLSX" style="font-size:.8rem;max-width:200px">
+                <button class="btn success small" onclick="importClienti2Luni()">Import Clienți 2 Luni</button>
+              </div>
+              <div id="import2luniStatus" style="font-size:.8rem;margin-top:.2rem"></div>
+            </div>
+          </div>
+        </div>
+      </details>
+
+      <!-- Export button -->
+      <div style="text-align:right;padding:.3rem 1rem">
+        <button class="btn ghost small" onclick="exportObiectiveExcel()" title="Exportă obiective în Excel">📥 Export Obiective Excel</button>
+      </div>
+
+      <!-- Summary cards -->
+      <div id="obiectiveSummary" style="padding:.5rem 1rem"></div>
+
+      <!-- Daily sales history -->
+      <div id="dailySalesHistory" style="padding:.3rem 1rem"></div>
+
+      <!-- Per-agent cards -->
+      <div id="obiectiveAgents" style="padding:.3rem 1rem"></div>
+
+      <!-- GT Section -->
+      <details class="panel" style="margin-top:.5rem">
+        <summary>BUGET GT (TARGET vs REALIZAT) <button class="help-btn" onclick="event.stopPropagation();showHelp('bugetGt')">?</button></summary>
+        <div class="panel-inner">
+          <!-- Admin GT upload buttons -->
+          <div id="gtObjAdminConfig" style="display:none;margin-bottom:.5rem;padding:.5rem;border:1px solid var(--border);border-radius:8px;background:var(--bg2)">
+            <p style="font-size:.75rem;color:var(--muted);margin-bottom:.4rem">ADMIN: CONFIGURARE GT</p>
+
+            <div style="display:flex;flex-direction:column;gap:10px">
+              <!-- 1. Fișier Ursus original — se extrag mapare, prețuri, centralizator -->
+              <div style="padding:.4rem;border:1px solid var(--border);border-radius:6px;background:var(--bg)">
+                <label style="font-size:.75rem;font-weight:600">1. Fișier Ursus (Baza calcul buget GT)</label>
+                <p style="font-size:.7rem;color:var(--muted);margin:2px 0 4px">Încarcă fișierul original — se extrag automat: mapare SKU, prețuri GT/HL, target + realizat per agent</p>
+                <div class="btn-row" style="flex-wrap:wrap;gap:6px">
+                  <input type="month" id="gtMapareMonth" style="padding:5px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--fg);font-size:.8rem">
+                  <input type="file" id="gtMapareFile" accept=".xlsx,.xls" style="font-size:.8rem;max-width:200px">
+                  <button class="btn success small" onclick="uploadGtMapare()">📤 Import</button>
+                </div>
+                <div id="gtMapareStatus" style="font-size:.8rem;margin-top:.2rem"></div>
+              </div>
+
+              <!-- 2. Targeturi agenți -->
+              <div style="padding:.4rem;border:1px solid var(--border);border-radius:6px;background:var(--bg)">
+                <label style="font-size:.75rem;font-weight:600">2. Targeturi GT lunare (agenți)</label>
+                <p style="font-size:.7rem;color:var(--muted);margin:2px 0 4px">Descarcă template-ul cu agenții, completează targeturile, apoi reîncarcă</p>
+                <div class="btn-row" style="flex-wrap:wrap;gap:6px">
+                  <input type="month" id="gtTargetMonth" style="padding:5px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--fg);font-size:.8rem">
+                  <button class="btn ghost small" onclick="downloadGtTemplate('targeturi')">📥 Descarcă Template</button>
+                  <input type="file" id="gtTargeturiFile" accept=".xlsx,.xls" style="font-size:.8rem;max-width:200px">
+                  <button class="btn success small" onclick="uploadGtTargeturi()">📤 Import</button>
+                </div>
+                <div id="gtTargeturiStatus" style="font-size:.8rem;margin-top:.2rem"></div>
+              </div>
+            </div>
+            <div id="gtObjConfigInfo" style="font-size:.75rem;margin-top:.4rem;color:var(--muted)"></div>
+          </div>
+          <!-- Export button -->
+          <div style="text-align:right;padding:.3rem 0">
+            <button class="btn ghost small" onclick="exportGtExcel()" title="Exportă tabelul GT în Excel">📥 Export Excel</button>
+          </div>
+          <div id="gtObiectiveContent" style="padding:.3rem 0"></div>
+        </div>
+      </details>
+    </div>
+
+    <!-- ═══════════════════════════════════════════
+         TAB 5: ÎNCASĂRI (Daily Cash Collections)
+         ═══════════════════════════════════════════ -->
+    <div id="panelIncasari" class="tab-panel" style="display:none">
+      <details class="panel" open>
+        <summary>ÎNCASĂRI ZILNICE <button class="help-btn" onclick="event.stopPropagation();showHelp('incasari')">?</button></summary>
+        <div class="panel-inner">
+          <!-- Agent view: input + save -->
+          <div id="incasariAgentView" style="display:none">
+            <div class="incasari-today-card">
+              <p style="font-size:.82rem;color:var(--muted);margin-bottom:.4rem">Data curentă: <strong id="incasariToday" style="color:var(--text)"></strong></p>
+              <div id="incasariStatus" style="margin-bottom:.5rem"></div>
+              <div style="display:flex;gap:.5rem;align-items:center">
+                <input id="incasariSuma" type="number" step="0.01" min="0" placeholder="Suma încasată (lei)" style="flex:1;padding:.5rem .6rem;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text);font-size:1rem">
+                <button class="btn success" onclick="saveIncasare()">Salvează</button>
+              </div>
+            </div>
+            <h4 style="margin-top:.8rem;font-size:.85rem;color:var(--muted)">Ultimele 7 zile</h4>
+            <div id="incasariHistory"></div>
+          </div>
+          <!-- SPV/Admin view: all agents -->
+          <div id="incasariAdminView" style="display:none">
+            <div class="filter-row">
+              <label>Data</label>
+              <input id="incasariDate" type="date">
+            </div>
+            <div class="btn-row">
+              <button class="btn primary small" onclick="loadIncasariAll()">Încarcă zilnic</button>
+              <button class="btn warning small" onclick="loadIncasariMonthly()">Sumar lunar</button>
+            </div>
+          </div>
+        </div>
+      </details>
+      <div id="incasariContent" style="padding:.5rem 1rem"></div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════
+         TAB: VIZITE (Check-in + Route)
+         ═══════════════════════════════════════════ -->
+    <div id="panelVizite" class="tab-panel">
+      <details class="panel" open>
+        <summary>VIZITE CLIENȚI <button class="help-btn" onclick="event.stopPropagation();showHelp('vizite')">?</button></summary>
+        <div class="panel-inner">
+          <div class="filter-row">
+            <label>Caută (firmă / oraș / cod)</label>
+            <input id="viziteSearch" type="search" placeholder="Ex: IASI, CALIST...">
+          </div>
+          <div class="split">
+            <section>
+              <p class="label">AGENT DTR</p>
+              <div id="viziteAgentFilter" class="checklist" style="max-height:120px"></div>
+            </section>
+            <section>
+              <p class="label">LOCALITATE</p>
+              <input id="viziteCitySearch" type="search" placeholder="Caută...">
+              <div id="viziteCityFilter" class="checklist" style="max-height:120px"></div>
+            </section>
+          </div>
+          <div style="padding:0 .5rem">
+            <section>
+              <p class="label">🛒 ACHIZIȚII LUNA</p>
+              <div id="viziteAchizitiiFilter" class="checklist" style="max-height:60px"></div>
+            </section>
+          </div>
+          <div class="btn-row" style="margin-top:.5rem">
+            <button class="btn primary small" onclick="applyViziteFilters()">Aplică filtre</button>
+            <button class="btn ghost small" onclick="resetViziteFilters()">Reset</button>
+          </div>
+        </div>
+      </details>
+
+      <div class="vizite-status-filters" style="padding:.4rem 1rem">
+        <span class="status-chip active" data-vstatus="all" onclick="setViziteStatus('all')">Toți</span>
+        <span class="status-chip" data-vstatus="visited" onclick="setViziteStatus('visited')">Vizitați azi</span>
+        <span class="status-chip" data-vstatus="unvisited" onclick="setViziteStatus('unvisited')">Nevizitați</span>
+      </div>
+
+      <div class="stats-bar">
+        <span id="viziteStats">Clienți: 0</span>
+        <span id="viziteTodayStats"></span>
+      </div>
+
+      <div id="viziteRouteBar" style="display:none;padding:.5rem 1rem;background:var(--bg2);border-bottom:1px solid var(--border)">
+        <button class="btn success small" id="viziteRouteBtn" onclick="generateViziteRoutes()">🗺 Generează rute optime</button>
+        <div id="viziteRouteResult" style="margin-top:.4rem;font-size:.82rem"></div>
+      </div>
+
+      <!-- Rute Prestabilite -->
+      <details class="panel" id="rutePanel">
+        <summary>🗺 RUTE PRESTABILITE</summary>
+        <div class="panel-inner">
+          <div id="ruteImportBar" style="display:none;margin-bottom:.5rem">
+            <label class="btn primary small" style="cursor:pointer">
+              📂 Import Rute Excel
+              <input type="file" accept=".xlsx,.xls" style="display:none" onchange="importRuteExcel(this)">
+            </label>
+            <span id="ruteImportStatus" style="margin-left:.5rem;font-size:.82rem"></span>
+          </div>
+          <div class="split" style="gap:.3rem">
+            <section style="flex:1">
+              <p class="label">AGENT</p>
+              <select id="ruteAgentSel" onchange="loadRutePredefinite()" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--fg);font-size:.85rem">
+                <option value="">-- Toți agenții --</option>
+              </select>
+            </section>
+            <section style="flex:1">
+              <p class="label">ZIUA</p>
+              <select id="ruteDaySel" onchange="loadRutePredefinite()" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--fg);font-size:.85rem">
+                <option value="">-- Toate zilele --</option>
+                <option value="Luni+Joi">Luni+Joi</option>
+                <option value="Marți+Vineri">Marți+Vineri</option>
+                <option value="Miercuri">Miercuri</option>
+                <option value="Ambiguu">Ambiguu</option>
+                <option value="Date Insuficiente">Date Insuficiente</option>
+              </select>
+            </section>
+          </div>
+          <div class="btn-row" style="margin-top:.4rem">
+            <button class="btn primary small" onclick="showRuteOnMap()">🗺 Arată pe hartă</button>
+            <button class="btn ghost small" onclick="clearRuteMap()">↩ Toți clienții</button>
+            <span id="ruteCount" style="font-size:.82rem;color:var(--muted)"></span>
+          </div>
+          <ul id="ruteList" class="client-list" style="max-height:300px;overflow-y:auto"></ul>
+        </div>
+      </details>
+
+      <!-- Buton Client Nou -->
+      <div style="padding:.5rem 1rem;border-bottom:1px solid var(--border)">
+        <button class="btn success" onclick="openClientNouDialog()" style="width:100%;font-weight:600">
+          ➕ Client Nou B2B
+        </button>
+      </div>
+
+      <ul id="viziteClientList" class="client-list"></ul>
+    </div>
+
+    <!-- ═══════════════════════════════════════════
+         DIALOG: CLIENT NOU B2B
+         ═══════════════════════════════════════════ -->
+    <div id="clientNouOverlay" class="overlay" style="display:none" onclick="if(event.target===this)closeClientNouDialog()">
+      <div class="modal" style="max-width:600px;max-height:90vh;overflow-y:auto">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+          <h3 style="margin:0">➕ Client Nou B2B</h3>
+          <button class="btn ghost small" onclick="closeClientNouDialog()">✕</button>
+        </div>
+
+        <!-- Steps indicator -->
+        <div id="cnSteps" style="display:flex;gap:.3rem;margin-bottom:1rem">
+          <span class="cn-step active" data-step="1">1. Foto</span>
+          <span class="cn-step" data-step="2">2. ANAF+Docs</span>
+          <span class="cn-step" data-step="3">3. Date</span>
+          <span class="cn-step" data-step="4">4. Contracte</span>
+          <span class="cn-step" data-step="5">5. Finalizare</span>
+        </div>
+
+        <!-- Step 1: Foto magazin -->
+        <div id="cnStep1" class="cn-step-content">
+          <p style="font-size:.85rem;color:var(--muted)">Fă o poză magazinului. Coordonatele GPS se extrag automat din EXIF.</p>
+          <input type="file" id="cnFotoInput" accept="image/*" capture="environment" onchange="cnHandleFoto(this)" style="margin:.5rem 0">
+          <div id="cnFotoPreview" style="display:none;margin:.5rem 0">
+            <img id="cnFotoImg" style="max-width:100%;max-height:200px;border-radius:8px;border:1px solid var(--border)">
+            <p id="cnGpsInfo" style="font-size:.8rem;color:var(--muted)"></p>
+          </div>
+          <div class="btn-row" style="margin-top:1rem">
+            <button class="btn primary" onclick="cnNextStep(2)">Următorul →</button>
+          </div>
+        </div>
+
+        <!-- Step 2: Verificare ANAF + Poze documente -->
+        <div id="cnStep2" class="cn-step-content" style="display:none">
+          <p style="font-size:.85rem;color:var(--muted)">Introdu CUI-ul și verifică firma la ANAF</p>
+          <div style="display:flex;gap:.5rem;margin:.5rem 0;align-items:flex-end">
+            <div style="flex:1">
+              <label style="font-size:.8rem;font-weight:600;color:var(--muted)">CUI (fără RO)</label>
+              <input type="text" id="cnCuiInput" placeholder="ex: 12345678" inputmode="numeric" style="width:100%;padding:.6rem;border:1px solid var(--border);border-radius:8px;font-size:1rem;font-weight:700">
+            </div>
+            <button class="btn primary" onclick="cnVerificaANAF()" id="btnCnAnaf" style="white-space:nowrap;padding:.6rem 1rem">🔍 Verifică ANAF</button>
+          </div>
+          <div id="cnAnafResult" style="display:none;margin:.5rem 0;padding:.6rem;border-radius:8px;font-size:.85rem"></div>
+          <div id="cnAnafSpinner" style="display:none;text-align:center;padding:.5rem"><div class="spinner"></div><p style="font-size:.85rem;color:var(--muted)">Interogare ANAF...</p></div>
+          <hr style="border:none;border-top:1px solid var(--border);margin:.8rem 0">
+          <p style="font-size:.85rem;color:var(--muted)">Fotografiază documentele (se trimit pe email la SPV):</p>
+          <div style="display:flex;gap:.5rem;margin:.5rem 0">
+            <div style="flex:1">
+              <input type="file" id="cnFotoCUI" accept="image/*" capture="environment" onchange="cnHandleDocPhoto(this,'cui')" style="display:none">
+              <button class="btn ghost" onclick="document.getElementById('cnFotoCUI').click()" id="btnCnFotoCUI" style="width:100%;padding:.7rem">📄 Foto CUI</button>
+            </div>
+            <div style="flex:1">
+              <input type="file" id="cnFotoCI" accept="image/*" capture="environment" onchange="cnHandleDocPhoto(this,'ci')" style="display:none">
+              <button class="btn ghost" onclick="document.getElementById('cnFotoCI').click()" id="btnCnFotoCI" style="width:100%;padding:.7rem">🪪 Foto CI</button>
+            </div>
+          </div>
+          <div class="btn-row" style="margin-top:1rem">
+            <button class="btn ghost" onclick="cnNextStep(1)">← Înapoi</button>
+            <button class="btn primary" onclick="cnNextStep(3)">Următorul →</button>
+          </div>
+        </div>
+
+        <!-- Step 3: Date (ANAF auto-fill + manual) -->
+        <div id="cnStep3" class="cn-step-content" style="display:none">
+          <p style="font-size:.85rem;color:var(--muted)">Date firmă (de la ANAF) + completează datele administrator:</p>
+          <div class="cn-form-grid">
+            <div class="cn-field" style="grid-column:1/-1"><label>Denumire Societate (ANAF)</label><input id="cnDenumire" type="text" readonly style="background:var(--bg2)"></div>
+            <div class="cn-field"><label>CUI</label><input id="cnCui" type="text" readonly style="background:var(--bg2)"></div>
+            <div class="cn-field"><label>Nr. ORC</label><input id="cnOrc" type="text" readonly style="background:var(--bg2)"></div>
+            <div class="cn-field" style="grid-column:1/-1"><label>Sediu Social (ANAF)</label><input id="cnSediu" type="text" readonly style="background:var(--bg2)"></div>
+            <div class="cn-field"><label>Județ</label><input id="cnJudet" type="text"></div>
+            <div class="cn-field"><label>Adresa Punct Lucru</label><input id="cnPunctLucru" type="text"></div>
+          </div>
+          <hr style="grid-column:1/-1;border:none;border-top:1px solid var(--border);margin:.6rem 0">
+          <p style="font-size:.85rem;color:var(--accent);font-weight:600;margin-bottom:.4rem">✍️ Completează manual:</p>
+          <div class="cn-form-grid">
+            <div class="cn-field" style="grid-column:1/-1"><label>Administrator (Nume Prenume)</label><input id="cnAdmin" type="text" placeholder="Popescu Ion"></div>
+            <div class="cn-field half"><label>Serie CI</label><input id="cnCiSeria" type="text" maxlength="2" style="text-transform:uppercase"></div>
+            <div class="cn-field half"><label>Nr. CI</label><input id="cnCiNr" type="text" inputmode="numeric"></div>
+            <div class="cn-field"><label>📱 Telefon</label><input id="cnTelefon" type="tel" placeholder="07xxxxxxxx"></div>
+            <div class="cn-field"><label>📧 Email</label><input id="cnEmail" type="email" placeholder="email@exemplu.ro"></div>
+            <div class="cn-field"><label>🏦 IBAN</label><input id="cnIban" type="text" placeholder="RO..."></div>
+            <div class="cn-field"><label>Bancă</label><input id="cnBanca" type="text"></div>
+          </div>
+          <div class="btn-row" style="margin-top:1rem">
+            <button class="btn ghost" onclick="cnNextStep(2)">← Înapoi</button>
+            <button class="btn primary" onclick="cnSaveAndNext()">Salvează → Contracte</button>
+          </div>
+        </div>
+
+        <!-- Step 4: Contracte -->
+        <div id="cnStep4" class="cn-step-content" style="display:none">
+          <p style="font-size:.85rem;color:var(--muted)">Descarcă contractele generate automat:</p>
+          <div style="display:flex;flex-direction:column;gap:.6rem;margin:1rem 0">
+            <button class="btn primary" id="cnDownloadContract" onclick="cnDownloadDoc('contract-b2b')">
+              📝 Descarcă Contract Vânzare-Cumpărare B2B
+            </button>
+            <button class="btn primary" id="cnDownloadGdpr" onclick="cnDownloadDoc('gdpr-b2b')">
+              🔒 Descarcă Acord GDPR B2B
+            </button>
+          </div>
+          <div id="cnContractStatus" style="font-size:.85rem;color:var(--success)"></div>
+          <div class="btn-row" style="margin-top:1rem">
+            <button class="btn ghost" onclick="cnNextStep(3)">← Înapoi</button>
+            <button class="btn success" onclick="cnNextStep(5)">Finalizare →</button>
+          </div>
+        </div>
+
+        <!-- Step 5: Finalizare -->
+        <div id="cnStep5" class="cn-step-content" style="display:none">
+          <div id="cnSummary" style="padding:.8rem;background:var(--bg2);border-radius:8px;border:1px solid var(--border);font-size:.85rem"></div>
+          <div id="cnFinalizeErrors" style="display:none;color:var(--danger);margin:.5rem 0;font-size:.85rem"></div>
+          <div class="btn-row" style="margin-top:1rem">
+            <button class="btn ghost" onclick="cnNextStep(4)">← Înapoi</button>
+            <button class="btn success" id="cnFinalizeBtn" onclick="cnFinalize()" style="font-weight:700">
+              ✅ Finalizează Client Nou
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════
+         TAB 6: REPORTS
+         ═══════════════════════════════════════════ -->
+    <div id="panelReports" class="tab-panel" style="display:none">
+      <details class="panel" open>
+        <summary>RAPOARTE AUDIT <button class="help-btn" onclick="event.stopPropagation();showHelp('reports')">?</button></summary>
+        <div class="panel-inner">
+          <div class="filter-row">
+            <label>Data raport</label>
+            <input id="reportDate" type="date">
+          </div>
+          <div class="btn-row">
+            <button class="btn primary small" onclick="loadDailyReport()">Raport zilnic</button>
+            <button class="btn warning small" onclick="loadMonthlyReport()">Raport lunar</button>
+            <button id="exportExcelBtn" class="btn success small" onclick="exportExcel()" style="display:none">Export Excel</button>
+          </div>
+          <div id="adminEmailBtns" style="display:none;margin:.5rem 0;padding:.5rem;border:1px solid var(--border);border-radius:8px;background:var(--bg2)">
+            <p style="font-size:.75rem;color:var(--muted);margin-bottom:.4rem">ADMIN: EMAIL RAPOARTE</p>
+            <div class="btn-row">
+              <button class="btn primary small" onclick="testSendDaily()">Trimite raport zilnic (test)</button>
+              <button class="btn warning small" onclick="testSendMonthly()">Trimite raport lunar (test)</button>
+              <button class="btn ghost small" onclick="showEmailConfig()">Config email</button>
+            </div>
+            <div id="emailStatus" style="font-size:.8rem;margin-top:.3rem"></div>
+          </div>
+          <div id="reportContent"></div>
+        </div>
+      </details>
+    </div>
+
+    <!-- ═══════════════════════════════════════════
+         TAB 7: COMUNICARE / ANUNȚURI
+         ═══════════════════════════════════════════ -->
+    <div id="panelComunicare" class="tab-panel" style="display:none">
+      <details class="panel" open>
+        <summary>📢 COMUNICARE / ANUNȚURI <button class="help-btn" onclick="event.stopPropagation();showHelp('comunicare')">?</button></summary>
+        <div class="panel-inner">
+          <div id="annCreateForm" style="display:none">
+            <div class="filter-row"><label>Titlu</label><input id="annTitle" type="text" placeholder="Titlu anunț..."></div>
+            <div class="filter-row"><label>Mesaj</label><textarea id="annBody" rows="3" placeholder="Detalii anunț..." style="width:100%;padding:8px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--fg);font-size:.85rem;resize:vertical"></textarea></div>
+            <div class="split">
+              <section><p class="label">Prioritate</p><select id="annPriority" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--fg)"><option value="normal">Normal</option><option value="urgent">Urgent</option><option value="info">Informativ</option></select></section>
+              <section><p class="label">Expiră la</p><input id="annExpires" type="date" style="width:100%"></section>
+            </div>
+            <div class="btn-row" style="margin-top:.5rem">
+              <button class="btn success small" onclick="submitAnnouncement()">Publică anunț</button>
+            </div>
+          </div>
+          <div class="btn-row" style="margin-top:.3rem"><button class="btn ghost small" onclick="loadAnnouncements()">🔄 Reîncarcă</button></div>
+        </div>
+      </details>
+      <div id="annList" style="padding:.5rem 1rem"></div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════
+         TAB 8: TASKURI / SARCINI ZILNICE
+         ═══════════════════════════════════════════ -->
+    <div id="panelTaskuri" class="tab-panel" style="display:none">
+      <details class="panel" open>
+        <summary>✅ SARCINI ZILNICE <button class="help-btn" onclick="event.stopPropagation();showHelp('taskuri')">?</button></summary>
+        <div class="panel-inner">
+          <div id="taskCreateForm" style="display:none">
+            <div class="filter-row"><label>Sarcină</label><input id="taskTitle" type="text" placeholder="Titlu sarcină..."></div>
+            <div class="filter-row"><label>Descriere</label><textarea id="taskDesc" rows="2" placeholder="Detalii..." style="width:100%;padding:8px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--fg);font-size:.85rem;resize:vertical"></textarea></div>
+            <div class="split">
+              <section><p class="label">Agent</p><div id="taskAgent"></div></section>
+              <section><p class="label">Termen</p><input id="taskDue" type="date" style="width:100%"></section>
+            </div>
+            <div class="split"><section><p class="label">Prioritate</p><select id="taskPriority" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--fg)"><option value="normal">Normal</option><option value="urgent">Urgent</option><option value="low">Scăzut</option></select></section></div>
+            <div class="btn-row" style="margin-top:.5rem"><button class="btn success small" onclick="submitTask()">Crează sarcină</button></div>
+          </div>
+          <div id="taskFilterBar" style="display:none">
+            <div class="split"><section><p class="label">Agent</p><div id="taskFilterAgent"></div></section></div>
+          </div>
+          <div class="btn-row" style="margin-top:.3rem"><button class="btn ghost small" onclick="loadTasks()">🔄 Reîncarcă</button></div>
+        </div>
+      </details>
+      <div id="taskList" style="padding:.5rem 1rem"></div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════
+         TAB 9: GPS TRACKING
+         ═══════════════════════════════════════════ -->
+    <div id="panelGps" class="tab-panel" style="display:none">
+      <details class="panel" open>
+        <summary>📍 MONITORIZARE LIVE <button class="help-btn" onclick="event.stopPropagation();showHelp('gps')">?</button></summary>
+        <div class="panel-inner">
+          <div id="gpsAgentView" style="display:none">
+            <p style="font-size:.85rem;color:var(--muted)">GPS-ul tău este activ. Locația se trimite automat.</p>
+            <div id="gpsMyStatus" style="margin-top:.5rem;font-size:.85rem"></div>
+          </div>
+          <div id="gpsAdminView" style="display:none">
+            <div class="btn-row">
+              <button class="btn primary small" onclick="loadGpsLive()">🔄 Reîncarcă</button>
+              <button class="btn ghost small" onclick="toggleGpsAutoRefresh()">⏱ Auto-refresh</button>
+            </div>
+          </div>
+        </div>
+      </details>
+      <div id="gpsAgentList" style="padding:.5rem 1rem"></div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════
+         TAB 10: COMPETIȚIE / INTELLIGENCE
+         ═══════════════════════════════════════════ -->
+    <div id="panelCompetitie" class="tab-panel" style="display:none">
+      <details class="panel" open>
+        <summary>🏆 COMPETIȚIE <button class="help-btn" onclick="event.stopPropagation();showHelp('competitie')">?</button></summary>
+        <div class="panel-inner">
+          <div class="btn-row">
+            <button class="btn success small" onclick="openCompetitionDialog()">+ Raport nou</button>
+            <button class="btn ghost small" onclick="loadCompetition()">🔄 Reîncarcă</button>
+          </div>
+        </div>
+      </details>
+      <div id="compList" style="padding:.5rem 1rem"></div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════
+         TAB 11: STOC FRIGIDER / MERCHANDISING
+         ═══════════════════════════════════════════ -->
+    <div id="panelFrigider" class="tab-panel" style="display:none">
+      <details class="panel" open>
+        <summary>🧊 STOC FRIGIDER <button class="help-btn" onclick="event.stopPropagation();showHelp('frigider')">?</button></summary>
+        <div class="panel-inner">
+          <div class="btn-row">
+            <button class="btn success small" onclick="openFridgeDialog()">+ Audit frigider</button>
+            <button class="btn ghost small" onclick="loadFridge()">🔄 Reîncarcă</button>
+          </div>
+          <div id="fridgeSummary" style="margin-top:.5rem"></div>
+        </div>
+      </details>
+      <div id="fridgeList" style="padding:.5rem 1rem"></div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════
+         TAB 12: PROMOȚII ACTIVE
+         ═══════════════════════════════════════════ -->
+    <div id="panelPromotii" class="tab-panel" style="display:none">
+      <details class="panel" open>
+        <summary>🎯 PROMOȚII ACTIVE <button class="help-btn" onclick="event.stopPropagation();showHelp('promotii')">?</button></summary>
+        <div class="panel-inner">
+          <div id="promoCreateForm" style="display:none">
+            <div class="filter-row"><label>Titlu promoție</label><input id="promoTitle" type="text" placeholder="Titlu promoție..."></div>
+            <div class="filter-row"><label>Descriere / Mecanism</label><textarea id="promoDesc" rows="2" placeholder="Detalii promoție..." style="width:100%;padding:8px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--fg);font-size:.85rem;resize:vertical"></textarea></div>
+            <div class="split">
+              <section><p class="label">Data început</p><input id="promoStart" type="date" style="width:100%"></section>
+              <section><p class="label">Data sfârșit</p><input id="promoEnd" type="date" style="width:100%"></section>
+            </div>
+            <div class="filter-row"><label>Produse implicate</label><input id="promoProducts" type="text" placeholder="Ex: Ursus 0.5L PET, Caraiman..."></div>
+            <div class="btn-row" style="margin-top:.5rem"><button class="btn success small" onclick="submitPromotion()">Crează promoție</button></div>
+          </div>
+          <div class="btn-row" style="margin-top:.3rem"><button class="btn ghost small" onclick="loadPromotions()">🔄 Reîncarcă</button></div>
+        </div>
+      </details>
+      <div id="promoList" style="padding:.5rem 1rem"></div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════
+         TAB 13: CALENDAR / PLANIFICARE RUTE
+         ═══════════════════════════════════════════ -->
+    <div id="panelCalendar" class="tab-panel" style="display:none">
+      <details class="panel" open>
+        <summary>📅 PLANIFICARE RUTE <button class="help-btn" onclick="event.stopPropagation();showHelp('calendar')">?</button></summary>
+        <div class="panel-inner">
+          <div id="calAdminFilter" style="display:none">
+            <div class="split"><section><p class="label">Agent</p><div id="calAgent"></div></section></div>
+          </div>
+          <!-- Calendar grid -->
+          <div style="display:flex;justify-content:space-between;align-items:center;margin:.3rem 0">
+            <button class="btn ghost small" onclick="calPrevMonth()">◀</button>
+            <strong id="calMonthLabel" style="font-size:.88rem"></strong>
+            <button class="btn ghost small" onclick="calNextMonth()">▶</button>
+          </div>
+          <div id="calGrid" class="cal-grid"></div>
+          <!-- Filters -->
+          <div style="margin-top:.5rem">
+            <input id="calSearch" type="search" placeholder="Caută client..." oninput="filterCalClients()" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--text);font-size:.82rem;margin-bottom:.3rem">
+            <div class="split">
+              <section><p class="label" style="font-size:.7rem">Oraș</p><select id="calCityFilter" onchange="filterCalClients()" style="width:100%;padding:4px;font-size:.78rem;background:var(--bg2);color:var(--text);border:1px solid var(--border);border-radius:4px"><option value="">Toate</option></select></section>
+              <section><p class="label" style="font-size:.7rem">Județ</p><select id="calJudetFilter" onchange="onCalJudetChange()" style="width:100%;padding:4px;font-size:.78rem;background:var(--bg2);color:var(--text);border:1px solid var(--border);border-radius:4px"><option value="">Toate</option></select></section>
+            </div>
+            <label style="font-size:.78rem;color:var(--muted);margin-top:.3rem;display:flex;align-items:center;gap:.3rem"><input type="checkbox" id="calShowNealocat" onchange="filterCalClients()"> Arată clienți nealocați</label>
+          </div>
+          <!-- Selection info -->
+          <div id="calSelectionInfo" style="margin-top:.4rem;font-size:.8rem;color:var(--primary);font-weight:600"></div>
+          <div class="btn-row" style="margin-top:.3rem">
+            <button class="btn primary small" onclick="openCalRoute()">🗺 Generează rută</button>
+            <button class="btn ghost small" onclick="calClearSelection()">🗑 Resetează</button>
+          </div>
+        </div>
+      </details>
+      <div id="calClientList" style="padding:.3rem .5rem;max-height:50vh;overflow-y:auto"></div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════
+         TAB 14: EXPIRĂRI / FRESHNESS
+         ═══════════════════════════════════════════ -->
+    <div id="panelExpirari" class="tab-panel" style="display:none">
+      <details class="panel" open>
+        <summary>⏰ EXPIRĂRI / FRESHNESS <button class="help-btn" onclick="event.stopPropagation();showHelp('expirari')">?</button></summary>
+        <div class="panel-inner">
+          <div class="btn-row">
+            <button class="btn success small" onclick="openExpiryDialog()">+ Raportează expirare</button>
+            <button class="btn warning small" onclick="loadExpiryAlerts()">⚠ Alerte</button>
+            <button class="btn ghost small" onclick="loadExpiry()">🔄 Reîncarcă</button>
+          </div>
+        </div>
+      </details>
+      <div id="expiryList" style="padding:.5rem 1rem"></div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════
+         TAB: SOLDURI CRITICE
+         ═══════════════════════════════════════════ -->
+    <div id="panelSolduri" class="tab-panel" style="display:none">
+      <!-- SCADENȚAR QUATRO UPLOAD -->
+      <details class="panel" open>
+        <summary>📊 SCADENȚAR QUATRO <button class="help-btn" onclick="event.stopPropagation();showHelp('solduri')">?</button></summary>
+        <div class="panel-inner">
+          <div id="scadentarUploadForm" style="display:none;margin-bottom:.5rem;padding:.5rem;border:1px solid var(--border);border-radius:8px;background:var(--bg2)">
+            <p style="font-size:.75rem;color:var(--muted);margin-bottom:.4rem">UPLOAD SCADENȚAR MENTOR (Excel Quatro)</p>
+            <div class="btn-row">
+              <input type="file" id="scadentarFile" accept=".xlsx,.xls" style="font-size:.8rem;max-width:200px">
+              <button class="btn success small" onclick="uploadScadentar()">📤 Import</button>
+            </div>
+            <div id="scadentarUploadStatus" style="font-size:.8rem;margin-top:.3rem"></div>
+          </div>
+          <!-- Filtre -->
+          <div style="display:flex;flex-wrap:wrap;gap:.4rem;align-items:center;margin-bottom:.3rem">
+            <select id="scadFilterDiv" onchange="onScadDivChange()" style="font-size:.78rem;padding:2px 6px;background:var(--bg2);color:var(--fg);border:1px solid var(--border);border-radius:4px">
+              <option value="ALL">Toate diviziile</option>
+              <option value="BB">BB</option>
+              <option value="JTI">JTI</option>
+              <option value="URSUS">URSUS</option>
+              <option value="MASPEX">MASPEX</option>
+              <option value="NECUNOSCUT">Alții</option>
+            </select>
+            <select id="scadFilterAgent" onchange="onScadAgentChange()" style="font-size:.78rem;padding:2px 6px;min-width:160px;max-width:280px;background:var(--bg2);color:var(--fg);border:1px solid var(--border);border-radius:4px">
+              <option value="">Toți agenții</option>
+            </select>
+            <select id="scadFilterPartener" onchange="loadScadentar()" style="font-size:.78rem;padding:2px 6px;min-width:160px;max-width:280px;background:var(--bg2);color:var(--fg);border:1px solid var(--border);border-radius:4px">
+              <option value="">Toți partenerii</option>
+            </select>
+            <select id="scadFilterDepasire" onchange="loadScadentar()" style="font-size:.78rem;padding:2px 6px;background:var(--bg2);color:var(--fg);border:1px solid var(--border);border-radius:4px">
+              <option value="">Toate termenele</option>
+              <option value="0-30">0-30 zile</option>
+              <option value="31-60">31-60 zile</option>
+              <option value="61-90">61-90 zile</option>
+              <option value="90+">90+ zile</option>
+            </select>
+            <button class="btn ghost small" onclick="loadScadentar()">🔄</button>
+          </div>
+        </div>
+      </details>
+      <!-- Summary cards -->
+      <div id="scadentarSummary" style="padding:.3rem .5rem"></div>
+      <!-- Alerts cross-div -->
+      <div id="scadentarAlerts" style="padding:0 .5rem"></div>
+      <!-- Info -->
+      <div id="scadentarInfo" style="padding:.3rem 1rem;font-size:.78rem;color:var(--muted)"></div>
+      <!-- Data list -->
+      <div id="scadentarList" style="padding:.5rem .5rem"></div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════
+         TAB: ESCALADĂRI SPV
+         ═══════════════════════════════════════════ -->
+    <div id="panelEscaladari" class="tab-panel" style="display:none">
+      <details class="panel" open>
+        <summary>🚨 ESCALADĂRI SPV <button class="help-btn" onclick="event.stopPropagation();showHelp('escaladari')">?</button></summary>
+        <div class="panel-inner">
+          <div id="escAgentView" style="display:none">
+            <button class="btn success small" onclick="openEscalationDialog()">+ Solicită intervenție SPV</button>
+          </div>
+          <div class="btn-row" style="margin-top:.3rem">
+            <button class="btn ghost small" onclick="loadEscalations()">🔄 Reîncarcă</button>
+          </div>
+        </div>
+      </details>
+      <div id="escList" style="padding:.5rem 1rem"></div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════
+         TAB: ALERTĂ CLIENT
+         ═══════════════════════════════════════════ -->
+    <div id="panelAlertaClient" class="tab-panel" style="display:none">
+      <details class="panel" open>
+        <summary>⚠️ ALERTĂ CLIENT <button class="help-btn" onclick="event.stopPropagation();showHelp('alertaClient')">?</button></summary>
+        <div class="panel-inner">
+          <div id="alertAgentView" style="display:none">
+            <button class="btn warning small" onclick="openClientAlertDialog()">+ Semnalează risc</button>
+          </div>
+          <div class="btn-row" style="margin-top:.3rem">
+            <button class="btn ghost small" onclick="loadClientAlerts()">🔄 Reîncarcă</button>
+          </div>
+        </div>
+      </details>
+      <div id="alertList" style="padding:.5rem 1rem"></div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════
+         TAB: RISC FINANCIAR (Coface)
+         ═══════════════════════════════════════════ -->
+    <div id="panelRiscFinanciar" class="tab-panel" style="display:none">
+      <details class="panel" open>
+        <summary>📊 RISC FINANCIAR (Coface) <button class="help-btn" onclick="event.stopPropagation();showHelp('riscFinanciar')">?</button></summary>
+        <div class="panel-inner">
+          <div id="riscUploadForm" style="display:none;margin-bottom:.5rem;padding:.5rem;border:1px solid var(--border);border-radius:8px;background:var(--bg2)">
+            <p style="font-size:.75rem;color:var(--muted);margin-bottom:.4rem">UPLOAD RAPORT COFACE (Excel)</p>
+            <div class="btn-row">
+              <input type="file" id="cofaceFile" accept=".xlsx,.xls" style="font-size:.8rem;max-width:200px">
+              <button class="btn success small" onclick="uploadCoface()">📤 Import</button>
+            </div>
+            <div id="cofaceUploadStatus" style="font-size:.8rem;margin-top:.3rem"></div>
+          </div>
+          <div class="btn-row">
+            <button class="btn ghost small" onclick="loadFinancialRisk()">🔄 Reîncarcă</button>
+          </div>
+        </div>
+      </details>
+      <div id="riscInfo" style="padding:.3rem 1rem;font-size:.78rem;color:var(--muted)"></div>
+      <div id="riscList" style="padding:.5rem 1rem"></div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════
+         TAB: VERIFICARE CUI
+         ═══════════════════════════════════════════ -->
+    <div id="panelCuiVerify" class="tab-panel" style="display:none">
+      <details class="panel" open>
+        <summary>🔍 VERIFICARE CUI <button class="help-btn" onclick="event.stopPropagation();showHelp('cuiVerify')">?</button></summary>
+        <div class="panel-inner">
+          <button class="btn success small" onclick="openCuiDialog()">+ Verificare CUI nouă</button>
+          <div class="btn-row" style="margin-top:.3rem">
+            <button class="btn ghost small" onclick="loadCuiVerifications()">🔄 Reîncarcă</button>
+          </div>
+        </div>
+      </details>
+      <div id="cuiList" style="padding:.5rem 1rem"></div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════
+         TAB: PERFORMANȚĂ TARGETE
+         ═══════════════════════════════════════════ -->
+    <div id="panelPerfTargete" class="tab-panel" style="display:none">
+      <details class="panel" open>
+        <summary>📈 PERFORMANȚĂ TARGETE <button class="help-btn" onclick="event.stopPropagation();showHelp('perfTargete')">?</button></summary>
+        <div class="panel-inner">
+          <div class="filter-row">
+            <label>Luna</label>
+            <input type="month" id="perfTargeteMonth" style="padding:6px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--fg);font-size:.85rem">
+          </div>
+          <div id="perfTargeteUploadForm" style="display:none;margin:.5rem 0;padding:.5rem;border:1px solid var(--border);border-radius:8px;background:var(--bg2)">
+            <p style="font-size:.75rem;color:var(--muted);margin-bottom:.4rem">UPLOAD TARGETE PRODUCĂTOR (Excel)</p>
+            <div class="filter-row"><label>Producător</label><input id="perfProducer" type="text" value="BB" placeholder="Ex: BB, ABI..." style="max-width:100px"></div>
+            <div class="btn-row">
+              <input type="file" id="perfTargeteFile" accept=".xlsx,.xls" style="font-size:.8rem;max-width:200px">
+              <button class="btn success small" onclick="uploadProducerTargets()">📤 Import</button>
+            </div>
+            <div id="perfTargeteUploadStatus" style="font-size:.8rem;margin-top:.3rem"></div>
+          </div>
+          <div class="btn-row">
+            <button class="btn primary small" onclick="loadPerfTargete()">🔄 Încarcă</button>
+          </div>
+        </div>
+      </details>
+      <div id="perfTargeteList" style="padding:.5rem 1rem"></div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════
+         TAB: RANKING AGENȚI
+         ═══════════════════════════════════════════ -->
+    <div id="panelRanking" class="tab-panel" style="display:none">
+      <details class="panel" open>
+        <summary>🏅 RANKING AGENȚI <button class="help-btn" onclick="event.stopPropagation();showHelp('ranking')">?</button></summary>
+        <div class="panel-inner">
+          <div class="filter-row">
+            <label>Luna</label>
+            <input type="month" id="rankingMonth" style="padding:6px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--fg);font-size:.85rem">
+          </div>
+          <div id="rankingAdminView" style="display:none">
+            <button class="btn success small" onclick="computeRankings()">⚡ Calculează ranking</button>
+          </div>
+          <div class="btn-row" style="margin-top:.3rem">
+            <button class="btn primary small" onclick="loadRankings()">🔄 Încarcă</button>
+          </div>
+        </div>
+      </details>
+      <div id="rankingList" style="padding:.5rem 1rem"></div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════
+         TAB: CONTROL DISCOUNTURI
+         ═══════════════════════════════════════════ -->
+    <div id="panelDiscounturi" class="tab-panel" style="display:none">
+      <details class="panel" open>
+        <summary>💸 CONTROL DISCOUNTURI <button class="help-btn" onclick="event.stopPropagation();showHelp('discounturi')">?</button></summary>
+        <div class="panel-inner">
+          <div class="filter-row">
+            <label>Luna</label>
+            <input type="month" id="discountMonth" style="padding:6px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--fg);font-size:.85rem">
+          </div>
+          <div id="discountUploadForm" style="display:none;margin:.5rem 0;padding:.5rem;border:1px solid var(--border);border-radius:8px;background:var(--bg2)">
+            <p style="font-size:.75rem;color:var(--muted);margin-bottom:.4rem">UPLOAD ANALIZĂ DISCOUNTURI (Excel)</p>
+            <div class="btn-row">
+              <input type="file" id="discountFile" accept=".xlsx,.xls" style="font-size:.8rem;max-width:200px">
+              <button class="btn success small" onclick="uploadDiscounts()">📤 Import</button>
+            </div>
+            <div id="discountUploadStatus" style="font-size:.8rem;margin-top:.3rem"></div>
+          </div>
+          <div class="btn-row">
+            <button class="btn primary small" onclick="loadDiscounts()">🔄 Încarcă</button>
+          </div>
+        </div>
+      </details>
+      <div id="discountSummary" style="padding:.3rem 1rem;font-size:.78rem;color:var(--muted)"></div>
+      <div id="discountList" style="padding:.5rem 1rem"></div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════
+         TAB: CONTRACTE B2B
+         ═══════════════════════════════════════════ -->
+    <div id="panelContracte" class="tab-panel" style="display:none">
+      <details class="panel" open>
+        <summary>📝 CONTRACTE B2B <button class="help-btn" onclick="event.stopPropagation();showHelp('contracte')">?</button></summary>
+        <div class="panel-inner">
+          <button class="btn success small" onclick="openContractDialog()">+ Contract nou</button>
+          <div class="btn-row" style="margin-top:.3rem">
+            <button class="btn ghost small" onclick="loadContracts()">🔄 Reîncarcă</button>
+          </div>
+        </div>
+      </details>
+      <div id="contractList" style="padding:.5rem 1rem"></div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════
+         TAB: CONTRACTE B2C (Evenimente PF) — doar SPV
+         ═══════════════════════════════════════════ -->
+    <div id="panelContracteB2C" class="tab-panel" style="display:none">
+      <details class="panel" open>
+        <summary>🛒 CONTRACTE B2C — EVENIMENTE</summary>
+        <div class="panel-inner">
+          <button class="btn success small" onclick="openB2CDialog()">+ Contract B2C nou</button>
+          <div class="btn-row" style="margin-top:.3rem">
+            <button class="btn ghost small" onclick="loadContractsB2C()">🔄 Reîncarcă</button>
+          </div>
+        </div>
+      </details>
+      <div id="b2cContractList" style="padding:.5rem 1rem"></div>
+    </div>
+
+    <!-- B2C Dialog (same style as Contract B2B dialog) -->
+    <dialog id="b2cDialog" style="max-width:550px;width:95%">
+      <div class="dialog-header">
+        <h3>🛒 Contract B2C — Eveniment</h3>
+        <button class="dialog-close" onclick="b2cDialog.close()">&times;</button>
+      </div>
+      <div class="dialog-body">
+        <input type="hidden" id="b2cId" value="">
+
+        <!-- Scanare CI -->
+        <div style="padding:.6rem;border:2px dashed var(--primary);border-radius:8px;margin-bottom:.8rem">
+          <label style="font-size:.82rem;font-weight:600;color:var(--primary)">📷 Scanează CI-ul cumpărătorului</label>
+          <p style="font-size:.75rem;color:var(--muted);margin:.2rem 0 .4rem">Fotografiază sau încarcă CI. Datele se completează automat.</p>
+          <div style="display:flex;gap:.4rem;align-items:center;flex-wrap:wrap">
+            <input type="file" id="b2cCIFile" accept="image/*,.pdf" capture="environment" style="font-size:.82rem;max-width:220px">
+            <button class="btn primary small" onclick="scanCIforB2C()">🔍 Scanează</button>
+          </div>
+          <div id="b2cOCRStatus" style="font-size:.78rem;margin-top:.3rem;color:var(--muted)"></div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem">
+          <div><label style="font-size:.82rem;font-weight:600">Nume complet:</label><input id="b2cNume" type="text" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--fg);font-size:.82rem;margin-top:2px"></div>
+          <div><label style="font-size:.82rem;font-weight:600">CNP:</label><input id="b2cCNP" type="text" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--fg);font-size:.82rem;margin-top:2px"></div>
+          <div><label style="font-size:.82rem;font-weight:600">Serie CI:</label><input id="b2cCISeria" type="text" maxlength="2" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--fg);font-size:.82rem;margin-top:2px"></div>
+          <div><label style="font-size:.82rem;font-weight:600">Nr CI:</label><input id="b2cCINr" type="text" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--fg);font-size:.82rem;margin-top:2px"></div>
+          <div><label style="font-size:.82rem;font-weight:600">Emitent CI:</label><input id="b2cCIEmitent" type="text" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--fg);font-size:.82rem;margin-top:2px"></div>
+          <div><label style="font-size:.82rem;font-weight:600">Data CI:</label><input id="b2cCIData" type="text" placeholder="dd/mm/yyyy" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--fg);font-size:.82rem;margin-top:2px"></div>
+          <div><label style="font-size:.82rem;font-weight:600">Telefon:</label><input id="b2cTelefon" type="tel" placeholder="07xxxxxxxx" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--fg);font-size:.82rem;margin-top:2px"></div>
+          <div><label style="font-size:.82rem;font-weight:600">Email:</label><input id="b2cEmail" type="email" placeholder="email@client.ro" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--fg);font-size:.82rem;margin-top:2px"></div>
+        </div>
+
+        <p style="font-size:.82rem;font-weight:600;margin:.8rem 0 .3rem;color:var(--primary)">🏠 Domiciliu</p>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem">
+          <div><label style="font-size:.82rem;font-weight:600">Localitate:</label><input id="b2cLocalitate" type="text" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--fg);font-size:.82rem;margin-top:2px"></div>
+          <div><label style="font-size:.82rem;font-weight:600">Județ/Sector:</label><input id="b2cJudet" type="text" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--fg);font-size:.82rem;margin-top:2px"></div>
+          <div><label style="font-size:.82rem;font-weight:600">Strada:</label><input id="b2cStrada" type="text" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--fg);font-size:.82rem;margin-top:2px"></div>
+          <div><label style="font-size:.82rem;font-weight:600">Nr:</label><input id="b2cNrStrada" type="text" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--fg);font-size:.82rem;margin-top:2px"></div>
+          <div><label style="font-size:.82rem;font-weight:600">Bloc:</label><input id="b2cBloc" type="text" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--fg);font-size:.82rem;margin-top:2px"></div>
+          <div style="display:flex;gap:.3rem">
+            <div style="flex:1"><label style="font-size:.82rem;font-weight:600">Sc:</label><input id="b2cScara" type="text" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--fg);font-size:.82rem;margin-top:2px"></div>
+            <div style="flex:1"><label style="font-size:.82rem;font-weight:600">Ap:</label><input id="b2cApartament" type="text" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--fg);font-size:.82rem;margin-top:2px"></div>
+          </div>
+        </div>
+
+        <p style="font-size:.82rem;font-weight:600;margin:.8rem 0 .3rem;color:var(--primary)">🎉 Eveniment</p>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem">
+          <div><label style="font-size:.82rem;font-weight:600">Tip eveniment:</label>
+            <select id="b2cTipEveniment" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--fg);font-size:.82rem;margin-top:2px">
+              <option value="">— selectează —</option>
+              <option value="Nuntă">Nuntă</option>
+              <option value="Botez">Botez</option>
+              <option value="Petrecere corporativă">Petrecere corporativă</option>
+              <option value="Aniversare">Aniversare</option>
+              <option value="Alt eveniment">Alt eveniment</option>
+            </select>
+          </div>
+          <div><label style="font-size:.82rem;font-weight:600">Data eveniment:</label><input id="b2cDataEveniment" type="date" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--fg);font-size:.82rem;margin-top:2px"></div>
+          <div><label style="font-size:.82rem;font-weight:600">Preț total (RON):</label><input id="b2cPret" type="number" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--fg);font-size:.82rem;margin-top:2px"></div>
+          <div><label style="font-size:.82rem;font-weight:600">IBAN retur:</label><input id="b2cIBAN" type="text" placeholder="ROXX..." style="width:100%;padding:6px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--fg);font-size:.82rem;margin-top:2px"></div>
+        </div>
+
+        <p style="font-size:.82rem;font-weight:600;margin:.8rem 0 .3rem;color:var(--primary)">🚚 Livrare</p>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem">
+          <div style="grid-column:span 2"><label style="font-size:.82rem;font-weight:600">Adresă livrare:</label><input id="b2cAdresaLivrare" type="text" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--fg);font-size:.82rem;margin-top:2px"></div>
+          <div><label style="font-size:.82rem;font-weight:600">Transport:</label>
+            <select id="b2cTransport" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--fg);font-size:.82rem;margin-top:2px">
+              <option value="Cumpărător">Cumpărător</option>
+              <option value="Vânzător">Vânzător</option>
+            </select>
+          </div>
+          <div><label style="font-size:.82rem;font-weight:600">Data livrare:</label><input id="b2cDataLivrare" type="date" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--fg);font-size:.82rem;margin-top:2px"></div>
+          <div><label style="font-size:.82rem;font-weight:600">Interval orar:</label><input id="b2cIntervalOrar" type="text" placeholder="09:00–12:00" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--fg);font-size:.82rem;margin-top:2px"></div>
+        </div>
+
+        <label class="check-item" style="margin-top:.8rem"><input type="checkbox" id="b2cGDPR"><span style="font-size:.82rem">Acord GDPR semnat de client</span></label>
+      </div>
+      <div class="dialog-footer">
+        <button class="btn ghost" onclick="b2cDialog.close()">Anulează</button>
+        <button class="btn success" onclick="saveB2CContract()">💾 Salvează & Generează</button>
+      </div>
+    </dialog>
+
+    <!-- ═══════════════════════════════════════════
+         TAB: OBIECTIVE LUNARE (SMART TARGETS)
+         ═══════════════════════════════════════════ -->
+    <div id="panelSmartTargets" class="tab-panel" style="display:none">
+      <details class="panel" open>
+        <summary>🎯 OBIECTIVE LUNARE <button class="help-btn" onclick="event.stopPropagation();showHelp('smartTargets')">?</button></summary>
+        <div class="panel-inner">
+          <div class="filter-row">
+            <label>Luna</label>
+            <input type="month" id="smartMonth" style="padding:6px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--fg);font-size:.85rem">
+          </div>
+          <div id="smartAdminView" style="display:none">
+            <div style="display:flex;gap:.3rem;margin:.3rem 0">
+              <div><label style="font-size:.75rem">Coef. sezon</label><input id="smartSeasonal" type="number" step="0.01" value="1.0" min="0.1" max="3.0" style="width:70px;padding:4px;border:1px solid var(--border);border-radius:4px;background:var(--bg2);color:var(--fg);font-size:.8rem"></div>
+              <div><label style="font-size:.75rem">Coef. creștere</label><input id="smartGrowth" type="number" step="0.01" value="1.0" min="0.1" max="3.0" style="width:70px;padding:4px;border:1px solid var(--border);border-radius:4px;background:var(--bg2);color:var(--fg);font-size:.8rem"></div>
+            </div>
+            <button class="btn success small" onclick="computeSmartTargets()">⚡ Auto-calculare targete</button>
+          </div>
+          <div class="btn-row" style="margin-top:.3rem">
+            <button class="btn primary small" onclick="loadSmartTargets()">🔄 Încarcă</button>
+          </div>
+        </div>
+      </details>
+      <div id="smartTotalInfo" style="padding:.3rem 1rem;font-size:.78rem;color:var(--muted)"></div>
+      <div id="smartTargetList" style="padding:.5rem 1rem"></div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════
+         TAB: BUGETE PROMO
+         ═══════════════════════════════════════════ -->
+    <div id="panelPromoBudgets" class="tab-panel" style="display:none">
+      <details class="panel" open>
+        <summary>💰 BUGETE PROMO <button class="help-btn" onclick="event.stopPropagation();showHelp('promoBudgets')">?</button></summary>
+        <div class="panel-inner">
+          <div class="filter-row">
+            <label>Luna</label>
+            <input type="month" id="promoBudgetMonth" style="padding:6px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--fg);font-size:.85rem">
+          </div>
+          <div id="promoBudgetUploadForm" style="display:none;margin:.5rem 0;padding:.5rem;border:1px solid var(--border);border-radius:8px;background:var(--bg2)">
+            <p style="font-size:.75rem;color:var(--muted);margin-bottom:.4rem">UPLOAD BUGETE PROMO (Excel)</p>
+            <div class="btn-row">
+              <input type="file" id="promoBudgetFile" accept=".xlsx,.xls" style="font-size:.8rem;max-width:200px">
+              <button class="btn success small" onclick="uploadPromoBudgets()">📤 Import</button>
+            </div>
+            <div id="promoBudgetUploadStatus" style="font-size:.8rem;margin-top:.3rem"></div>
+          </div>
+          <div class="btn-row">
+            <button class="btn primary small" onclick="loadPromoBudgets()">🔄 Încarcă</button>
+          </div>
+        </div>
+      </details>
+      <div id="promoBudgetSummary" style="padding:.3rem 1rem;font-size:.78rem;color:var(--muted)"></div>
+      <div id="promoBudgetList" style="padding:.5rem 1rem"></div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════
+         MASPEX MODULE PANELS
+         ═══════════════════════════════════════════ -->
+
+    <!-- TAB: VÂNZĂRI MASPEX -->
+    <div id="panelMaspexVanzari" class="tab-panel" style="display:none">
+      <details class="panel" open>
+        <summary>📊 VÂNZĂRI MASPEX <button class="help-btn" onclick="event.stopPropagation();showHelp('maspexVanzari')">?</button></summary>
+        <div class="panel-inner">
+          <div id="maspexVanzariUploadForm" style="display:none;margin-bottom:.5rem;padding:.5rem;border:1px solid var(--border);border-radius:8px;background:var(--bg2)">
+            <p style="font-size:.75rem;color:var(--muted);margin-bottom:.4rem">UPLOAD RAPORT VÂNZĂRI (Excel zilnic)</p>
+            <div class="btn-row">
+              <input type="file" id="maspexVanzariFile" accept=".xlsx,.xls" style="font-size:.8rem;max-width:220px">
+              <button class="btn success small" onclick="uploadMaspexVanzari()">📤 Import</button>
+            </div>
+            <div id="maspexVanzariUploadStatus" style="font-size:.8rem;margin-top:.3rem"></div>
+          </div>
+          <div class="filter-row">
+            <label>Luna</label>
+            <select id="maspexVanzariMonth" onchange="loadMaspexVanzari()" style="padding:6px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--fg);font-size:.85rem"></select>
+          </div>
+          <div class="btn-row"><button class="btn ghost small" onclick="loadMaspexVanzari()">🔄 Reîncarcă</button></div>
+        </div>
+      </details>
+      <div id="maspexVanzariInfo" style="padding:.3rem 1rem;font-size:.78rem;color:var(--muted)"></div>
+      <div id="maspexVanzariList" style="padding:.5rem 1rem"></div>
+    </div>
+
+    <!-- TAB: OBIECTIVE DN -->
+    <div id="panelMaspexObiective" class="tab-panel" style="display:none">
+      <details class="panel" open>
+        <summary>🎯 OBIECTIVE DN MASPEX <button class="help-btn" onclick="event.stopPropagation();showHelp('maspexObiective')">?</button></summary>
+        <div class="panel-inner">
+          <div id="maspexObiectiveUploadForm" style="display:none;margin-bottom:.5rem;padding:.5rem;border:1px solid var(--border);border-radius:8px;background:var(--bg2)">
+            <p style="font-size:.75rem;color:var(--muted);margin-bottom:.4rem">UPLOAD OBIECTIVE DN (Excel lunar)</p>
+            <div class="btn-row">
+              <input type="file" id="maspexObiectiveFile" accept=".xlsx,.xls" style="font-size:.8rem;max-width:180px">
+              <button class="btn success small" onclick="uploadMaspexObiective()">📤 Import</button>
+            </div>
+            <div id="maspexObiectiveUploadStatus" style="font-size:.8rem;margin-top:.3rem"></div>
+          </div>
+          <div class="filter-row">
+            <label>Luna</label>
+            <select id="maspexObiectiveMonth" onchange="loadMaspexObiective()" style="padding:6px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--fg);font-size:.85rem"></select>
+          </div>
+          <div class="btn-row"><button class="btn ghost small" onclick="loadMaspexObiective()">🔄 Reîncarcă</button></div>
+        </div>
+      </details>
+      <div id="maspexObiectiveInfo" style="padding:.3rem 1rem;font-size:.78rem;color:var(--muted)"></div>
+      <div id="maspexObiectiveTotals" style="padding:.3rem 1rem"></div>
+      <div id="maspexObiectiveList" style="padding:.5rem 1rem"></div>
+    </div>
+
+    <!-- TAB: AUDIT SKU -->
+    <div id="panelMaspexAudit" class="tab-panel" style="display:none">
+      <details class="panel" open>
+        <summary>✅ AUDIT SKU MASPEX <button class="help-btn" onclick="event.stopPropagation();showHelp('maspexAudit')">?</button></summary>
+        <div class="panel-inner">
+          <div id="maspexAuditUploadForm" style="display:none;margin-bottom:.5rem;padding:.5rem;border:1px solid var(--border);border-radius:8px;background:var(--bg2)">
+            <p style="font-size:.75rem;color:var(--muted);margin-bottom:.4rem">UPLOAD AUDIT SKU (Excel, 2 sheets: Dry + Wet)</p>
+            <div class="btn-row">
+              <input type="file" id="maspexAuditFile" accept=".xlsx,.xls" style="font-size:.8rem;max-width:180px">
+              <button class="btn success small" onclick="uploadMaspexAudit()">📤 Import</button>
+            </div>
+            <div id="maspexAuditUploadStatus" style="font-size:.8rem;margin-top:.3rem"></div>
+          </div>
+          <div id="maspexAuditSalesUploadForm" style="display:none;margin-bottom:.5rem;padding:.5rem;border:1px solid var(--border);border-radius:8px;background:var(--bg2)">
+            <p style="font-size:.75rem;color:var(--muted);margin-bottom:.4rem">UPLOAD VÂNZĂRI AUDIT (Excel — raport vânzări ultimele 6 luni)</p>
+            <div class="btn-row">
+              <input type="file" id="maspexAuditSalesFile" accept=".xlsx,.xls" style="font-size:.8rem;max-width:180px">
+              <button class="btn success small" onclick="uploadMaspexAuditSales()">📤 Import vânzări audit</button>
+            </div>
+            <div id="maspexAuditSalesUploadStatus" style="font-size:.8rem;margin-top:.3rem"></div>
+          </div>
+          <div class="filter-row" style="gap:.5rem;flex-wrap:wrap">
+            <div>
+              <label>Luna</label>
+              <select id="maspexAuditMonth" onchange="loadMaspexAudit()" style="padding:6px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--fg);font-size:.85rem"></select>
+            </div>
+            <div>
+              <label>Gamă</label>
+              <select id="maspexAuditSheet" onchange="loadMaspexAudit()" style="padding:6px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--fg);font-size:.85rem">
+                <option value="DRY">DRY</option>
+                <option value="WET">WET</option>
+              </select>
+            </div>
+            <div>
+              <label>Filtru</label>
+              <select id="maspexAuditFilter" onchange="filterMaspexAudit()" style="padding:6px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--fg);font-size:.85rem">
+                <option value="all">Toate</option>
+                <option value="urgent">🔴 De facturat urgent</option>
+                <option value="invoice">🧾 De facturat (toate)</option>
+                <option value="nosales">⚠️ Fără vânzări</option>
+                <option value="below80">&lt;80%</option>
+                <option value="ok">≥80% OK</option>
+              </select>
+            </div>
+            <div>
+              <label>Caută</label>
+              <input type="text" id="maspexAuditSearch" placeholder="Client..." oninput="filterMaspexAudit()" style="padding:6px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--fg);font-size:.85rem;width:120px">
+            </div>
+          </div>
+          <div class="btn-row"><button class="btn ghost small" onclick="loadMaspexAudit()">🔄 Reîncarcă</button></div>
+        </div>
+      </details>
+      <div id="maspexAuditInfo" style="padding:.3rem 1rem;font-size:.78rem;color:var(--muted)"></div>
+      <div id="maspexAuditList" style="padding:.5rem 1rem"></div>
+    </div>
+
+    <!-- TAB: CATALOG PRODUSE -->
+    <div id="panelMaspexCatalog" class="tab-panel" style="display:none">
+      <details class="panel" open>
+        <summary>📦 CATALOG PRODUSE QUATRO <button class="help-btn" onclick="event.stopPropagation();showHelp('maspexCatalog')">?</button></summary>
+        <div class="panel-inner">
+          <div id="maspexCatalogUploadForm" style="display:none;margin-bottom:.5rem;padding:.5rem;border:1px solid var(--border);border-radius:8px;background:var(--bg2)">
+            <p style="font-size:.75rem;color:var(--muted);margin-bottom:.4rem">UPLOAD CATALOG PRODUSE (Excel)</p>
+            <div class="btn-row">
+              <input type="file" id="maspexCatalogFile" accept=".xlsx,.xls" style="font-size:.8rem;max-width:220px">
+              <button class="btn success small" onclick="uploadMaspexCatalog()">📤 Import Excel</button>
+              <button class="btn small" onclick="seedMaspexCatalog()" style="background:#8e44ad;color:#fff">🌱 Seed Catalog 2025</button>
+            </div>
+            <div id="maspexCatalogUploadStatus" style="font-size:.8rem;margin-top:.3rem"></div>
+          </div>
+          <div class="filter-row" style="gap:.5rem">
+            <div>
+              <label>Divizie</label>
+              <select id="maspexCatalogDivizie" onchange="loadMaspexCatalog()" style="padding:6px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--fg);font-size:.85rem">
+                <option value="">Toate</option>
+                <option value="WET">WET</option>
+                <option value="DRY">DRY</option>
+                <option value="WET RIO">WET RIO</option>
+                <option value="ICE TEA">ICE TEA</option>
+                <option value="ALCOOL">ALCOOL</option>
+                <option value="BUGET">BUGET</option>
+              </select>
+            </div>
+            <div>
+              <label>Grupă</label>
+              <input type="text" id="maspexCatalogGrupa" placeholder="Caută..." oninput="loadMaspexCatalog()" style="padding:6px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--fg);font-size:.85rem;width:120px">
+            </div>
+          </div>
+          <div class="btn-row"><button class="btn ghost small" onclick="loadMaspexCatalog()">🔄 Reîncarcă</button></div>
+        </div>
+      </details>
+      <div id="maspexCatalogInfo" style="padding:.3rem 1rem;font-size:.78rem;color:var(--muted)"></div>
+      <div id="maspexCatalogList" style="padding:.5rem 1rem"></div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════
+         UPLOAD RAPOARTE PANEL (upload role)
+         ═══════════════════════════════════════════ -->
+    <div id="panelUploadRapoarte" class="tab-panel" style="display:none">
+      <details class="panel" open>
+        <summary>📤 ÎNCĂRCARE RAPOARTE</summary>
+        <div class="panel-inner" style="display:flex;flex-direction:column;gap:16px;padding:12px">
+
+          <!-- Upload Scadențar -->
+          <div style="background:var(--bg2);border-radius:8px;padding:12px;border:1px solid var(--border)">
+            <p style="font-weight:600;margin:0 0 6px;font-size:.85rem">📊 Scadențar Quatro</p>
+            <p style="font-size:.75rem;color:var(--muted);margin:0 0 8px">Upload scadențar combinat din WinMentor (toate diviziile)</p>
+            <div class="btn-row">
+              <input type="file" id="uploadRapSolduriFile" accept=".xlsx,.xls" style="font-size:.8rem;max-width:220px">
+              <button class="btn success small" onclick="doUploadRapSolduri()">📤 Import</button>
+            </div>
+            <div id="uploadRapSolduriStatus" style="font-size:.8rem;margin-top:.3rem"></div>
+          </div>
+
+          <!-- Upload Coface -->
+          <div style="background:var(--bg2);border-radius:8px;padding:12px;border:1px solid var(--border)">
+            <p style="font-weight:600;margin:0 0 6px;font-size:.85rem">📊 Risc Financiar (Coface)</p>
+            <p style="font-size:.75rem;color:var(--muted);margin:0 0 8px">Upload scoring Coface</p>
+            <div class="btn-row">
+              <input type="file" id="uploadRapCofaceFile" accept=".xlsx,.xls" style="font-size:.8rem;max-width:220px">
+              <button class="btn success small" onclick="doUploadRapCoface()">📤 Import</button>
+            </div>
+            <div id="uploadRapCofaceStatus" style="font-size:.8rem;margin-top:.3rem"></div>
+          </div>
+
+          <!-- Upload Targete -->
+          <div style="background:var(--bg2);border-radius:8px;padding:12px;border:1px solid var(--border)">
+            <p style="font-weight:600;margin:0 0 6px;font-size:.85rem">📈 Targete per Producător</p>
+            <p style="font-size:.75rem;color:var(--muted);margin:0 0 8px">Upload targete lunare per agent</p>
+            <div class="btn-row">
+              <input type="month" id="uploadRapTargetMonth" style="padding:5px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--fg);font-size:.8rem">
+              <input type="file" id="uploadRapTargeteFile" accept=".xlsx,.xls" style="font-size:.8rem;max-width:220px">
+              <button class="btn success small" onclick="doUploadRapTargete()">📤 Import</button>
+            </div>
+            <div id="uploadRapTargeteStatus" style="font-size:.8rem;margin-top:.3rem"></div>
+          </div>
+
+          <!-- Upload Discounturi -->
+          <div style="background:var(--bg2);border-radius:8px;padding:12px;border:1px solid var(--border)">
+            <p style="font-weight:600;margin:0 0 6px;font-size:.85rem">💸 Control Discounturi</p>
+            <p style="font-size:.75rem;color:var(--muted);margin:0 0 8px">Upload raport discounturi</p>
+            <div class="btn-row">
+              <input type="month" id="uploadRapDiscountMonth" style="padding:5px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--fg);font-size:.8rem">
+              <input type="file" id="uploadRapDiscountFile" accept=".xlsx,.xls" style="font-size:.8rem;max-width:220px">
+              <button class="btn success small" onclick="doUploadRapDiscount()">📤 Import</button>
+            </div>
+            <div id="uploadRapDiscountStatus" style="font-size:.8rem;margin-top:.3rem"></div>
+          </div>
+
+          <!-- Upload Bugete Promo -->
+          <div style="background:var(--bg2);border-radius:8px;padding:12px;border:1px solid var(--border)">
+            <p style="font-weight:600;margin:0 0 6px;font-size:.85rem">💰 Bugete Promo</p>
+            <p style="font-size:.75rem;color:var(--muted);margin:0 0 8px">Upload bugete promoționale</p>
+            <div class="btn-row">
+              <input type="month" id="uploadRapPromoBudgetMonth" style="padding:5px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--fg);font-size:.8rem">
+              <input type="file" id="uploadRapPromoBudgetFile" accept=".xlsx,.xls" style="font-size:.8rem;max-width:220px">
+              <button class="btn success small" onclick="doUploadRapPromoBudget()">📤 Import</button>
+            </div>
+            <div id="uploadRapPromoBudgetStatus" style="font-size:.8rem;margin-top:.3rem"></div>
+          </div>
+
+          <div style="border-top:1px solid var(--border);margin:4px 0;position:relative"><span style="position:absolute;top:-8px;left:8px;background:var(--bg);padding:0 6px;font-size:.6rem;color:var(--muted)">MASPEX</span></div>
+
+          <!-- Upload Vânzări Maspex -->
+          <div style="background:var(--bg2);border-radius:8px;padding:12px;border:1px solid var(--border)">
+            <p style="font-weight:600;margin:0 0 6px;font-size:.85rem">📊 Vânzări Maspex</p>
+            <p style="font-size:.75rem;color:var(--muted);margin:0 0 8px">Upload raport vânzări zilnice Maspex</p>
+            <div class="btn-row">
+              <input type="file" id="uploadRapMaspexVanzariFile" accept=".xlsx,.xls" style="font-size:.8rem;max-width:220px">
+              <button class="btn success small" onclick="doUploadRapMaspexVanzari()">📤 Import</button>
+            </div>
+            <div id="uploadRapMaspexVanzariStatus" style="font-size:.8rem;margin-top:.3rem"></div>
+          </div>
+
+          <!-- Upload Obiective DN Maspex -->
+          <div style="background:var(--bg2);border-radius:8px;padding:12px;border:1px solid var(--border)">
+            <p style="font-weight:600;margin:0 0 6px;font-size:.85rem">🎯 Obiective DN Maspex</p>
+            <p style="font-size:.75rem;color:var(--muted);margin:0 0 8px">Upload obiective lunare DN</p>
+            <div class="btn-row">
+              <input type="month" id="uploadRapMaspexObiectiveMonth" style="padding:5px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--fg);font-size:.8rem">
+              <input type="file" id="uploadRapMaspexObiectiveFile" accept=".xlsx,.xls" style="font-size:.8rem;max-width:220px">
+              <button class="btn success small" onclick="doUploadRapMaspexObiective()">📤 Import</button>
+            </div>
+            <div id="uploadRapMaspexObiectiveStatus" style="font-size:.8rem;margin-top:.3rem"></div>
+          </div>
+
+          <!-- Upload Audit SKU Maspex -->
+          <div style="background:var(--bg2);border-radius:8px;padding:12px;border:1px solid var(--border)">
+            <p style="font-weight:600;margin:0 0 6px;font-size:.85rem">✅ Audit SKU Maspex</p>
+            <p style="font-size:.75rem;color:var(--muted);margin:0 0 8px">Upload audit SKU (sheet-uri Dry + Wet)</p>
+            <div class="btn-row">
+              <input type="file" id="uploadRapMaspexAuditFile" accept=".xlsx,.xls" style="font-size:.8rem;max-width:220px">
+              <button class="btn success small" onclick="doUploadRapMaspexAudit()">📤 Import</button>
+            </div>
+            <div id="uploadRapMaspexAuditStatus" style="font-size:.8rem;margin-top:.3rem"></div>
+          </div>
+
+          <!-- Upload Catalog Maspex -->
+          <div style="background:var(--bg2);border-radius:8px;padding:12px;border:1px solid var(--border)">
+            <p style="font-weight:600;margin:0 0 6px;font-size:.85rem">📦 Catalog Produse Maspex</p>
+            <p style="font-size:.75rem;color:var(--muted);margin:0 0 8px">Upload catalog produse Quatro</p>
+            <div class="btn-row">
+              <input type="file" id="uploadRapMaspexCatalogFile" accept=".xlsx,.xls" style="font-size:.8rem;max-width:220px">
+              <button class="btn success small" onclick="doUploadRapMaspexCatalog()">📤 Import</button>
+            </div>
+            <div id="uploadRapMaspexCatalogStatus" style="font-size:.8rem;margin-top:.3rem"></div>
+          </div>
+
+        </div>
+      </details>
+    </div>
+
+    <!-- ═══════════════════════════════════════════
+         TAB: DASHBOARD VÂNZĂRI ALL
+         ═══════════════════════════════════════════ -->
+    <div id="panelDashboardAll" class="tab-panel" style="display:none">
+      <details class="panel" open>
+        <summary>DASHBOARD VÂNZĂRI — TARGET vs REALIZAT</summary>
+        <div class="panel-inner">
+          <div class="filter-row" style="flex-wrap:wrap;gap:8px">
+            <label>Luna</label>
+            <input id="dashMonth" type="month" value="">
+            <button class="btn primary small" onclick="loadDashboardAll()">Încarcă</button>
+          </div>
+
+          <!-- Admin: Upload section -->
+          <div id="dashAdminUpload" style="display:none;margin:.5rem 0;padding:.5rem;border:1px solid var(--border);border-radius:8px;background:var(--bg2)">
+            <p style="font-size:.75rem;color:var(--muted);margin-bottom:.4rem">ADMIN: ÎNCĂRCARE FIȘIER VÂNZĂRI ZILNIC</p>
+            <p style="font-size:.7rem;color:var(--muted);margin-bottom:.4rem">Fișierul Excel cu toate vânzările (VANZARI PENTRU TARGETE ALL). Datele vechi ale lunii se suprascriu automat.</p>
+            <div class="btn-row">
+              <input type="file" id="dashSalesFile" accept=".xlsx,.xls" style="font-size:.8rem;max-width:220px">
+              <button class="btn success small" onclick="uploadDashSalesAll()">Import vânzări</button>
+            </div>
+            <div id="dashUploadStatus" style="font-size:.8rem;margin-top:.2rem"></div>
+          </div>
+
+          <!-- Admin: Division management -->
+          <div id="dashDivisionMgmt" style="display:none;margin:.5rem 0;padding:.5rem;border:1px solid var(--border);border-radius:8px;background:var(--bg2)">
+            <details>
+              <summary style="font-size:.75rem;color:var(--muted);cursor:pointer">ADMIN: CONFIGURARE DIVIZII</summary>
+              <div style="margin-top:.4rem">
+                <p style="font-size:.7rem;color:var(--muted);margin-bottom:.4rem">Atribuie agenți și SPV la divizii (Rural/Urban/HoReCa).</p>
+                <div id="dashDivisionList" style="font-size:.78rem"></div>
+                <button class="btn primary small" onclick="saveDivisions()" style="margin-top:.4rem">Salvează</button>
+                <div id="dashDivisionStatus" style="font-size:.8rem;margin-top:.2rem"></div>
+              </div>
+            </details>
+          </div>
+
+          <!-- Data status -->
+          <div id="dashDataStatus" style="font-size:.78rem;color:var(--muted);margin:.3rem 0"></div>
+        </div>
+      </details>
+
+      <!-- Summary cards -->
+      <div id="dashSummaryCards" style="padding:.3rem 1rem"></div>
+
+      <!-- Export button -->
+      <div style="padding:0 1rem;margin-bottom:4px">
+        <button onclick="exportDashboardExcel()" style="font-size:.75rem;padding:4px 14px;background:#217346;color:#fff;border:none;border-radius:5px;cursor:pointer">📥 Export Excel</button>
+      </div>
+
+      <!-- Dashboard table -->
+      <div id="dashTableContainer" style="padding:.3rem 1rem;overflow-x:auto"></div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════
+         TAB: BUGET GT URSUS
+         ═══════════════════════════════════════════ -->
+    <div id="panelBugetGt" class="tab-panel" style="display:none">
+      <details class="panel" open>
+        <summary>BUGET GT URSUS <button class="help-btn" onclick="event.stopPropagation();showHelp('bugetGt')">?</button></summary>
+        <div class="panel-inner">
+          <div class="filter-row">
+            <label>Luna</label>
+            <input id="gtMonth" type="month" value="">
+          </div>
+          <div class="btn-row">
+            <button class="btn primary small" onclick="loadGtCentralizator()">Încarcă</button>
+          </div>
+
+          <!-- Admin config section -->
+          <div id="gtAdminConfig" style="display:none;margin:.5rem 0;padding:.5rem;border:1px solid var(--border);border-radius:8px;background:var(--bg2)">
+            <p style="font-size:.75rem;color:var(--muted);margin-bottom:.4rem">ADMIN: CONFIGURARE GT</p>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <div>
+                <label style="font-size:.75rem;font-weight:600">Mapare SKU (Quatro → BB)</label>
+                <div class="btn-row">
+                  <input type="file" id="gtSkuFile" accept=".xlsx,.xls" style="font-size:.8rem;max-width:200px">
+                  <button class="btn success small" onclick="uploadGtSku()">Import</button>
+                </div>
+                <div id="gtSkuStatus" style="font-size:.8rem;margin-top:.2rem"></div>
+              </div>
+              <div>
+                <label style="font-size:.75rem;font-weight:600">Prețuri GT/HL</label>
+                <div class="btn-row">
+                  <input type="file" id="gtPricesFile" accept=".xlsx,.xls" style="font-size:.8rem;max-width:200px">
+                  <button class="btn success small" onclick="uploadGtPrices()">Import</button>
+                </div>
+                <div id="gtPricesStatus" style="font-size:.8rem;margin-top:.2rem"></div>
+              </div>
+              <div>
+                <label style="font-size:.75rem;font-weight:600">Targeturi GT lunare</label>
+                <div class="btn-row">
+                  <input type="month" id="gtTargetMonth" style="padding:5px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--fg);font-size:.8rem">
+                  <input type="file" id="gtTargetsFile" accept=".xlsx,.xls" style="font-size:.8rem;max-width:200px">
+                  <button class="btn success small" onclick="uploadGtTargets()">Import</button>
+                </div>
+                <div id="gtTargetsStatus" style="font-size:.8rem;margin-top:.2rem"></div>
+              </div>
+              <div style="border-top:1px solid var(--border);padding-top:8px;margin-top:4px">
+                <label style="font-size:.75rem;font-weight:600">Import din Baza Calcul (sheet centralizator)</label>
+                <p style="font-size:.7rem;color:var(--muted);margin:2px 0 4px">Încarcă fișierul "Baza calcul buget realizat GT" — se extrag targeturile + realizările din sheet-ul "centralizator realizat"</p>
+                <div class="btn-row">
+                  <input type="month" id="gtCentralizatorMonth" style="padding:5px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--fg);font-size:.8rem">
+                  <input type="file" id="gtCentralizatorFile" accept=".xlsx,.xls" style="font-size:.8rem;max-width:200px">
+                  <button class="btn success small" onclick="uploadGtCentralizator()">Import</button>
+                </div>
+                <div id="gtCentralizatorStatus" style="font-size:.8rem;margin-top:.2rem"></div>
+              </div>
+            </div>
+            <div id="gtConfigInfo" style="font-size:.75rem;margin-top:.4rem;color:var(--muted)"></div>
+          </div>
+        </div>
+      </details>
+
+      <!-- Centralizator table -->
+      <div id="gtCentralizator" style="padding:.5rem 1rem"></div>
+
+      <!-- Unmatched products -->
+      <div id="gtUnmatched" style="padding:.3rem 1rem"></div>
+    </div>
+
+  </aside>
+
+  <div class="map-wrap">
+    <!-- Route mode bar -->
+    <div id="routeBar" class="route-bar" style="display:none">
+      <div class="route-bar-top">
+        <span>🗺 Traseu:</span>
+        <span class="count" id="routeCount">0</span>
+        <span>selectați</span>
+        <div style="flex:1"></div>
+        <button class="btn ghost small" onclick="clearRoute()">✕ Șterge</button>
+      </div>
+      <div id="routeList" class="route-list">
+        <span style="color:var(--muted)">Apasă pe clienți de pe hartă...</span>
+      </div>
+      <button class="btn success" id="routeOpenBtn" style="display:none" onclick="openGoogleMapsRoute()">🧭 Pornește navigarea în Google Maps</button>
+    </div>
+    <div id="map"></div>
+  </div>
+</div>
+
+<!-- ═══ VISIT DIALOG ═══ -->
+<dialog id="visitDialog">
+  <div class="dialog-header">
+    <h3 id="visitTitle">Vizită audit</h3>
+    <button class="dialog-close" onclick="visitDialog.close()">&times;</button>
+  </div>
+  <div class="dialog-body">
+    <!-- Step 1: Photo -->
+    <div id="visitStep1">
+      <p style="margin-bottom:.5rem;font-size:.9rem"><strong>Pasul 1:</strong> Fă o poză (obligatoriu)</p>
+      <p style="font-size:.78rem;color:var(--muted);margin-bottom:.8rem">Poza confirmă prezența ta la locație. GPS și ora se salvează automat.</p>
+      <input type="file" id="visitPhoto" accept="image/*" capture="environment" style="margin-bottom:.5rem">
+      <div id="photoPreview" style="display:none;margin:.5rem 0">
+        <img id="photoImg" style="max-width:100%;border-radius:8px;max-height:200px">
+      </div>
+      <button class="btn primary" id="startVisitBtn" onclick="submitStartVisit()" disabled>Începe vizita + Încarcă poza</button>
+    </div>
+    <!-- Step 2: Checklist -->
+    <div id="visitStep2" style="display:none">
+      <p style="margin-bottom:.3rem;font-size:.9rem"><strong>Pasul 2:</strong> Bifează produsele prezente în raft</p>
+      <p id="visitNote" style="font-size:.72rem;color:var(--warning);margin-bottom:.6rem"></p>
+      <div id="productChecklist"></div>
+      <div style="margin-top:.8rem;padding:.5rem;background:var(--bg);border-radius:6px;display:flex;justify-content:space-between;align-items:center">
+        <span>Scor: <strong id="liveScore">0%</strong></span>
+        <span id="liveCount">0 / 0</span>
+      </div>
+    </div>
+  </div>
+  <div class="dialog-footer">
+    <button class="btn ghost" onclick="visitDialog.close()">Anulează</button>
+    <button class="btn success" id="closeVisitBtn" style="display:none" onclick="submitCloseVisit()">Închide vizita</button>
+  </div>
+</dialog>
+
+<!-- ═══ PHOTO VIEW DIALOG ═══ -->
+<dialog id="photoViewDialog">
+  <div class="dialog-header">
+    <h3>Poză vizită</h3>
+    <button class="dialog-close" onclick="photoViewDialog.close()">&times;</button>
+  </div>
+  <div class="dialog-body" style="text-align:center">
+    <img id="viewPhotoImg" style="max-width:100%;border-radius:8px">
+    <p id="viewPhotoInfo" style="margin-top:.5rem;font-size:.8rem;color:var(--muted)"></p>
+  </div>
+</dialog>
+
+<!-- ═══ CLIENT DETAIL DIALOG (Census) ═══ -->
+<dialog id="clientDetailDialog">
+  <div class="dialog-header">
+    <h3 id="clientDetailTitle">Detalii client</h3>
+    <button class="dialog-close" onclick="clientDetailDialog.close()">&times;</button>
+  </div>
+  <div class="dialog-body" id="clientDetailBody"></div>
+  <div class="dialog-footer">
+    <button class="btn ghost" onclick="clientDetailDialog.close()">Închide</button>
+  </div>
+</dialog>
+
+<!-- ═══ PROPOSE INACTIVE DIALOG ═══ -->
+<dialog id="proposeDialog">
+  <div class="dialog-header">
+    <h3 id="proposeTitle">Propune client inactiv</h3>
+    <button class="dialog-close" onclick="proposeDialog.close()">&times;</button>
+  </div>
+  <div class="dialog-body">
+    <p style="font-size:.85rem;margin-bottom:.5rem">Propui acest client ca <strong>INACTIV</strong>. Propunerea va fi trimisă supervizorului pentru aprobare.</p>
+    <label style="font-size:.82rem;font-weight:600">Motiv (obligatoriu):</label>
+    <textarea id="proposeReason" rows="3" placeholder="Ex: Magazin închis definitiv, Nu mai comercializează bere, Adresă incorectă..." style="width:100%;padding:8px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--fg);font-size:.85rem;resize:vertical;margin-top:4px"></textarea>
+  </div>
+  <div class="dialog-footer">
+    <button class="btn ghost" onclick="proposeDialog.close()">Anulează</button>
+    <button class="btn warning" id="proposeSubmitBtn" onclick="submitProposal()">Trimite propunerea</button>
+  </div>
+</dialog>
+
+<!-- ═══ PROPOSE RENAME DIALOG ═══ -->
+<dialog id="renameDialog">
+  <div class="dialog-header">
+    <h3 id="renameTitle">Propune redenumire</h3>
+    <button class="dialog-close" onclick="renameDialog.close()">&times;</button>
+  </div>
+  <div class="dialog-body">
+    <p style="font-size:.85rem;margin-bottom:.5rem">Propui o <strong>redenumire</strong> a acestui client. Propunerea va fi trimisă supervizorului pentru aprobare.</p>
+    <label style="font-size:.82rem;font-weight:600">Firma nouă:</label>
+    <input id="renameNewFirma" type="text" placeholder="Ex: TOTUL LANGA TINE S.R.L." style="width:100%;padding:8px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--fg);font-size:.85rem;margin:4px 0 8px">
+    <label style="font-size:.82rem;font-weight:600">Nume POC nou:</label>
+    <input id="renameNewPoc" type="text" placeholder="Ex: TLT Bivolari" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--fg);font-size:.85rem;margin:4px 0 8px">
+    <label style="font-size:.82rem;font-weight:600">CUI (Cod Fiscal) nou:</label>
+    <input id="renameNewCif" type="text" placeholder="Ex: RO41342892" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--fg);font-size:.85rem;margin:4px 0 8px">
+    <label style="font-size:.82rem;font-weight:600">Persoană de contact:</label>
+    <input id="renameNewContact" type="text" placeholder="Ex: Ion Popescu" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--fg);font-size:.85rem;margin:4px 0 8px">
+    <label style="font-size:.82rem;font-weight:600">Telefon:</label>
+    <input id="renameNewTelefon" type="text" placeholder="Ex: 0744123456" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--fg);font-size:.85rem;margin:4px 0 8px">
+    <label style="font-size:.82rem;font-weight:600">Email:</label>
+    <input id="renameNewEmail" type="text" placeholder="Ex: contact@firma.ro" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--fg);font-size:.85rem;margin:4px 0 8px">
+    <label style="font-size:.82rem;font-weight:600">Motiv:</label>
+    <textarea id="renameReason" rows="2" placeholder="Ex: Magazin preluat de altă firmă..." style="width:100%;padding:8px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--fg);font-size:.85rem;resize:vertical;margin-top:4px"></textarea>
+  </div>
+  <div class="dialog-footer">
+    <button class="btn ghost" onclick="renameDialog.close()">Anulează</button>
+    <button class="btn primary" id="renameSubmitBtn" onclick="submitRename()">Trimite propunerea</button>
+  </div>
+</dialog>
+
+<!-- ═══ PROPOSALS PANEL DIALOG (SPV/Admin) ═══ -->
+<dialog id="proposalsDialog" style="max-width:700px;width:95%">
+  <div class="dialog-header">
+    <h3>Propuneri</h3>
+    <button class="dialog-close" onclick="proposalsDialog.close()">&times;</button>
+  </div>
+  <div class="dialog-body" id="proposalsBody" style="max-height:70vh;overflow-y:auto"></div>
+  <div class="dialog-footer">
+    <button class="btn ghost" onclick="proposalsDialog.close()">Închide</button>
+  </div>
+</dialog>
+
+<!-- ═══ VISIT CHECK-IN DIALOG ═══ -->
+<dialog id="checkinDialog">
+  <div class="dialog-header">
+    <h3 id="checkinTitle">Check-in vizită</h3>
+    <button class="dialog-close" onclick="checkinDialog.close()">&times;</button>
+  </div>
+  <div class="dialog-body">
+    <p id="checkinClientInfo" style="font-size:.85rem;margin-bottom:.6rem;color:var(--muted)"></p>
+    <p style="font-size:.88rem;font-weight:600;margin-bottom:.4rem">Fă o poză (obligatoriu)</p>
+    <p style="font-size:.78rem;color:var(--muted);margin-bottom:.6rem">Poza confirmă prezența ta la locație. GPS-ul clientului se folosește automat.</p>
+    <input type="file" id="checkinPhoto" accept="image/*" capture="environment" style="margin-bottom:.5rem">
+    <div id="checkinPhotoPreview" style="display:none;margin:.5rem 0">
+      <img id="checkinPhotoImg" style="max-width:100%;border-radius:8px;max-height:200px">
+    </div>
+    <label style="font-size:.82rem;font-weight:600;margin-top:.5rem;display:block">Observații (opțional):</label>
+    <textarea id="checkinNotes" rows="2" placeholder="Ex: Magazin deschis, stoc ok..." style="width:100%;padding:8px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--text);font-size:.85rem;resize:vertical;margin-top:4px"></textarea>
+  </div>
+  <div class="dialog-footer">
+    <button class="btn ghost" onclick="checkinDialog.close()">Anulează</button>
+    <button class="btn success" id="checkinSubmitBtn" onclick="submitCheckin()" disabled>📸 Check-in</button>
+  </div>
+</dialog>
+
+<!-- ═══ VISIT HISTORY DIALOG ═══ -->
+<dialog id="visitHistoryDialog" style="max-width:600px;width:95%">
+  <div class="dialog-header">
+    <h3 id="visitHistoryTitle">Istoric vizite</h3>
+    <button class="dialog-close" onclick="visitHistoryDialog.close()">&times;</button>
+  </div>
+  <div class="dialog-body" id="visitHistoryBody" style="max-height:70vh;overflow-y:auto"></div>
+  <div class="dialog-footer">
+    <button class="btn ghost" onclick="visitHistoryDialog.close()">Închide</button>
+  </div>
+</dialog>
+
+<!-- ═══ POST-LOGIN DASHBOARD DIALOG ═══ -->
+<dialog id="dashboardDialog" style="max-width:480px;width:95%">
+  <div class="dialog-header">
+    <h3 id="dashboardTitle">Realizări la zi</h3>
+    <button class="dialog-close" onclick="dashboardDialog.close()">&times;</button>
+  </div>
+  <div class="dialog-body" id="dashboardBody" style="max-height:75vh;overflow-y:auto"></div>
+  <div class="dialog-footer">
+    <button class="btn primary" onclick="dashboardDialog.close()">OK</button>
+  </div>
+</dialog>
+
+<!-- ═══ COMPETITION REPORT DIALOG ═══ -->
+<dialog id="competitionDialog" style="max-width:500px;width:95%">
+  <div class="dialog-header">
+    <h3>🏆 Raport competiție</h3>
+    <button class="dialog-close" onclick="competitionDialog.close()">&times;</button>
+  </div>
+  <div class="dialog-body">
+    <div class="filter-row"><label>Client</label><div id="compClient"></div></div>
+    <div class="filter-row"><label>Brand competitor</label><input id="compBrand" type="text" placeholder="Ex: Heineken, Ursus, Ciuc..."></div>
+    <div class="filter-row"><label>Produs competitor</label><input id="compProduct" type="text" placeholder="Ex: Heineken 0.5L PET"></div>
+    <div class="split">
+      <section><p class="label">Preț (lei)</p><input id="compPrice" type="number" step="0.01" placeholder="0.00"></section>
+      <section><p class="label">Prezență raft</p><select id="compShelf" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--fg)"><option value="dominant">Dominant</option><option value="bun">Bun</option><option value="mediu">Mediu</option><option value="slab">Slab</option><option value="absent">Absent</option></select></section>
+    </div>
+    <div class="filter-row"><label>Promoție competitor</label><input id="compPromo" type="text" placeholder="Ex: 2+1 gratis, -20%..."></div>
+    <div class="filter-row"><label>Observații</label><textarea id="compNotes" rows="2" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--fg);font-size:.85rem;resize:vertical" placeholder="Alte observații..."></textarea></div>
+  </div>
+  <div class="dialog-footer">
+    <button class="btn ghost" onclick="competitionDialog.close()">Anulează</button>
+    <button class="btn success" onclick="submitCompetition()">Salvează raport</button>
+  </div>
+</dialog>
+
+<!-- ═══ FRIDGE AUDIT DIALOG ═══ -->
+<dialog id="fridgeDialog" style="max-width:500px;width:95%">
+  <div class="dialog-header">
+    <h3>🧊 Audit frigider</h3>
+    <button class="dialog-close" onclick="fridgeDialog.close()">&times;</button>
+  </div>
+  <div class="dialog-body">
+    <div class="filter-row"><label>Client</label><div id="fridgeClient"></div></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin:.5rem 0">
+      <label class="check-item"><input type="checkbox" id="fridgePresent"><span>Frigider prezent</span></label>
+      <label class="check-item"><input type="checkbox" id="fridgeFunctional"><span>Funcțional</span></label>
+      <label class="check-item"><input type="checkbox" id="fridgeClean"><span>Curat</span></label>
+      <label class="check-item"><input type="checkbox" id="fridgeBranded"><span>Brandat BB</span></label>
+    </div>
+    <div class="split">
+      <section><p class="label">Nivel stoc</p><select id="fridgeStock" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--fg)"><option value="plin">Plin</option><option value="normal">Normal</option><option value="scazut">Scăzut</option><option value="gol">Gol</option></select></section>
+      <section><p class="label">Nr. SKU-uri BB</p><input id="fridgeSku" type="number" min="0" value="0" style="width:100%"></section>
+    </div>
+    <div class="filter-row"><label>Produse competitor în frigider</label><input id="fridgeComp" type="number" min="0" value="0"></div>
+    <div class="filter-row"><label>Observații</label><textarea id="fridgeNotes" rows="2" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--fg);font-size:.85rem;resize:vertical" placeholder="Observații..."></textarea></div>
+  </div>
+  <div class="dialog-footer">
+    <button class="btn ghost" onclick="fridgeDialog.close()">Anulează</button>
+    <button class="btn success" onclick="submitFridge()">Salvează audit</button>
+  </div>
+</dialog>
+
+<!-- ═══ EXPIRY REPORT DIALOG ═══ -->
+<dialog id="expiryDialog" style="max-width:500px;width:95%">
+  <div class="dialog-header">
+    <h3>⏰ Raportează expirare</h3>
+    <button class="dialog-close" onclick="expiryDialog.close()">&times;</button>
+  </div>
+  <div class="dialog-body">
+    <div class="filter-row"><label>Client</label><div id="expiryClient"></div></div>
+    <div class="filter-row"><label>Produs</label><input id="expiryProduct" type="text" placeholder="Ex: Ursus 0.5L PET"></div>
+    <div class="split">
+      <section><p class="label">Data expirării</p><input id="expiryDate" type="date" style="width:100%"></section>
+      <section><p class="label">Cantitate (buc)</p><input id="expiryQty" type="number" min="0" value="1" style="width:100%"></section>
+    </div>
+    <div class="split">
+      <section><p class="label">Lot/Batch</p><input id="expiryBatch" type="text" placeholder="Nr. lot"></section>
+      <section><p class="label">Acțiune</p><select id="expiryAction" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--fg)"><option value="collect">Colectare</option><option value="replace">Înlocuire</option><option value="discount">Discount</option></select></section>
+    </div>
+    <div class="filter-row"><label>Observații</label><textarea id="expiryNotes" rows="2" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--fg);font-size:.85rem;resize:vertical" placeholder="Observații..."></textarea></div>
+  </div>
+  <div class="dialog-footer">
+    <button class="btn ghost" onclick="expiryDialog.close()">Anulează</button>
+    <button class="btn success" onclick="submitExpiry()">Salvează raport</button>
+  </div>
+</dialog>
+
+<!-- ═══ PROMO ACTIVATE DIALOG ═══ -->
+<dialog id="promoActivateDialog" style="max-width:450px;width:95%">
+  <div class="dialog-header">
+    <h3>🎯 Activează promoție</h3>
+    <button class="dialog-close" onclick="promoActivateDialog.close()">&times;</button>
+  </div>
+  <div class="dialog-body">
+    <p id="promoActivateTitle" style="font-size:.85rem;margin-bottom:.5rem;color:var(--muted)"></p>
+    <div class="filter-row"><label>Client</label><div id="promoActivateClient"></div></div>
+    <div class="filter-row"><label>Observații</label><input id="promoActivateNotes" type="text" placeholder="Observații (opțional)..."></div>
+  </div>
+  <div class="dialog-footer">
+    <button class="btn ghost" onclick="promoActivateDialog.close()">Anulează</button>
+    <button class="btn success" onclick="submitPromoActivation()">Activează</button>
+  </div>
+</dialog>
+
+<!-- ═══ ESCALATION DIALOG ═══ -->
+<dialog id="escalationDialog" style="max-width:500px;width:95%">
+  <div class="dialog-header">
+    <h3>🚨 Solicită intervenție SPV</h3>
+    <button class="dialog-close" onclick="escalationDialog.close()">&times;</button>
+  </div>
+  <div class="dialog-body">
+    <p style="font-size:.85rem;margin-bottom:.5rem;color:var(--muted)">Selectează clientul la care ai nevoie de SPV pe teren:</p>
+    <div class="filter-row"><label>Client</label><div id="escClient"></div></div>
+    <label style="font-size:.82rem;font-weight:600;margin-top:.5rem;display:block">Mesaj (opțional):</label>
+    <textarea id="escMessage" rows="2" placeholder="Ex: Necesit suport SPV pentru negociere, client cu probleme..." style="width:100%;padding:8px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--fg);font-size:.85rem;resize:vertical;margin-top:4px"></textarea>
+  </div>
+  <div class="dialog-footer">
+    <button class="btn ghost" onclick="escalationDialog.close()">Anulează</button>
+    <button class="btn success" id="escSubmitBtn" onclick="submitEscalation()">Trimite solicitare</button>
+  </div>
+</dialog>
+
+<!-- ═══ ESCALATION RESOLVE DIALOG ═══ -->
+<dialog id="escResolveDialog" style="max-width:500px;width:95%">
+  <div class="dialog-header">
+    <h3>📸 Check-in SPV</h3>
+    <button class="dialog-close" onclick="escResolveDialog.close()">&times;</button>
+  </div>
+  <div class="dialog-body">
+    <p id="escResolveInfo" style="font-size:.85rem;margin-bottom:.5rem;color:var(--muted)"></p>
+    <p style="font-size:.88rem;font-weight:600;margin-bottom:.4rem">Fă o poză (obligatoriu)</p>
+    <input type="file" id="escResolvePhoto" accept="image/*" capture="environment" style="margin-bottom:.5rem">
+    <div id="escResolvePhotoPreview" style="display:none;margin:.5rem 0"><img id="escResolvePhotoImg" style="max-width:100%;border-radius:8px;max-height:200px"></div>
+    <label style="font-size:.82rem;font-weight:600;display:block;margin-top:.5rem">Observații:</label>
+    <textarea id="escResolveNote" rows="2" placeholder="Observații check-in..." style="width:100%;padding:8px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--fg);font-size:.85rem;resize:vertical;margin-top:4px"></textarea>
+  </div>
+  <div class="dialog-footer">
+    <button class="btn ghost" onclick="escResolveDialog.close()">Anulează</button>
+    <button class="btn success" id="escResolveSubmitBtn" onclick="submitEscResolve()">✅ Check-in & Rezolvă</button>
+  </div>
+</dialog>
+
+<!-- ═══ CLIENT ALERT DIALOG ═══ -->
+<dialog id="clientAlertDialog" style="max-width:500px;width:95%">
+  <div class="dialog-header">
+    <h3>⚠️ Semnalează risc client</h3>
+    <button class="dialog-close" onclick="clientAlertDialog.close()">&times;</button>
+  </div>
+  <div class="dialog-body">
+    <div class="filter-row"><label>Client</label><div id="alertClient"></div></div>
+    <label style="font-size:.82rem;font-weight:600;margin-top:.5rem;display:block">Tip alertă:</label>
+    <select id="alertType" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--fg);font-size:.85rem;margin-top:4px">
+      <option value="shop_closure">Închidere magazin</option>
+      <option value="suspicious_stock">Lipsă suspectă marfă</option>
+      <option value="payment_issues">Probleme plată</option>
+      <option value="other">Altele</option>
+    </select>
+    <label style="font-size:.82rem;font-weight:600;margin-top:.5rem;display:block">Motiv / Detalii (obligatoriu):</label>
+    <textarea id="alertReason" rows="3" placeholder="Ex: Magazin găsit închis de 3 vizite consecutive..." style="width:100%;padding:8px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--fg);font-size:.85rem;resize:vertical;margin-top:4px"></textarea>
+  </div>
+  <div class="dialog-footer">
+    <button class="btn ghost" onclick="clientAlertDialog.close()">Anulează</button>
+    <button class="btn warning" id="alertSubmitBtn" onclick="submitClientAlert()">Trimite alertă</button>
+  </div>
+</dialog>
+
+<!-- ═══ CUI VERIFICATION DIALOG ═══ -->
+<dialog id="cuiDialog" style="max-width:550px;width:95%">
+  <div class="dialog-header">
+    <h3>🔍 Verificare CUI</h3>
+    <button class="dialog-close" onclick="cuiDialog.close()">&times;</button>
+  </div>
+  <div class="dialog-body">
+    <div class="filter-row"><label>Client (opțional)</label><div id="cuiClient"></div></div>
+    <div style="display:flex;gap:.5rem;align-items:flex-end;margin:.5rem 0">
+      <div style="flex:1">
+        <label style="font-size:.82rem;font-weight:600">CUI (Cod Unic Identificare):</label>
+        <input id="cuiInput" type="text" placeholder="Ex: 12345678 sau RO12345678" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--fg);font-size:.85rem;margin-top:4px">
+      </div>
+      <button class="btn primary small" onclick="lookupCui()" style="white-space:nowrap">🔎 Verifică ANAF</button>
+    </div>
+    <div id="cuiLookupResult" style="display:none;padding:.5rem;border:1px solid var(--border);border-radius:6px;background:var(--bg);margin-bottom:.5rem;font-size:.82rem"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin-top:.5rem">
+      <div><label style="font-size:.82rem;font-weight:600">Firmă:</label><input id="cuiCompanyName" type="text" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--fg);font-size:.82rem;margin-top:2px"></div>
+      <div><label style="font-size:.82rem;font-weight:600">Adresă:</label><input id="cuiAddress" type="text" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--fg);font-size:.82rem;margin-top:2px"></div>
+      <div><label style="font-size:.82rem;font-weight:600">Administrator:</label><input id="cuiAdmin" type="text" placeholder="Nume administrator" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--fg);font-size:.82rem;margin-top:2px"></div>
+      <div><label style="font-size:.82rem;font-weight:600">Girant:</label><input id="cuiGuarantor" type="text" placeholder="Nume girant" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--fg);font-size:.82rem;margin-top:2px"></div>
+      <div><label style="font-size:.82rem;font-weight:600">Telefon:</label><input id="cuiPhone" type="tel" placeholder="07xxxxxxxx" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--fg);font-size:.82rem;margin-top:2px"></div>
+      <div><label style="font-size:.82rem;font-weight:600">Email:</label><input id="cuiEmail" type="email" placeholder="email@firma.ro" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--fg);font-size:.82rem;margin-top:2px"></div>
+      <div><label style="font-size:.82rem;font-weight:600">Serie CI:</label><input id="cuiIdSeries" type="text" placeholder="XX" maxlength="2" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--fg);font-size:.82rem;margin-top:2px"></div>
+      <div><label style="font-size:.82rem;font-weight:600">Nr. CI:</label><input id="cuiIdNumber" type="text" placeholder="123456" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--fg);font-size:.82rem;margin-top:2px"></div>
+    </div>
+    <label class="check-item" style="margin-top:.8rem"><input type="checkbox" id="cuiGdpr"><span style="font-size:.82rem">Acord GDPR semnat de client</span></label>
+  </div>
+  <div class="dialog-footer">
+    <button class="btn ghost" onclick="cuiDialog.close()">Anulează</button>
+    <button class="btn success" id="cuiSubmitBtn" onclick="submitCuiVerification()">💾 Salvează verificare</button>
+  </div>
+</dialog>
+
+<!-- ═══ CONTRACT DIALOG ═══ -->
+<dialog id="contractDialog" style="max-width:550px;width:95%">
+  <div class="dialog-header">
+    <h3>📝 Contract nou</h3>
+    <button class="dialog-close" onclick="contractDialog.close()">&times;</button>
+  </div>
+  <div class="dialog-body">
+    <div class="filter-row"><label>Client (opțional)</label><div id="contractClient"></div></div>
+    <div style="display:flex;gap:.5rem;align-items:flex-end;margin:.5rem 0">
+      <div style="flex:1">
+        <label style="font-size:.82rem;font-weight:600">CUI:</label>
+        <input id="contractCui" type="text" placeholder="Ex: 12345678 sau RO12345678" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--fg);font-size:.85rem;margin-top:4px">
+      </div>
+      <button class="btn primary small" onclick="lookupContractCui()" style="white-space:nowrap">🔎 Verifică ANAF</button>
+    </div>
+    <div id="contractLookupResult" style="display:none;padding:.5rem;border:1px solid var(--border);border-radius:6px;background:var(--bg);margin-bottom:.5rem;font-size:.82rem"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin-top:.5rem">
+      <div><label style="font-size:.82rem;font-weight:600">Firmă:</label><input id="contractCompanyName" type="text" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--fg);font-size:.82rem;margin-top:2px"></div>
+      <div><label style="font-size:.82rem;font-weight:600">Adresă:</label><input id="contractAddress" type="text" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--fg);font-size:.82rem;margin-top:2px"></div>
+      <div><label style="font-size:.82rem;font-weight:600">Nr. ORC:</label><input id="contractOrc" type="text" placeholder="J09/000/2022" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--fg);font-size:.82rem;margin-top:2px"></div>
+      <div><label style="font-size:.82rem;font-weight:600">Administrator:</label><input id="contractAdmin" type="text" placeholder="Nume administrator" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--fg);font-size:.82rem;margin-top:2px"></div>
+      <div><label style="font-size:.82rem;font-weight:600">Girant:</label><input id="contractGuarantor" type="text" placeholder="Nume girant" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--fg);font-size:.82rem;margin-top:2px"></div>
+      <div><label style="font-size:.82rem;font-weight:600">Adresă girant:</label><input id="contractGuarantorAddress" type="text" placeholder="Domiciliu girant" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--fg);font-size:.82rem;margin-top:2px"></div>
+      <div><label style="font-size:.82rem;font-weight:600">Telefon:</label><input id="contractPhone" type="tel" placeholder="07xxxxxxxx" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--fg);font-size:.82rem;margin-top:2px"></div>
+      <div><label style="font-size:.82rem;font-weight:600">Email:</label><input id="contractEmail" type="email" placeholder="email@firma.ro" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--fg);font-size:.82rem;margin-top:2px"></div>
+      <div><label style="font-size:.82rem;font-weight:600">Serie CI:</label><input id="contractIdSeries" type="text" placeholder="XX" maxlength="2" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--fg);font-size:.82rem;margin-top:2px"></div>
+      <div><label style="font-size:.82rem;font-weight:600">Nr. CI:</label><input id="contractIdNumber" type="text" placeholder="123456" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--fg);font-size:.82rem;margin-top:2px"></div>
+    </div>
+    <div class="filter-row" style="margin-top:.5rem"><label>Data contract</label><input id="contractDate" type="date" style="padding:6px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--fg);font-size:.85rem"></div>
+    <label class="check-item" style="margin-top:.5rem"><input type="checkbox" id="contractGdpr"><span style="font-size:.82rem">Acord GDPR semnat de client</span></label>
+  </div>
+  <div class="dialog-footer">
+    <button class="btn ghost" onclick="contractDialog.close()">Anulează</button>
+    <button class="btn success" id="contractSubmitBtn" onclick="submitContract()">💾 Salvează contract</button>
+  </div>
+</dialog>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+<script src="/app.js"></script>
+</body>
+</html>
