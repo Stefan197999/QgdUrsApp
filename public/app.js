@@ -90,7 +90,6 @@ function openFromGrid(tab, label) {
 }
 
 /* ── Tab dropdown menu ── */
-const tabLabels = { census: "CENSUS", audit: "AUDIT", obiective: "OBIECTIVE", incasari: "ÎNCASĂRI", vizite: "VIZITE", reports: "RAPOARTE", comunicare: "COMUNICARE", taskuri: "TASKURI", gps: "GPS TRACKING", competitie: "COMPETIȚIE", frigider: "FRIGIDER", promotii: "PROMOȚII", calendar: "CALENDAR", expirari: "EXPIRĂRI", solduri: "SCADENȚAR", escaladari: "ESCALADĂRI SPV", alertaClient: "ALERTĂ CLIENT", riscFinanciar: "RISC FINANCIAR", cuiVerify: "VERIFICARE CUI", perfTargete: "PERFORMANȚĂ TARGETE", ranking: "RANKING AGENȚI", discounturi: "CONTROL DISCOUNTURI", contracte: "CONTRACTE B2B", contracteB2C: "CONTRACTE B2C", smartTargets: "OBIECTIVE LUNARE", promoBudgets: "BUGETE PROMO", dashboardAll: "DASHBOARD VÂNZĂRI", maspexVanzari: "VÂNZĂRI MASPEX", maspexObiective: "OBIECTIVE DN", maspexAudit: "AUDIT SKU", maspexCatalog: "CATALOG PRODUSE", uploadRapoarte: "ÎNCĂRCARE RAPOARTE", bugetGt: "BUGET GT" };
 
 function toggleTabMenu() {
   const menu = document.getElementById("tabDropdownMenu");
@@ -148,23 +147,16 @@ function switchTab(tab) {
   else if (tab === "contracteB2C") loadContractsB2C();
   else if (tab === "smartTargets") loadSmartTargets();
   else if (tab === "promoBudgets") loadPromoBudgets();
-  else if (tab === "maspexVanzari") loadMaspexVanzari();
-  else if (tab === "maspexObiective") loadMaspexObiective();
-  else if (tab === "maspexAudit") loadMaspexAudit();
-  else if (tab === "maspexCatalog") loadMaspexCatalog();
   else if (tab === "dashboardAll") loadDashboardAll();
   else if (tab === "bugetGt") loadGtCentralizator();
 
-  /* Hide map for MASPEX tabs — full width for catalog/reports */
   const mapWrap = document.querySelector(".map-wrap");
   const sidebar = document.querySelector(".sidebar");
   if (mapWrap) {
-    const isFullWidth = tab.startsWith("maspex") || tab === "uploadRapoarte" || tab === "bugetGt" || tab === "obiective" || tab === "dashboardAll";
     mapWrap.style.display = isFullWidth ? "none" : "";
     if (sidebar) sidebar.style.maxWidth = isFullWidth ? "100%" : "";
     if (sidebar) sidebar.style.flex = isFullWidth ? "1" : "";
   }
-  if (!tab.startsWith("maspex") && tab !== "uploadRapoarte" && tab !== "obiective" && tab !== "dashboardAll") setTimeout(() => map.invalidateSize(), 100);
 }
 
 /* ── Auth check ── */
@@ -178,8 +170,6 @@ async function checkAuth() {
     currentRole = d.role || "agent";
     currentSalesRep = d.sales_rep || "";
     if (d.csrf_token) _csrfToken = d.csrf_token;
-    window._maspexOnly = d.maspex_only || 0;
-    const roleLabel = currentRole === "admin" ? "ADMIN" : currentRole === "spv" ? "SPV" : currentRole === "upload" ? "UPLOAD" : (window._maspexOnly ? "AGENT MASPEX" : "AGENT");
     document.getElementById("userLabel").textContent = `${currentDisplayName} (${roleLabel})`;
 
     /* ── UPLOAD ROLE: only show "Încărcare Rapoarte" tab ── */
@@ -201,7 +191,6 @@ async function checkAuth() {
       if (propBtn) propBtn.style.display = "none";
       // Set default months
       const now = new Date().toISOString().slice(0,7);
-      ["uploadRapTargetMonth","uploadRapDiscountMonth","uploadRapPromoBudgetMonth","uploadRapMaspexObiectiveMonth"].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.value = now;
       });
@@ -254,9 +243,7 @@ async function checkAuth() {
       // Start GPS tracking for agents
       startGpsTracking();
     }
-    // MASPEX upload forms — visible only for SPV/admin (agents can only view data)
     if (currentRole === "admin" || currentRole === "spv") {
-      ["maspexVanzariUploadForm","maspexObiectiveUploadForm","maspexAuditUploadForm","maspexAuditSalesUploadForm","maspexCatalogUploadForm"].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.style.display = "";
       });
@@ -270,28 +257,6 @@ async function checkAuth() {
       if (alertAgent) alertAgent.style.display = "";
     }
 
-    /* ── MASPEX-only agents: hide all non-MASPEX tabs ── */
-    if (window._maspexOnly) {
-      const maspexTabIds = ["tabMaspexVanzari", "tabMaspexObiective", "tabMaspexAudit", "tabMaspexCatalog"];
-      document.querySelectorAll(".tab-menu-item").forEach(btn => {
-        if (!maspexTabIds.includes(btn.id)) btn.style.display = "none";
-      });
-      /* Hide non-MASPEX dividers too */
-      const tabMenu = document.querySelector(".tab-menu");
-      if (tabMenu) {
-        tabMenu.querySelectorAll("div[style*='border-top']").forEach((div, idx) => {
-          /* Keep the MASPEX divider (the last one with 'MASPEX' text), hide others */
-          if (!div.textContent.includes("MASPEX")) div.style.display = "none";
-        });
-      }
-      /* Also hide route/proposals buttons */
-      const routeBtn = document.getElementById("routeToggleBtn");
-      if (routeBtn) routeBtn.style.display = "none";
-      const propBtn = document.getElementById("proposalsBtn");
-      if (propBtn) propBtn.style.display = "none";
-      /* Auto-select first MASPEX tab */
-      selectTab("maspexVanzari", "VÂNZĂRI MASPEX");
-    }
 
     /* ── Show nearby clients section for all roles (except upload) ── */
     const nearbySection = document.getElementById("nearbySection");
@@ -2757,13 +2722,6 @@ async function importRuteExcel(input) {
         const tb2c = document.getElementById('tabContracteB2C');
         if (tb2c) tb2c.style.display = '';
       }
-      // MASPEX-only: hide non-maspex grid items
-      if (window._maspexOnly) {
-        document.querySelectorAll('.grid-icon-card').forEach(card => {
-          const onclick = card.getAttribute('onclick') || '';
-          if (!onclick.includes('maspex') && !onclick.includes('bugetGt')) card.style.display = 'none';
-        });
-      }
 
       // Show post-login dashboard
       showPostLoginDashboard();
@@ -3793,7 +3751,7 @@ function _depColor(days) {
   return '#e74c3c';
 }
 function _divColor(div) {
-  const m = { BB: '#3498db', JTI: '#9b59b6', URSUS: '#e67e22', MASPEX: '#2ecc71', SPV: '#95a5a6', NECUNOSCUT: '#7f8c8d' };
+  const m = { BB: '#3498db', JTI: '#9b59b6', URSUS: '#e67e22', SPV: '#95a5a6', NECUNOSCUT: '#7f8c8d' };
   return m[div] || '#7f8c8d';
 }
 
@@ -4970,7 +4928,6 @@ const helpTexts = {
   promotii: { title: "Promoții", body: `<div class="help-section"><h4>Descriere</h4><p>Gestionare promoții active. SPV/Admin creează promoția cu perioada și detaliile. Agenții confirmă implementarea la client.</p></div>` },
   calendar: { title: "Calendar / Planificare", body: `<div class="help-section"><h4>Descriere</h4><p>Calendar vizual cu grid lunar. Selectează o zi din calendar, apoi bifează clienții pe care vrei să-i vizitezi. Generează rută Google Maps pentru clienții selectați.</p></div><div class="help-section"><h4>Funcții noi</h4><p>Filtre județ → oraș cascadă. Checkbox "Arată clienți nealocați" pentru a vedea și clienții NEALOCAT.</p></div>` },
   expirari: { title: "Expirări / Freshness", body: `<div class="help-section"><h4>Descriere</h4><p>Raportare produse cu termen de valabilitate aproape expirat sau expirate. Sistemul generează alerte automate.</p></div>` },
-  solduri: { title: "Scadențar — Import Mentor", body: `<div class="help-section"><h4>Descriere</h4><p>Scadențar combinat importat din WinMentor (Quatro) cu toate diviziile: BB, JTI, URSUS, MASPEX. Divizia se detectează automat din agentul asociat fiecărei facturi.</p></div><div class="help-section"><h4>Funcții</h4><p>Filtrare pe: divizie, agent, partener, interval depășire. Carduri sumar pe divizie cu total rest și nr. agenți. Alerte parteneri cu solduri în mai multe divizii. Tabel detaliat cu facturi, zile depășire, blocat DA/NU.</p></div><div class="help-section"><h4>Upload (Admin/SPV)</h4><p>Apasă „📤 Upload Scadențar" și selectează fișierul Excel „Scadențar Quatro" exportat din WinMentor. La fiecare import, datele anterioare sunt înlocuite.</p></div>` },
   escaladari: { title: "Escaladări SPV", body: `<div class="help-section"><h4>Descriere</h4><p>Agentul solicită SPV să vină pe teren. Se creează alertă cu timer. SPV face check-in cu foto+GPS pentru confirmare.</p></div>` },
   alertaClient: { title: "Alertă Client", body: `<div class="help-section"><h4>Descriere</h4><p>Agent generează alertă risc operațional/financiar pentru un client. SPV confirmă luarea la cunoștință.</p></div>` },
   riscFinanciar: { title: "Risc Financiar", body: `<div class="help-section"><h4>Descriere</h4><p>Upload raport Coface cu clienți risc mare. Lista e vizibilă tuturor utilizatorilor.</p></div>` },
@@ -4981,10 +4938,6 @@ const helpTexts = {
   contracte: { title: "Contracte Clienți", body: `<div class="help-section"><h4>Descriere</h4><p>Generare contract + acord GDPR pe baza datelor din Verificare CUI. Se completează date suplimentare și se descarcă DOCX.</p></div>` },
   smartTargets: { title: "Obiective Lunare", body: `<div class="help-section"><h4>Descriere</h4><p>Obiective SMART lunare cu reguli automate. Se definesc per produs/agent cu threshold-uri configurabile.</p></div>` },
   promoBudgets: { title: "Bugete Promo", body: `<div class="help-section"><h4>Descriere</h4><p>Alocare și monitorizare buget per promoție per agent. Progress bar vizual cu limită de depășire.</p></div>` },
-  maspexVanzari: { title: "Vânzări MASPEX", body: `<div class="help-section"><h4>Descriere</h4><p>Evidența vânzărilor zilnice MASPEX per agent. Se încarcă fișierul Excel cu coloanele: DATADOC, AGENT, DEN_CLIENT, PRODUS, GAMA, CANTITATE, VALOARE.</p></div><div class="help-section"><h4>Funcții</h4><p>Dashboard per agent cu: număr clienți unici DRY/WET/RIO, valoare totală și număr tranzacții. Selectează luna dorită din dropdown pentru a vizualiza datele. SPV/Admin au acces la upload și văd toți agenții; agenții văd doar datele proprii.</p></div><div class="help-section"><h4>Categorii GAMA</h4><p>DRY = DRYINSTANT + DRYPANGROUP, WET = TYMBARKWET, RIO = BUCOVINA.</p></div>` },
-  maspexObiective: { title: "Obiective DN MASPEX", body: `<div class="help-section"><h4>Descriere</h4><p>Upload și monitorizare obiective lunare DN (Distribuție Numerică) pentru cei 14 agenți MASPEX. Targetul reprezintă numărul de clienți unici per categorie.</p></div><div class="help-section"><h4>Funcții</h4><p>Dashboard cu progress bars colorate per categorie (DRY, WET, RIO). Realizat = număr clienți unici cu livrări din vânzări. Agenții fără obiective apar ca „AGENT NEALOCAT". Selectează luna pentru a compara realizările cu targeturile.</p></div>` },
-  maspexAudit: { title: "Audit SKU MASPEX", body: `<div class="help-section"><h4>Descriere</h4><p>Audit prezență SKU-uri MASPEX în magazine. Se încarcă un Excel cu 2 sheet-uri: „lista Mag Dry" (52 SKU-uri) și „lista Mag Wet" (69 SKU-uri) pentru cele 75 magazine din Iași.</p></div><div class="help-section"><h4>Funcții</h4><p>Dashboard conformitate per magazin: procent SKU-uri prezente cu praguri 80% și 90%. Lista SKU-uri lipsă per magazin. Filtrare per angajat și magazin.</p></div>` },
-  maspexCatalog: { title: "Catalog Produse MASPEX", body: `<div class="help-section"><h4>Descriere</h4><p>Catalogul complet de produse MASPEX (1713 produse) cu denumire, GRUPA și DIVIZIE. Upload one-time de către admin.</p></div><div class="help-section"><h4>Funcții</h4><p>Vizualizare cu filtre pe DIVIZIE și GRUPĂ. Căutare rapidă după denumire produs. Tabel paginat cu toate produsele disponibile.</p></div>` },
   bugetGt: { title: "Buget GT Ursus", body: `<div class="help-section"><h4>Descriere</h4><p>Centralizator realizare GT (Gross Turnover) Ursus per agent. GT = CANTHL × GT/HL (preț pe hectolitru per SKU). Grupe obiectiv: Core Segment și ABI.</p></div><div class="help-section"><h4>Configurare (admin)</h4><p>1. Upload Mapare SKU (Quatro → BB) — ~4800 rânduri<br>2. Upload Prețuri GT/HL — ~60 SKU-uri cu preț și grupă<br>3. Upload Targeturi GT lunare per agent</p></div><div class="help-section"><h4>Funcționare</h4><p>La importul VANZARE BB din tab-ul Obiective, GT-ul se calculează automat. Centralizatorul arată Target vs Realizat per agent cu procente colorate.</p></div>` }
 };
 
@@ -5573,450 +5526,21 @@ async function showRankingPopup() {
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   MASPEX MODULE – Vânzări, Obiective DN, Audit SKU, Catalog
    ═══════════════════════════════════════════════════════════════ */
 
-/* ── Helper: load months dropdown for MASPEX tabs ── */
-let _maspexMonthsLoaded = {};
-async function loadMaspexMonths(selectId, forceReload) {
-  /* Only rebuild dropdown if not already loaded (prevents resetting user selection) */
-  if (_maspexMonthsLoaded[selectId] && !forceReload) return;
-  try {
-    const r = await fetch("/api/maspex/months");
-    const data = await r.json();
-    const sel = document.getElementById(selectId);
-    if (!sel) return;
-    const prev = sel.value;
-    const currentMonth = new Date().toISOString().slice(0, 7);
-    let months = (data.months && data.months.length > 0) ? data.months : [currentMonth];
-    /* Ensure current month is always an option */
-    if (!months.includes(currentMonth)) months.push(currentMonth);
-    months.sort().reverse();
-    sel.innerHTML = "";
-    months.forEach(m => {
-      const opt = document.createElement("option");
-      opt.value = m;
-      opt.textContent = m;
-      sel.appendChild(opt);
-    });
-    if (prev && months.includes(prev)) sel.value = prev;
-    else sel.value = currentMonth;
-    _maspexMonthsLoaded[selectId] = true;
-  } catch (e) {
-    console.error("loadMaspexMonths error:", e);
-  }
-}
 
-/* ══════════════ A) VÂNZĂRI MASPEX ══════════════ */
 
-async function loadMaspexVanzari() {
-  await loadMaspexMonths("maspexVanzariMonth");
-  const month = document.getElementById("maspexVanzariMonth").value;
-  const info = document.getElementById("maspexVanzariInfo");
-  const list = document.getElementById("maspexVanzariList");
-  if (!month) { info.textContent = "Selectează o lună"; list.innerHTML = ""; return; }
-  info.textContent = "Se încarcă...";
-  try {
-    const r = await fetch(`/api/maspex/sales-summary?month=${encodeURIComponent(month)}`);
-    const resp = await r.json();
-    const agents = resp.data || [];
-    if (agents.length === 0) {
-      info.textContent = "Nu există date pentru luna selectată. Încarcă un raport de vânzări.";
-      list.innerHTML = "";
-      return;
-    }
-    const exportBtn = (currentRole === "admin" || currentRole === "spv")
-      ? ` <button class="btn small" onclick="exportMaspexExcel('vanzari','${month}')" style="background:#1A5276;color:#fff;font-size:.8rem;padding:3px 10px;margin-left:8px">📥 Export Excel</button>`
-      : "";
-    info.innerHTML = `${parseInt(agents.length)||0} agenți • Luna: ${esc(month)}${exportBtn}`;
-    let html = "";
-    const fmtVal = v => Number(v || 0).toLocaleString("ro-RO", {minimumFractionDigits: 2, maximumFractionDigits: 2});
-    agents.forEach(a => {
-      html += `
-      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:.7rem;margin-bottom:.5rem">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.4rem">
-          <strong style="font-size:1rem">${esc(a.agent)}</strong>
-          <span style="font-size:.92rem;color:var(--accent)">${fmtVal(a.total_valoare)} RON</span>
-        </div>
-        <div style="display:flex;gap:1rem;font-size:.88rem;color:var(--muted)">
-          <span>📦 ${a.nr_livrari || 0} livrări</span>
-          <span>👥 ${a.total_clienti || 0} clienți</span>
-        </div>
-        <div style="display:flex;gap:.6rem;margin-top:.4rem;flex-wrap:wrap">
-          <div style="flex:1;min-width:90px;text-align:center;background:var(--bg);padding:.4rem;border-radius:6px">
-            <div style="font-size:.8rem;color:var(--muted)">DRY</div>
-            <div style="font-size:1.1rem;font-weight:700;color:#e67e22">${a.clients_dry || 0} <span style="font-size:.72rem;font-weight:400">cl.</span></div>
-            <div style="font-size:.82rem;color:#e67e22;font-weight:600">${fmtVal(a.val_dry)}</div>
-            <div style="font-size:.68rem;color:var(--muted)">RON</div>
-          </div>
-          <div style="flex:1;min-width:90px;text-align:center;background:var(--bg);padding:.4rem;border-radius:6px">
-            <div style="font-size:.8rem;color:var(--muted)">WET</div>
-            <div style="font-size:1.1rem;font-weight:700;color:#3498db">${a.clients_wet || 0} <span style="font-size:.72rem;font-weight:400">cl.</span></div>
-            <div style="font-size:.82rem;color:#3498db;font-weight:600">${fmtVal(a.val_wet)}</div>
-            <div style="font-size:.68rem;color:var(--muted)">RON</div>
-          </div>
-          <div style="flex:1;min-width:90px;text-align:center;background:var(--bg);padding:.4rem;border-radius:6px">
-            <div style="font-size:.8rem;color:var(--muted)">RIO</div>
-            <div style="font-size:1.1rem;font-weight:700;color:#2ecc71">${a.clients_rio || 0} <span style="font-size:.72rem;font-weight:400">cl.</span></div>
-            <div style="font-size:.82rem;color:#2ecc71;font-weight:600">${fmtVal(a.val_rio)}</div>
-            <div style="font-size:.68rem;color:var(--muted)">RON</div>
-          </div>
-        </div>
-      </div>`;
-    });
-    list.innerHTML = html;
-  } catch (e) {
-    info.textContent = "Eroare la încărcare.";
-    list.innerHTML = "";
-    console.error("loadMaspexVanzari error:", e);
-  }
-}
 
-/* Export MASPEX data to Excel (SPV+admin only) */
-function exportMaspexExcel(type, month, sheet) {
-  let url = `/api/maspex/export-${type}?month=${encodeURIComponent(month)}`;
-  if (sheet) url += `&sheet=${encodeURIComponent(sheet)}`;
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = "";
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-}
 
-async function uploadMaspexVanzari() {
-  const fileInput = document.getElementById("maspexVanzariFile");
-  const status = document.getElementById("maspexVanzariUploadStatus");
-  if (!fileInput.files.length) { status.textContent = "Selectează un fișier!"; return; }
-  status.textContent = "Se importă...";
-  const fd = new FormData();
-  fd.append("file", fileInput.files[0]);
-  try {
-    const r = await fetch("/api/maspex/upload-sales", { method: "POST", body: fd });
-    const data = await r.json();
-    if (r.ok) {
-      status.innerHTML = `<span style="color:var(--success)">✅ ${esc(data.message)}</span>`;
-      fileInput.value = "";
-      _maspexMonthsLoaded["maspexVanzariMonth"] = false;
-      loadMaspexVanzari();
-    } else {
-      status.innerHTML = `<span style="color:var(--danger)">❌ ${esc(data.error || "Eroare")}</span>`;
-    }
-  } catch (e) {
-    status.innerHTML = `<span style="color:var(--danger)">❌ Eroare conexiune</span>`;
-  }
-}
 
 /* ══════════════ B) OBIECTIVE DN ══════════════ */
 
-async function loadMaspexObiective() {
-  await loadMaspexMonths("maspexObiectiveMonth");
-  const month = document.getElementById("maspexObiectiveMonth").value;
-  const info = document.getElementById("maspexObiectiveInfo");
-  const totals = document.getElementById("maspexObiectiveTotals");
-  const list = document.getElementById("maspexObiectiveList");
-  if (!month) { info.textContent = "Selectează o lună"; list.innerHTML = ""; totals.innerHTML = ""; return; }
-  info.textContent = "Se încarcă...";
-  try {
-    const r = await fetch(`/api/maspex/obiective?month=${encodeURIComponent(month)}`);
-    const resp = await r.json();
-    const agents = resp.data || [];
-    const availGrupe = resp.availableGrupe || [];
-    if (agents.length === 0) {
-      info.textContent = "Nu există obiective pentru luna selectată. Încarcă obiective DN.";
-      list.innerHTML = ""; totals.innerHTML = "";
-      return;
-    }
 
-    // Totals row — game mari
-    if (resp.totals) {
-      const t = resp.totals;
-      totals.innerHTML = `
-      <div style="background:linear-gradient(135deg,#1a1a2e,#16213e);border:1px solid var(--border);border-radius:10px;padding:.7rem;margin-bottom:.5rem">
-        <div style="font-size:.85rem;color:var(--muted);margin-bottom:.3rem">TOTAL ECHIPĂ — Game mari (clienți unici)</div>
-        <div style="display:flex;gap:.5rem;flex-wrap:wrap">
-          ${renderObiectivBar("DRY", t.realizat_dry, t.ob_dry, "#e67e22")}
-          ${renderObiectivBar("WET", t.realizat_wet, t.ob_wet, "#3498db")}
-          ${renderObiectivBar("RIO", t.realizat_rio, t.ob_rio, "#2ecc71")}
-        </div>
-      </div>`;
-    }
 
-    const exportBtnOb = (currentRole === "admin" || currentRole === "spv")
-      ? ` <button class="btn small" onclick="exportMaspexExcel('obiective','${month}')" style="background:#E67E22;color:#fff;font-size:.8rem;padding:3px 10px;margin-left:8px">📥 Export Excel</button>`
-      : "";
-    info.innerHTML = `${parseInt(agents.length)||0} agenți • Luna: ${esc(month)}${exportBtnOb}`;
-    const grupeColors = ["#8e44ad", "#2980b9", "#16a085", "#d35400", "#c0392b", "#27ae60", "#2c3e50", "#f39c12"];
-    let html = "";
-    agents.forEach(a => {
-      const isNealocat = a.agent.includes("NEALOCAT");
-      const bg = isNealocat ? "rgba(231,76,60,0.1)" : "var(--bg2)";
-      const grupe = a.grupe || [];
-      const hasGrupe = grupe.length > 0;
-
-      /* Calculate overall score */
-      const obTotal = (a.ob_dry || 0) + (a.ob_wet || 0) + (a.ob_rio || 0);
-      const realTotal = (a.realizat_dry || 0) + (a.realizat_wet || 0) + (a.realizat_rio || 0);
-      const pctTotal = obTotal > 0 ? Math.round((realTotal / obTotal) * 100) : 0;
-
-      /* Grupe section */
-      let grupeHtml = "";
-      if (hasGrupe) {
-        grupeHtml = `
-        <div style="margin-top:.5rem;padding-top:.4rem;border-top:1px solid var(--border)">
-          <div style="font-size:.82rem;color:var(--muted);margin-bottom:.3rem;font-weight:600">OBIECTIVE PE GRUPE ARTICOLE (clienți unici)</div>
-          <div style="display:flex;gap:.4rem;flex-wrap:wrap">
-            ${grupe.map((g, i) => renderObiectivBar(g.grupa, g.realizat, g.obiectiv, grupeColors[i % grupeColors.length])).join("")}
-          </div>
-        </div>`;
-      }
-
-      html += `
-      <div style="background:${bg};border:1px solid var(--border);border-radius:10px;padding:.7rem;margin-bottom:.5rem">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.4rem">
-          <span style="font-size:.95rem;font-weight:700">${esc(a.agent)} ${isNealocat ? "⚠️" : ""}</span>
-          ${a.total_valoare ? `<span style="font-size:.82rem;color:var(--muted)">💰 ${Number(a.total_valoare).toFixed(0)} lei</span>` : ""}
-        </div>
-        <div style="font-size:.82rem;color:var(--muted);margin-bottom:.3rem;font-weight:600">GAME MARI (clienți unici)</div>
-        <div style="display:flex;gap:.5rem;flex-wrap:wrap">
-          ${renderObiectivBar("DRY", a.realizat_dry, a.ob_dry, "#e67e22")}
-          ${renderObiectivBar("WET", a.realizat_wet, a.ob_wet, "#3498db")}
-          ${renderObiectivBar("RIO", a.realizat_rio, a.ob_rio, "#2ecc71")}
-        </div>
-        ${grupeHtml}
-      </div>`;
-    });
-    list.innerHTML = html;
-  } catch (e) {
-    info.textContent = "Eroare la încărcare.";
-    list.innerHTML = ""; totals.innerHTML = "";
-    console.error("loadMaspexObiective error:", e);
-  }
-}
-
-function renderObiectivBar(label, real, target, color) {
-  real = Number(real) || 0;
-  target = Number(target) || 0;
-  const pct = target > 0 ? Math.min(Math.round((real / target) * 100), 150) : 0;
-  const barWidth = Math.min(pct, 100);
-  const pctColor = pct >= 100 ? "#2ecc71" : pct >= 70 ? "#f39c12" : "#e74c3c";
-  return `
-  <div style="flex:1;min-width:90px">
-    <div style="display:flex;justify-content:space-between;font-size:.82rem;color:var(--muted);margin-bottom:2px">
-      <span>${label}</span>
-      <span style="color:${pctColor};font-weight:700">${pct}%</span>
-    </div>
-    <div style="background:var(--bg);border-radius:4px;height:20px;overflow:hidden;position:relative">
-      <div style="background:${color};height:100%;width:${barWidth}%;border-radius:4px;transition:width .3s"></div>
-      <span style="position:absolute;top:0;left:4px;font-size:.78rem;line-height:20px;color:#fff;text-shadow:0 0 3px rgba(0,0,0,.7)">${real}/${target}</span>
-    </div>
-  </div>`;
-}
-
-async function uploadMaspexObiective() {
-  const fileInput = document.getElementById("maspexObiectiveFile");
-  const status = document.getElementById("maspexObiectiveUploadStatus");
-  if (!fileInput.files.length) { status.textContent = "Selectează un fișier!"; return; }
-  /* Luna curentă by default */
-  const now = new Date();
-  const currentMonth = now.getFullYear() + "-" + String(now.getMonth()+1).padStart(2,"0");
-  status.textContent = "Se importă...";
-  const fd = new FormData();
-  fd.append("file", fileInput.files[0]);
-  fd.append("month", currentMonth);
-  try {
-    const r = await fetch("/api/maspex/upload-obiective", { method: "POST", body: fd });
-    const data = await r.json();
-    if (r.ok) {
-      status.innerHTML = `<span style="color:var(--success)">✅ ${esc(data.message)}</span>`;
-      fileInput.value = "";
-      loadMaspexObiective();
-    } else {
-      status.innerHTML = `<span style="color:var(--danger)">❌ ${esc(data.error || "Eroare")}</span>`;
-    }
-  } catch (e) {
-    status.innerHTML = `<span style="color:var(--danger)">❌ Eroare conexiune</span>`;
-  }
-}
 
 /* ══════════════ C) AUDIT SKU ══════════════ */
 
-async function loadMaspexAudit() {
-  await loadMaspexMonths("maspexAuditMonth");
-  const month = document.getElementById("maspexAuditMonth").value;
-  const sheetType = document.getElementById("maspexAuditSheet").value;
-  const info = document.getElementById("maspexAuditInfo");
-  const list = document.getElementById("maspexAuditList");
-  if (!month) { info.textContent = "Selectează o lună"; list.innerHTML = ""; return; }
-  info.textContent = "Se încarcă...";
-  try {
-    const r = await fetch(`/api/maspex/audit?month=${encodeURIComponent(month)}&sheet=${encodeURIComponent(sheetType)}`);
-    const resp = await r.json();
-    const mags = resp.data || [];
-    if (mags.length === 0) {
-      info.textContent = "Nu există date audit pentru luna selectată. Încarcă un fișier audit SKU.";
-      list.innerHTML = "";
-      return;
-    }
 
-    /* Summary stats with sales correlation */
-    const total = mags.length;
-    const meet80 = mags.filter(m => m.meets_80).length;
-    const meet90 = mags.filter(m => m.meets_90).length;
-    const needInvoice = mags.filter(m => m.sku_facturat && m.sku_facturat.length > 0).length;
-    const urgentInvoice = mags.filter(m => m.sku_nefacturate && m.sku_nefacturate.length > 0).length;
-    const withSales = mags.filter(m => m.sales_total).length;
-    const noSales = total - withSales;
-    const totalSalesVal = mags.reduce((s, m) => s + (m.sales_month_total?.total_valoare || 0), 0);
-
-    const exportBtnAudit = (currentRole === "admin" || currentRole === "spv")
-      ? ` <button class="btn small" onclick="exportMaspexExcel('audit','${month}','${sheetType}')" style="background:#16A085;color:#fff;font-size:.8rem;padding:3px 10px;margin-left:8px">📥 Export Excel</button>`
-      : "";
-    info.innerHTML = `<strong>${total}</strong> magazine • <span style="color:#2ecc71">${meet80} ≥80%</span> • <span style="color:#3498db">${meet90} ≥90%</span> • <span style="color:#e74c3c">🔴 ${urgentInvoice} de facturat urgent</span> • <span style="color:#27ae60">💰 ${withSales} cu vânzări (${Number(totalSalesVal).toFixed(0)} lei)</span>${noSales > 0 ? ` • <span style="color:#e67e22">⚠️ ${noSales} fără vânzări</span>` : ""} • Gamă: <strong>${sheetType}</strong>${exportBtnAudit}`;
-
-    let html = "";
-    /* Sort: urgent invoicing first, then no sales, then by compliance ascending */
-    mags.sort((a, b) => {
-      const aNefact = (a.sku_nefacturate?.length || 0);
-      const bNefact = (b.sku_nefacturate?.length || 0);
-      if (aNefact > 0 && bNefact === 0) return -1;
-      if (aNefact === 0 && bNefact > 0) return 1;
-      const aNoSales = a.sales_total ? 0 : 1;
-      const bNoSales = b.sales_total ? 0 : 1;
-      if (aNoSales !== bNoSales) return bNoSales - aNoSales;
-      return (a.pct_compliance || 0) - (b.pct_compliance || 0);
-    });
-
-    mags.forEach(m => {
-      const nrStd = m.total_sku || m.nr_sku_std || 0;
-      const nrPrezLuna = m.present_sku || m.nr_sku_prezente_luna || 0;
-      const hasSales = !!m.sales_total;
-      /* Use server-calculated pct_compliance (based on actual DB SKUs filtered by format) */
-      const pctRaft = m.pct_raft != null ? m.pct_raft : (nrStd > 0 ? Math.round((nrPrezLuna / nrStd) * 1000) / 10 : 0);
-      const pct = m.pct_compliance != null ? m.pct_compliance : (hasSales ? pctRaft : 0);
-      const pctColor = pct >= 90 ? "#2ecc71" : pct >= 80 ? "#f39c12" : "#e74c3c";
-      const barWidth = Math.min(pct, 100);
-
-      /* Invoice section with sales correlation */
-      const skuFact = m.sku_facturat || [];
-      const skuNefact = m.sku_nefacturate || [];
-      const skuDeja = m.sku_deja_facturate || [];
-      const salesTotal = m.sales_total;          /* 6-month aggregate (for hasSales) */
-      const salesProducts = m.sales_products || [];
-      const monthTotal = m.sales_month_total;     /* Current month only */
-      const monthProducts = m.sales_month_products || [];
-
-      /* Sales summary badge — show current month value */
-      const displayVal = monthTotal ? monthTotal.total_valoare : (salesTotal ? salesTotal.total_valoare : 0);
-      const salesBadge = salesTotal
-        ? `<span style="font-size:.78rem;background:#2ecc71;color:#fff;padding:2px 7px;border-radius:3px;margin-left:4px" title="Luna curentă: ${Number(monthTotal?.total_valoare||0).toFixed(2)} lei / Total 6 luni: ${Number(salesTotal.total_valoare||0).toFixed(2)} lei">💰 ${Number(monthTotal?.total_valoare||0).toFixed(0)} lei</span>`
-        : `<span style="font-size:.78rem;background:#e67e22;color:#fff;padding:2px 7px;border-radius:3px;margin-left:4px">⚠️ Fără vânzări</span>`;
-
-      let invoiceHtml = "";
-      if (skuFact.length > 0) {
-        /* SKUs still needing invoicing (NOT in sales) */
-        const nefactHtml = skuNefact.length > 0
-          ? `<div style="margin-bottom:.3rem">
-              <div style="font-size:.82rem;font-weight:700;color:#e74c3c;margin-bottom:.15rem">🔴 DE FACTURAT URGENT — nu apar în vânzări (${skuNefact.length}):</div>
-              <div style="font-size:.82rem;line-height:1.5">${skuNefact.map(s => `<span style="display:inline-block;background:rgba(231,76,60,.15);padding:2px 7px;border-radius:3px;margin:1px 2px;font-size:.8rem;font-weight:600;border:1px solid rgba(231,76,60,.3)">${s}</span>`).join("")}</div>
-            </div>`
-          : "";
-        /* SKUs already in sales (handled) */
-        const dejaHtml = skuDeja.length > 0
-          ? `<div style="margin-bottom:.3rem">
-              <div style="font-size:.82rem;font-weight:600;color:#27ae60;margin-bottom:.15rem">✅ Deja facturate — găsite în vânzări (${skuDeja.length}):</div>
-              <div style="font-size:.82rem;line-height:1.5">${skuDeja.map(s => `<span style="display:inline-block;background:rgba(46,204,113,.1);padding:2px 7px;border-radius:3px;margin:1px 2px;font-size:.8rem;color:#27ae60;text-decoration:line-through">${s}</span>`).join("")}</div>
-            </div>`
-          : "";
-        invoiceHtml = `<div style="margin-top:.4rem;padding:.5rem;background:rgba(231,76,60,.05);border:1px solid rgba(231,76,60,.15);border-radius:6px">
-            <div style="font-size:.85rem;font-weight:700;color:#e74c3c;margin-bottom:.3rem">🧾 STATUS FACTURARE (${skuFact.length} SKU-uri standard lipsă):</div>
-            ${nefactHtml}
-            ${dejaHtml}
-            ${skuNefact.length === 0 ? `<div style="font-size:.82rem;color:#27ae60;font-weight:600">✅ Toate SKU-urile de facturat au fost găsite în raportul de vânzări!</div>` : ""}
-          </div>`;
-      } else {
-        invoiceHtml = `<div style="font-size:.82rem;color:#2ecc71;margin-top:.3rem">✅ Standard complet — nimic de facturat</div>`;
-      }
-
-      /* Sales detail section — show CURRENT MONTH products from maspex_sales */
-      const displayProducts = monthProducts.length > 0 ? monthProducts : [];
-      const displayTotal = monthTotal || null;
-      const salesHtml = displayProducts.length > 0
-        ? `<div style="margin-top:.4rem;padding:.4rem;background:rgba(52,152,219,.05);border:1px solid rgba(52,152,219,.15);border-radius:6px">
-            <div style="font-size:.85rem;font-weight:700;color:#2980b9;margin-bottom:.2rem">📊 VÂNZĂRI LUNA CURENTĂ (${displayProducts.length} produse, ${Number(displayTotal?.total_valoare||0).toFixed(2)} lei):</div>
-            <div style="max-height:140px;overflow-y:auto;font-size:.82rem">
-              <table style="width:100%;border-collapse:collapse">
-                <tr style="background:rgba(52,152,219,.08);font-weight:600"><td style="padding:3px 5px">Produs</td><td style="padding:3px 5px">Gamă</td><td style="padding:3px 5px;text-align:right">Cant.</td><td style="padding:3px 5px;text-align:right">Valoare</td></tr>
-                ${displayProducts.map(s => `<tr style="border-bottom:1px solid rgba(0,0,0,.05)">
-                  <td style="padding:3px 5px">${s.produs || "-"}</td>
-                  <td style="padding:3px 5px"><span style="background:${s.gama?.includes("DRY")?"#e67e22":s.gama==="TYMBARKWET"?"#3498db":s.gama==="BUCOVINA"?"#1abc9c":"#95a5a6"};color:#fff;padding:1px 5px;border-radius:2px;font-size:.75rem">${s.gama || "-"}</span></td>
-                  <td style="padding:3px 5px;text-align:right">${s.cantitate}</td>
-                  <td style="padding:3px 5px;text-align:right">${Number(s.valoare||0).toFixed(2)}</td>
-                </tr>`).join("")}
-              </table>
-            </div>
-            ${salesTotal ? `<div style="font-size:.78rem;color:var(--muted);margin-top:.3rem">Total 6 luni: ${Number(salesTotal.total_valoare||0).toFixed(2)} lei</div>` : ""}
-          </div>`
-        : (salesTotal
-            ? `<div style="margin-top:.3rem;font-size:.82rem;color:#e67e22">⚠️ Nicio vânzare luna curentă (total 6 luni: ${Number(salesTotal.total_valoare||0).toFixed(2)} lei)</div>`
-            : `<div style="margin-top:.3rem;font-size:.82rem;color:#e67e22">⚠️ Nicio vânzare înregistrată la acest client</div>`);
-
-      /* Missing SKUs (from SKU table) */
-      const missingList = m.missing_skus && m.missing_skus.length > 0
-        ? `<div style="font-size:.82rem;color:var(--muted);margin-top:.3rem">
-            <span style="font-weight:600">Lipsă total (${m.missing_skus.length}):</span> ${m.missing_skus.join(", ")}
-           </div>`
-        : "";
-
-      /* Prag + format badge */
-      const pragBadge = m.prag ? `<span style="background:#8e44ad;color:#fff;padding:2px 6px;border-radius:3px;font-size:.78rem;margin-left:4px">${m.prag}</span>` : "";
-      const formatBadge = m.customer_format ? `<span style="background:var(--bg);padding:2px 6px;border-radius:3px;font-size:.78rem;border:1px solid var(--border)">${m.customer_format}</span>` : "";
-
-      /* Border color: red if has unfactured SKUs, orange if no sales, green if ok */
-      const borderColor = skuNefact.length > 0 ? "#e74c3c" : (!salesTotal ? "#e67e22" : (skuFact.length > 0 ? "#f39c12" : ""));
-      const borderStyle = borderColor ? `border-left:3px solid ${borderColor}` : "";
-
-      html += `
-      <details style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;margin-bottom:.5rem;${borderStyle}">
-        <summary style="cursor:pointer;padding:.6rem .8rem;display:flex;flex-wrap:wrap;align-items:center;gap:.3rem">
-          <strong style="font-size:.92rem;flex:1;min-width:200px">${m.client_name}</strong>
-          ${formatBadge}${pragBadge}${salesBadge}
-          <span style="font-size:.95rem;font-weight:700;color:${pctColor};min-width:45px;text-align:right" title="${!hasSales ? 'Fără vânzări = 0% realizat (raft: '+pctRaft+'%)' : ''}">${pct}%</span>
-          ${skuNefact.length > 0 ? `<span style="font-size:.78rem;background:#e74c3c;color:#fff;padding:2px 7px;border-radius:3px">🔴 ${skuNefact.length} de facturat</span>` : ""}
-          ${skuFact.length > 0 && skuNefact.length === 0 ? `<span style="font-size:.78rem;background:#27ae60;color:#fff;padding:2px 7px;border-radius:3px">✅ facturat</span>` : ""}
-        </summary>
-        <div style="padding:.4rem .8rem .7rem">
-          <div style="font-size:.82rem;color:var(--muted);margin-bottom:.4rem">
-            ${m.angajatul || ""} • ${m.adresa || ""} ${m.ass ? `• <strong>ASS:</strong> ${m.ass}` : ""}
-          </div>
-          <div style="display:flex;gap:.8rem;flex-wrap:wrap;margin-bottom:.4rem;font-size:.85rem">
-            <span>STD: <strong>${nrStd}</strong></span>
-            <span>Prezente: <strong>${nrPrezLuna}</strong></span>
-            <span>Diferența: <strong style="color:${(m.diferenta_luna||0) > 0 ? "#2ecc71" : "#e74c3c"}">${m.diferenta_luna > 0 ? "+" : ""}${m.diferenta_luna || 0}</strong></span>
-            <span>80%: <strong style="color:${m.meets_80 ? "#2ecc71" : "#e74c3c"}">${m.meets_80 ? "DA" : "NU"}</strong> (dif: ${m.dif_80 || 0})</span>
-            <span>90%: <strong style="color:${m.meets_90 ? "#2ecc71" : "#e74c3c"}">${m.meets_90 ? "DA" : "NU"}</strong> (dif: ${m.dif_90 || 0})</span>
-          </div>
-          <div style="background:var(--bg);border-radius:4px;height:14px;overflow:hidden;margin-bottom:.3rem">
-            <div style="background:${pctColor};height:100%;width:${barWidth}%;border-radius:4px;transition:width .3s"></div>
-          </div>
-          ${invoiceHtml}
-          ${salesHtml}
-          ${missingList}
-        </div>
-      </details>`;
-    });
-    list.innerHTML = html;
-  } catch (e) {
-    info.textContent = "Eroare la încărcare.";
-    list.innerHTML = "";
-    console.error("loadMaspexAudit error:", e);
-  }
-}
-
-function filterMaspexAudit() {
-  const filter = document.getElementById("maspexAuditFilter")?.value || "all";
-  const search = (document.getElementById("maspexAuditSearch")?.value || "").toLowerCase();
-  const items = document.querySelectorAll("#maspexAuditList > details");
   items.forEach(el => {
     const text = el.textContent.toLowerCase();
     const borderLeft = el.style.borderLeft || "";
@@ -6036,64 +5560,8 @@ function filterMaspexAudit() {
   });
 }
 
-async function uploadMaspexAudit() {
-  const fileInput = document.getElementById("maspexAuditFile");
-  const status = document.getElementById("maspexAuditUploadStatus");
-  if (!fileInput.files.length) { status.textContent = "Selectează un fișier!"; return; }
-  /* Luna curentă by default */
-  const now = new Date();
-  const currentMonth = now.getFullYear() + "-" + String(now.getMonth()+1).padStart(2,"0");
-  status.textContent = "Se importă...";
-  const fd = new FormData();
-  fd.append("file", fileInput.files[0]);
-  fd.append("month", currentMonth);
-  try {
-    const r = await fetch("/api/maspex/upload-audit", { method: "POST", body: fd });
-    const data = await r.json();
-    if (r.ok) {
-      status.innerHTML = `<span style="color:var(--success)">✅ ${esc(data.message)}</span>`;
-      fileInput.value = "";
-      /* Set the audit month dropdown to the uploaded month and force-reload months */
-      _maspexMonthsLoaded["maspexAuditMonth"] = false;
-      const auditMonthSel = document.getElementById("maspexAuditMonth");
-      if (auditMonthSel) auditMonthSel.value = currentMonth;
-      loadMaspexAudit();
-    } else {
-      status.innerHTML = `<span style="color:var(--danger)">❌ ${esc(data.error || "Eroare")}</span>`;
-    }
-  } catch (e) {
-    status.innerHTML = `<span style="color:var(--danger)">❌ Eroare conexiune</span>`;
-  }
-}
-
-async function uploadMaspexAuditSales() {
-  const fileInput = document.getElementById("maspexAuditSalesFile");
-  const status = document.getElementById("maspexAuditSalesUploadStatus");
-  if (!fileInput.files.length) { status.textContent = "Selectează un fișier!"; return; }
-  status.textContent = "Se importă raportul de vânzări audit (fișier mare, poate dura 1-2 min)...";
-  const fd = new FormData();
-  fd.append("file", fileInput.files[0]);
-  try {
-    const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), 180000); /* 3 min timeout */
-    const r = await fetch("/api/maspex/upload-audit-sales", { method: "POST", body: fd, signal: ctrl.signal });
-    clearTimeout(timer);
-    const data = await r.json();
-    if (r.ok) {
-      status.innerHTML = `<span style="color:var(--success)">✅ ${esc(data.message)}</span>`;
-      fileInput.value = "";
-      loadMaspexAudit();
-    } else {
-      status.innerHTML = `<span style="color:var(--danger)">❌ ${esc(data.error || "Eroare")}</span>`;
-    }
-  } catch (e) {
-    status.innerHTML = `<span style="color:var(--danger)">❌ Eroare conexiune</span>`;
-  }
-}
-
 /* ══════════════ D) CATALOG PRODUSE ══════════════ */
 
-/* ── Maspex Catalog: grupa → PDF page mapping (PRESENTER Maspex 2025) ── */
 /* ═══ MAPARE CORECTĂ — verificată vizual pagină cu pagină ═══
    P1=Tymbark intro, P24=Tedi intro, P39=Figo intro, P42=Tiger intro,
    P44=Nestea intro, P49=Just Plants intro, P52=Alcalia intro,
@@ -6102,310 +5570,14 @@ async function uploadMaspexAuditSales() {
    P103=Ekland intro, P107=Inka intro, P109=Van intro,
    P111=Brumi intro, P114=Arnos intro, P122=Nemo intro,
    P125=Rollini intro, P128=Żubrówka intro */
-const maspexGrupaPages = {
-  // TYMBARK WET (P1 intro, P2-23 produse)
-  "TYMBARK 1L": [2,3,4],
-  "TYMBARK IMMUNO": [5,6],
-  "TYMBARK MOCKTAILS": [4],
-  "TYMBARK MIX": [7],
-  "TYMBARK CLASSIC": [7],
-  "TYMBARK FIZZY": [8],
-  "TYMBARK LIMONADĂ": [8],
-  "TYMBARK COOL 2L": [11],
-  "TYMBARK COOL 500ml": [10],
-  "TYMBARK MOUSSE": [15],
-  "TYMBARK MOUSSE XXL": [15],
-  "TYMBARK FONTEA": [12],
-  "TYMBARK DISNEY": [9],
-  "TYMBARK COOL": [10,11],
-  "TYMBARK": [2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23],
-  // TEDI (P24 intro, P25-38 produse)
-  "TEDI 300ml": [25,26],
-  "TEDI GO": [27],
-  "TEDI 900ml": [28],
-  "TEDI 100%": [25],
-  "TEDI 200ml": [26],
-  "TEDI 600ml": [28],
-  "TEDI PLAY": [29,30],
-  "TEDI WATERRR": [31],
-  "TEDI MOUSSE": [32],
-  "TEDI IMMUNO MOUSSE": [32],
-  "TEDI CEREALE": [33,34,35],
-  "TEDI BISCUIȚI": [36],
-  "TEDI STRUDELINO": [37,38],
-  "TEDI": [25,26,27,28,29,30,31,32,33,34,35,36,37,38],
-  // FIGO (P39 intro, P40-41 produse)
-  "FIGO": [40,41],
-  // TIGER (P42 intro, P43 produse)
-  "TIGER": [43],
-  // NESTEA (P44 intro, P45-48 produse)
-  "NESTEA": [45,46,47,48],
-  "NESTEA JOY": [47,48],
-  // JUST PLANTS (P49 intro, P50-51 produse)
-  "JUST PLANTS": [50,51],
-  // ALCALIA (P52 intro, P53 produse)
-  "ALCALIA": [53],
-  // BUCOVINA (P54 intro, P55-62 produse)
-  "BUCOVINA PLATĂ": [55,56],
-  "BUCOVINA CARBO": [57],
-  "BUCOVINA STICLĂ": [58],
-  "BUCOVINA FRUCTATĂ": [59,60,61,62],
-  "BUCOVINA": [55,56,57,58,59,60,61,62],
-  // LA VITTA (P63 intro, P64 produse)
-  "LA VITTA": [64],
-  // VĂLENII DE MUNTE (P65 intro, P66-73 produse)
-  "VĂLENII DE MUNTE": [66,67,68,69,70,71,72,73],
-  // LA FESTA (P74 intro, P75-82 produse)
-  "LA FESTA CAPPUCCINO": [75,76,77],
-  "LA FESTA CAPPUCCINO PLIC": [75,76],
-  "LA FESTA 3IN1": [80],
-  "LA FESTA 2IN1": [80],
-  "LA FESTA CIOCOLATĂ": [79],
-  "LA FESTA": [75,76,77,78,79,80,81,82],
-  // COFFEETA (P83 intro, P84-85 produse)
-  "COFFEETA": [84,85],
-  // SALATINI (P86 intro, P87-102 produse)
-  "SALATINI CRACKERS": [87,88],
-  "SALATINI STICKS": [89,90,91,92,93,94,95,96,97],
-  "SALATINI SĂRĂȚELE": [98,99,100],
-  "SALATINI NUGGETS": [101],
-  "SALATINI MINI BITES": [102],
-  "SALATINI PRETZELS": [93],
-  "SALATINI COVRIGI": [94],
-  "SALATINI": [87,88,89,90,91,92,93,94,95,96,97,98,99,100,101,102],
-  // EKLAND (P103 intro, P104-106 produse)
-  "EKLAND": [104,105,106],
-  // INKA (P107 intro, P108 produse)
-  "INKA": [108],
-  // VAN (P109 intro, P110 produse)
-  "VAN": [110],
-  // BRUMI (P111 intro, P112-113 produse)
-  "BRUMI": [112,113],
-  // ARNOS (P114 intro, P115-121 produse)
-  "ARNOS": [115,116,117,118,119,120,121],
-  // NEMO (P122 intro, P123-124 produse)
-  "NEMO": [123,124],
-  // ROLLINI D'ORO (P125 intro, P126-127 produse)
-  "ROLLINI D'ORO": [126,127],
-  // ŻUBRÓWKA (P128 intro, P129-132 produse)
-  "ŻUBRÓWKA": [129,130,131,132]
-};
 
 /* Brand intro pages (shown as first image for every grupa of that brand) */
-const maspexBrandIntro = {
-  "Tymbark": 1, "Tedi": 24, "Figo": 39, "Tiger": 42,
-  "Nestea": 44, "Just Plants": 49, "Alcalia": 52, "Bucovina": 54,
-  "La Vitta": 63, "Vălenii de Munte": 65, "La Festa": 74,
-  "Coffeeta": 83, "Salatini": 86,
-  "Ekland": 103, "Inka": 107, "Van": 109, "Brumi": 111,
-  "Arnos": 114, "Nemo": 122, "Rollini d'Oro": 125, "Żubrówka": 128
-};
 
-function getMaspexCatalogPages(grupa, brand) {
-  // Direct match
-  if (maspexGrupaPages[grupa]) return maspexGrupaPages[grupa];
-  // Partial match — find first grupa key that starts with the same prefix
-  const prefix = grupa.split(" ")[0];
-  for (const k of Object.keys(maspexGrupaPages)) {
-    if (k.startsWith(prefix)) return maspexGrupaPages[k];
-  }
-  // Fallback to brand intro page
-  if (brand && maspexBrandIntro[brand]) return [maspexBrandIntro[brand]];
-  return [];
-}
 
-async function loadMaspexCatalog() {
-  const divizie = document.getElementById("maspexCatalogDivizie").value;
-  const grupa = (document.getElementById("maspexCatalogGrupa")?.value || "").trim();
-  const info = document.getElementById("maspexCatalogInfo");
-  const list = document.getElementById("maspexCatalogList");
-  info.textContent = "Se încarcă...";
-  try {
-    let url = "/api/maspex/produse?";
-    if (divizie) url += `divizie=${encodeURIComponent(divizie)}&`;
-    if (grupa) url += `grupa=${encodeURIComponent(grupa)}&`;
-    const r = await fetch(url);
-    const resp = await r.json();
-    const produse = resp.data || resp.produse || [];
-    if (produse.length === 0) {
-      info.textContent = "Nu există produse în catalog. Încarcă catalogul sau folosește seed.";
-      list.innerHTML = "";
-      return;
-    }
-    info.textContent = `${produse.length} produse${divizie ? ` • Divizie: ${divizie}` : ""}${grupa ? ` • Grupă: ${grupa}` : ""}`;
-    // Group by grupa
-    const groups = {};
-    produse.forEach(p => {
-      const g = p.grupa || "NECUNOSCUT";
-      if (!groups[g]) groups[g] = [];
-      groups[g].push(p);
-    });
-    let html = "";
-    Object.keys(groups).sort().forEach(g => {
-      const items = groups[g];
-      const brand = items[0]?.brand || "";
-      const pages = getMaspexCatalogPages(g, brand);
-      const pageImgs = pages.map(pg => {
-        const pgStr = String(pg).padStart(3, "0");
-        return `<img src="/maspex-catalog/page_${pgStr}.jpg" alt="Pagina ${pg}" loading="lazy" style="width:100%;border-radius:6px;border:1px solid var(--border);cursor:pointer" onclick="openMaspexImg(this.src)">`;
-      }).join("");
-      // Product table
-      const prodRows = items.map(p => {
-        const ean = p.ean ? `<td style="font-size:.82rem;color:var(--muted);white-space:nowrap">${p.ean}</td>` : "";
-        return `<tr>
-          <td style="font-size:.88rem;padding:4px 6px">${p.denumire}</td>
-          <td style="font-size:.85rem;padding:4px 5px;color:var(--muted);white-space:nowrap">${p.gramaj || ""}</td>
-          <td style="font-size:.85rem;padding:4px 5px;color:var(--muted);text-align:center">${p.buc_bax || ""}</td>
-          ${ean}
-          <td style="font-size:.85rem;padding:4px 5px;color:var(--muted)">${p.divizie || ""}</td>
-        </tr>`;
-      }).join("");
-      const hasEan = items.some(p => p.ean);
-      html += `
-      <details style="margin-bottom:.6rem;background:var(--bg2);border:1px solid var(--border);border-radius:8px">
-        <summary style="cursor:pointer;padding:.6rem .8rem;font-size:.95rem;font-weight:600;display:flex;align-items:center;gap:.4rem">
-          <span style="background:#8e44ad;color:#fff;padding:2px 7px;border-radius:4px;font-size:.82rem">${brand}</span>
-          ${g} <span style="color:var(--muted);font-weight:400;font-size:.85rem">(${items.length} produse)</span>
-        </summary>
-        <div style="padding:.5rem .8rem .8rem">
-          ${pages.length > 0 ? `
-          <div style="margin-bottom:.6rem">
-            <div style="font-size:.85rem;color:var(--muted);margin-bottom:.3rem;font-weight:600">📸 IMAGINI CATALOG (${pages.length} ${pages.length===1?"pagină":"pagini"})</div>
-            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:.5rem">
-              ${pageImgs}
-            </div>
-          </div>` : ""}
-          <div style="font-size:.85rem;color:var(--muted);margin-bottom:.2rem;font-weight:600">📋 LISTA PRODUSE</div>
-          <div style="overflow-x:auto">
-            <table style="width:100%;border-collapse:collapse;font-size:.88rem">
-              <thead>
-                <tr style="background:var(--bg);border-bottom:2px solid var(--border)">
-                  <th style="text-align:left;padding:5px 6px;font-size:.85rem">Denumire</th>
-                  <th style="text-align:left;padding:5px 5px;font-size:.85rem">Gramaj</th>
-                  <th style="text-align:center;padding:5px 5px;font-size:.85rem">Buc/Bax</th>
-                  ${hasEan ? '<th style="text-align:left;padding:5px 5px;font-size:.85rem">EAN</th>' : ""}
-                  <th style="text-align:left;padding:5px 5px;font-size:.85rem">Divizie</th>
-                </tr>
-              </thead>
-              <tbody>${prodRows}</tbody>
-            </table>
-          </div>
-        </div>
-      </details>`;
-    });
-    list.innerHTML = html;
-  } catch (e) {
-    info.textContent = "Eroare la încărcare.";
-    list.innerHTML = "";
-    console.error("loadMaspexCatalog error:", e);
-  }
-}
 
 /* Open catalog image in fullscreen overlay with zoom */
-function openMaspexImg(src) {
-  let scale = 1, posX = 0, posY = 0, isDragging = false, startX, startY;
-  const overlay = document.createElement("div");
-  overlay.style.cssText = "position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,.9);display:flex;align-items:center;justify-content:center;z-index:9999;overflow:hidden";
-  overlay.innerHTML = `
-    <img id="maspexZoomImg" src="${src}" style="max-width:95vw;max-height:95vh;border-radius:8px;box-shadow:0 4px 30px rgba(0,0,0,.5);transform-origin:center center;transition:transform .1s;user-select:none;-webkit-user-drag:none" draggable="false">
-    <div style="position:absolute;top:12px;right:16px;display:flex;gap:8px;z-index:10">
-      <button onclick="maspexZoomBtn(1.3)" style="background:rgba(255,255,255,.2);border:none;color:#fff;font-size:1.4rem;width:36px;height:36px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center">+</button>
-      <button onclick="maspexZoomBtn(0.7)" style="background:rgba(255,255,255,.2);border:none;color:#fff;font-size:1.4rem;width:36px;height:36px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center">−</button>
-      <button onclick="maspexZoomBtn(0)" style="background:rgba(255,255,255,.2);border:none;color:#fff;font-size:1.2rem;width:36px;height:36px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center">✕</button>
-    </div>
-    <div style="position:absolute;bottom:12px;left:50%;transform:translateX(-50%);color:rgba(255,255,255,.5);font-size:.78rem">Scroll/pinch pt zoom • Trage pt a muta • Apasă + − sau dublu-click</div>`;
-  const img = overlay.querySelector("img");
 
-  function updateTransform() { img.style.transform = `translate(${posX}px,${posY}px) scale(${scale})`; }
 
-  /* Wheel zoom */
-  overlay.addEventListener("wheel", function(e) {
-    e.preventDefault();
-    scale *= e.deltaY < 0 ? 1.15 : 0.87;
-    scale = Math.max(0.3, Math.min(scale, 8));
-    updateTransform();
-  }, {passive:false});
-
-  /* Double-click to zoom in/reset */
-  img.addEventListener("dblclick", function() {
-    if (scale > 1.1) { scale = 1; posX = 0; posY = 0; } else { scale = 2.5; }
-    updateTransform();
-  });
-
-  /* Drag to pan */
-  img.addEventListener("mousedown", function(e) { isDragging = true; startX = e.clientX - posX; startY = e.clientY - posY; img.style.cursor = "grabbing"; e.preventDefault(); });
-  overlay.addEventListener("mousemove", function(e) { if (!isDragging) return; posX = e.clientX - startX; posY = e.clientY - startY; updateTransform(); });
-  overlay.addEventListener("mouseup", function() { isDragging = false; img.style.cursor = "grab"; });
-
-  /* Touch pinch zoom */
-  let lastTouchDist = 0;
-  overlay.addEventListener("touchstart", function(e) {
-    if (e.touches.length === 2) { lastTouchDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY); }
-    else if (e.touches.length === 1) { isDragging = true; startX = e.touches[0].clientX - posX; startY = e.touches[0].clientY - posY; }
-  }, {passive:true});
-  overlay.addEventListener("touchmove", function(e) {
-    if (e.touches.length === 2) {
-      const dist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
-      if (lastTouchDist > 0) { scale *= dist / lastTouchDist; scale = Math.max(0.3, Math.min(scale, 8)); updateTransform(); }
-      lastTouchDist = dist;
-    } else if (e.touches.length === 1 && isDragging) {
-      posX = e.touches[0].clientX - startX; posY = e.touches[0].clientY - startY; updateTransform();
-    }
-  }, {passive:true});
-  overlay.addEventListener("touchend", function(e) { if (e.touches.length < 2) lastTouchDist = 0; isDragging = false; });
-
-  /* Close on background click (not on img/buttons) */
-  overlay.addEventListener("click", function(e) { if (e.target === overlay) overlay.remove(); });
-
-  /* Global zoom button handler */
-  window.maspexZoomBtn = function(factor) {
-    if (factor === 0) { overlay.remove(); return; }
-    scale *= factor; scale = Math.max(0.3, Math.min(scale, 8));
-    updateTransform();
-  };
-
-  img.style.cursor = "grab";
-  document.body.appendChild(overlay);
-}
-
-async function uploadMaspexCatalog() {
-  const fileInput = document.getElementById("maspexCatalogFile");
-  const status = document.getElementById("maspexCatalogUploadStatus");
-  if (!fileInput.files.length) { status.textContent = "Selectează un fișier!"; return; }
-  status.textContent = "Se importă...";
-  const fd = new FormData();
-  fd.append("file", fileInput.files[0]);
-  try {
-    const r = await fetch("/api/maspex/upload-produse", { method: "POST", body: fd });
-    const data = await r.json();
-    if (r.ok) {
-      status.innerHTML = `<span style="color:var(--success)">✅ ${esc(data.message)}</span>`;
-      fileInput.value = "";
-      loadMaspexCatalog();
-    } else {
-      status.innerHTML = `<span style="color:var(--danger)">❌ ${esc(data.error || "Eroare")}</span>`;
-    }
-  } catch (e) {
-    status.innerHTML = `<span style="color:var(--danger)">❌ Eroare conexiune</span>`;
-  }
-}
-
-async function seedMaspexCatalog() {
-  const status = document.getElementById("maspexCatalogUploadStatus");
-  status.textContent = "Se populează catalogul...";
-  try {
-    const r = await fetch("/api/maspex/seed-catalog", { method: "POST" });
-    const data = await r.json();
-    if (r.ok) {
-      status.innerHTML = `<span style="color:var(--success)">✅ ${esc(data.message)}</span>`;
-      loadMaspexCatalog();
-    } else {
-      status.innerHTML = `<span style="color:var(--danger)">❌ ${esc(data.error || "Eroare")}</span>`;
-    }
-  } catch (e) {
-    status.innerHTML = `<span style="color:var(--danger)">❌ Eroare conexiune</span>`;
-  }
-}
 
 /* ═══════════════════════════════════════════
    UPLOAD RAPOARTE — funcții dedicate pentru rolul upload
@@ -6498,75 +5670,9 @@ async function doUploadRapPromoBudget() {
   fileEl.value = "";
 }
 
-async function doUploadRapMaspexVanzari() {
-  const fileEl = document.getElementById("uploadRapMaspexVanzariFile");
-  const statusEl = document.getElementById("uploadRapMaspexVanzariStatus");
-  if (!fileEl.files[0]) return toast("Selectează fișier Excel", "warn");
-  statusEl.textContent = "Se importă...";
-  const fd = new FormData();
-  fd.append("file", fileEl.files[0]);
-  try {
-    const r = await fetch("/api/maspex/upload-sales", { method: "POST", body: fd });
-    const d = await r.json();
-    if (r.ok) statusEl.innerHTML = `<span style="color:var(--success)">✅ ${esc(d.message)}</span>`;
-    else statusEl.innerHTML = `<span style="color:var(--danger)">❌ ${esc(d.error || "Eroare")}</span>`;
-  } catch (e) { statusEl.innerHTML = `<span style="color:var(--danger)">❌ Eroare conexiune</span>`; }
-  fileEl.value = "";
-}
 
-async function doUploadRapMaspexObiective() {
-  const fileEl = document.getElementById("uploadRapMaspexObiectiveFile");
-  const monthEl = document.getElementById("uploadRapMaspexObiectiveMonth");
-  const statusEl = document.getElementById("uploadRapMaspexObiectiveStatus");
-  if (!fileEl.files[0]) return toast("Selectează fișier Excel", "warn");
-  const month = monthEl.value || new Date().toISOString().slice(0,7);
-  statusEl.textContent = "Se importă...";
-  const fd = new FormData();
-  fd.append("file", fileEl.files[0]);
-  fd.append("month", month);
-  try {
-    const r = await fetch("/api/maspex/upload-obiective", { method: "POST", body: fd });
-    const d = await r.json();
-    if (r.ok) statusEl.innerHTML = `<span style="color:var(--success)">✅ ${esc(d.message)}</span>`;
-    else statusEl.innerHTML = `<span style="color:var(--danger)">❌ ${esc(d.error || "Eroare")}</span>`;
-  } catch (e) { statusEl.innerHTML = `<span style="color:var(--danger)">❌ Eroare conexiune</span>`; }
-  fileEl.value = "";
-}
 
-async function doUploadRapMaspexAudit() {
-  const fileEl = document.getElementById("uploadRapMaspexAuditFile");
-  const statusEl = document.getElementById("uploadRapMaspexAuditStatus");
-  if (!fileEl.files[0]) return toast("Selectează fișier Excel", "warn");
-  const now = new Date();
-  const currentMonth = now.getFullYear() + "-" + String(now.getMonth()+1).padStart(2,"0");
-  statusEl.textContent = "Se importă...";
-  const fd = new FormData();
-  fd.append("file", fileEl.files[0]);
-  fd.append("month", currentMonth);
-  try {
-    const r = await fetch("/api/maspex/upload-audit", { method: "POST", body: fd });
-    const d = await r.json();
-    if (r.ok) statusEl.innerHTML = `<span style="color:var(--success)">✅ ${esc(d.message)}</span>`;
-    else statusEl.innerHTML = `<span style="color:var(--danger)">❌ ${esc(d.error || "Eroare")}</span>`;
-  } catch (e) { statusEl.innerHTML = `<span style="color:var(--danger)">❌ Eroare conexiune</span>`; }
-  fileEl.value = "";
-}
 
-async function doUploadRapMaspexCatalog() {
-  const fileEl = document.getElementById("uploadRapMaspexCatalogFile");
-  const statusEl = document.getElementById("uploadRapMaspexCatalogStatus");
-  if (!fileEl.files[0]) return toast("Selectează fișier Excel", "warn");
-  statusEl.textContent = "Se importă...";
-  const fd = new FormData();
-  fd.append("file", fileEl.files[0]);
-  try {
-    const r = await fetch("/api/maspex/upload-produse", { method: "POST", body: fd });
-    const d = await r.json();
-    if (r.ok) statusEl.innerHTML = `<span style="color:var(--success)">✅ ${esc(d.message)}</span>`;
-    else statusEl.innerHTML = `<span style="color:var(--danger)">❌ ${esc(d.error || "Eroare")}</span>`;
-  } catch (e) { statusEl.innerHTML = `<span style="color:var(--danger)">❌ Eroare conexiune</span>`; }
-  fileEl.value = "";
-}
 
 /* ═══════════════════════════════════════════════════════════════
    NEARBY CLIENTS – GPS proximity search
