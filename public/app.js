@@ -6784,7 +6784,7 @@ let allCensusUrsus = [];
 let cuFiltered = [];
 let cuColorMode = "semafor";
 let cuMarkers = null; // separate cluster group
-const cuSel = { alocare: new Set(), semafor: new Set(), sis: new Set(), agent: new Set(), uat: new Set(), localitate: new Set(), distrib: new Set(), canal: new Set(), stare: new Set(), tipLocatie: new Set(), zona: new Set(), volum: new Set(), pondere: new Set() };
+const cuSel = { semafor: new Set(), sis: new Set(), agent: new Set(), uat: new Set(), localitate: new Set(), distrib: new Set(), canal: new Set(), stare: new Set(), tipLocatie: new Set(), zona: new Set(), volum: new Set(), pondere: new Set() };
 
 async function loadCensusUrsus() {
   if (allCensusUrsus.length) {
@@ -6806,12 +6806,6 @@ async function loadCensusUrsus() {
 }
 
 function buildCuFilters() {
-  // Alocare filter
-  const alocareItems = [
-    ["ALOCAT", allCensusUrsus.filter(c => (c.agent_alocat||"").trim()).length],
-    ["NEALOCAT", allCensusUrsus.filter(c => !(c.agent_alocat||"").trim()).length]
-  ];
-  renderFilterChecklist("cuAlocareFilter", alocareItems, cuSel.alocare);
   // Semafor with friendly labels: GREEN=Activ, YELLOW=Inactiv >3 luni, RED=Necumparat
   const semaforItems = [
     ["GREEN", allCensusUrsus.filter(c => c.semafor === "GREEN").length, "DA - cumpara activ"],
@@ -6913,10 +6907,6 @@ function applyCuFilters() {
   const q = (document.getElementById("cuSearch")?.value || "").toLowerCase();
   cuFiltered = allCensusUrsus.filter(c => {
     if (q && !(c.customer_name||"").toLowerCase().includes(q) && !(c.outlet_name||"").toLowerCase().includes(q) && !(c.cui||"").includes(q) && !(c.locality||"").toLowerCase().includes(q) && !(c.address||"").toLowerCase().includes(q)) return false;
-    if (cuSel.alocare.size) {
-      const isAlocat = (c.agent_alocat||"").trim() ? "ALOCAT" : "NEALOCAT";
-      if (!cuSel.alocare.has(isAlocat)) return false;
-    }
     if (cuSel.semafor.size && !cuSel.semafor.has(c.semafor)) return false;
     if (cuSel.sis.size) {
       const sisLabel = c.is_sis ? "DA" : "NU";

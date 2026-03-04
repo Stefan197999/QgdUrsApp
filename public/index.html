@@ -356,11 +356,6 @@
             <label>Caută (firmă / CUI / localitate)</label>
             <input id="cuSearch" type="search" placeholder="Ex: KAUFLAND, 12345678, IASI...">
           </div>
-          <!-- 0. ALOCARE -->
-          <div style="margin-bottom:.5rem">
-            <p class="label">ALOCARE AGENT</p>
-            <div id="cuAlocareFilter" class="checklist" style="max-height:60px"></div>
-          </div>
           <!-- 1. AGENT + UAT + LOCALITATE -->
           <div class="split">
             <section>
@@ -377,20 +372,8 @@
               <div id="cuLocalitateFilter" class="checklist"></div>
             </section>
           </div>
-          <!-- 2. ACTIV QUATRO + DISTRIBUITOR -->
-          <div class="split" style="margin-top:.5rem">
-            <section>
-              <p class="label">ACTIV QUATRO</p>
-              <div id="cuSemaforFilter" class="checklist" style="max-height:80px"></div>
-            </section>
-            <section>
-              <p class="label">DISTRIBUITOR</p>
-              <input id="cuDistribSearch" type="search" placeholder="Caută...">
-              <div id="cuDistribFilter" class="checklist"></div>
-            </section>
-          </div>
-          <!-- 3. STARE CENSUS + CANAL -->
-          <div class="split" style="margin-top:.5rem">
+          <!-- 2. STARE CENSUS + CANAL -->
+          <div class="split">
             <section>
               <p class="label">STARE CENSUS</p>
               <div id="cuStareFilter" class="checklist" style="max-height:120px"></div>
@@ -398,12 +381,24 @@
             <section>
               <p class="label">CANAL</p>
               <div id="cuCanalFilter" class="checklist" style="max-height:80px"></div>
+            </section>
+          </div>
+          <!-- 3. ACTIV QUATRO + SIS QUATRO -->
+          <div class="split">
+            <section>
+              <p class="label">ACTIV QUATRO</p>
+              <div id="cuSemaforFilter" class="checklist" style="max-height:80px"></div>
               <p class="label" style="margin-top:.4rem">SIS QUATRO</p>
               <div id="cuSisFilter" class="checklist" style="max-height:60px"></div>
             </section>
+            <section>
+              <p class="label">DISTRIBUITOR</p>
+              <input id="cuDistribSearch" type="search" placeholder="Caută...">
+              <div id="cuDistribFilter" class="checklist"></div>
+            </section>
           </div>
           <!-- 4. TIP LOCATIE + ZONA -->
-          <div class="split" style="margin-top:.5rem">
+          <div class="split">
             <section>
               <p class="label">TIP LOCAȚIE</p>
               <input id="cuTipLocatieSearch" type="search" placeholder="Caută...">
@@ -415,7 +410,7 @@
             </section>
           </div>
           <!-- 5. VOLUM BERE + PONDERE UB -->
-          <div class="split" style="margin-top:.5rem">
+          <div class="split">
             <section>
               <p class="label">VOLUM BERE (HL)</p>
               <div id="cuVolumFilter" class="checklist" style="max-height:120px"></div>
@@ -426,7 +421,7 @@
             </section>
           </div>
           <!-- 6. CULOARE HARTA -->
-          <div style="margin-top:.5rem">
+          <div>
             <p class="label">CULOARE HARTĂ</p>
             <div style="display:flex;gap:4px;flex-wrap:wrap">
               <button class="chip-btn" id="cuColorSemafor" onclick="switchCuColor('semafor')" style="background:var(--primary);color:#fff">Activ Quatro</button>
