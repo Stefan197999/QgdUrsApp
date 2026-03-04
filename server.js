@@ -8407,6 +8407,37 @@ app.get("/api/census-ursus", auth, (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+/* ── Census Ursus: Nearby (GPS proximity) ── */
+app.get("/api/census-ursus/nearby", auth, (req, res) => {
+  try {
+    const lat = parseFloat(req.query.lat);
+    const lon = parseFloat(req.query.lon);
+    const radius = Math.min(Math.max(parseInt(req.query.radius) || 500, 10), 10000);
+    if (isNaN(lat) || isNaN(lon)) return res.status(400).json({ error: "Coordonate invalide" });
+    if (lat < -90 || lat > 90 || lon < -180 || lon > 180) return res.status(400).json({ error: "Coordonate în afara limitelor" });
+
+    const rows = db.prepare("SELECT id, cui, outlet_name, customer_name, locality, address, lat, lon, channel, outlet_type, stare, semafor, is_sis, agent_alocat, cc_alocat, uat, volum_bere_hl, pct_volum_ub, distributor1 FROM census_ursus WHERE lat IS NOT NULL AND lon IS NOT NULL AND ABS(lat) > 0 AND ABS(lon) > 0").all();
+
+    const toRad = (d) => d * Math.PI / 180;
+    function haversine(lat1, lon1, lat2, lon2) {
+      const R = 6371000;
+      const dLat = toRad(lat2 - lat1);
+      const dLon = toRad(lon2 - lon1);
+      const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+                Math.sin(dLon/2) * Math.sin(dLon/2);
+      return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    }
+
+    const nearby = rows
+      .map(c => ({ ...c, distance: Math.round(haversine(lat, lon, c.lat, c.lon)) }))
+      .filter(c => c.distance <= radius)
+      .sort((a, b) => a.distance - b.distance);
+
+    res.json({ ok: true, total: nearby.length, clients: nearby, radius, userLat: lat, userLon: lon });
+  } catch(e) { console.error("[CU nearby error]", e.message); res.status(500).json({ error: "Eroare server" }); }
+});
+
 /* ── Census Ursus: Detail (full JSON, Cortex restricted) ── */
 app.get("/api/census-ursus/:id", auth, (req, res) => {
   try {

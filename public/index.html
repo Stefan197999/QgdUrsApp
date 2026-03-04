@@ -441,6 +441,24 @@
         <span id="cuStats">Locații: 0</span>
       </div>
 
+      <!-- Nearby Census Ursus GPS section -->
+      <div id="cuNearbySection" style="padding:8px 12px;display:none">
+        <button class="btn primary" style="width:100%;padding:10px;font-size:.85rem;border-radius:8px" onclick="findNearbyCensusUrsus()">
+          📍 Găsește clienți în apropiere
+        </button>
+        <div id="cuNearbyStatus" style="font-size:12px;margin-top:6px;text-align:center"></div>
+        <div style="display:flex;align-items:center;gap:6px;margin-top:6px;font-size:12px">
+          <label style="white-space:nowrap">Rază:</label>
+          <select id="cuNearbyRadiusSelect" style="padding:3px 6px;border-radius:4px;border:1px solid var(--border);font-size:12px">
+            <option value="500" selected>500m</option>
+            <option value="1000">1 km</option>
+            <option value="2000">2 km</option>
+            <option value="5000">5 km</option>
+          </select>
+        </div>
+        <div id="cuNearbyResults" style="margin-top:8px"></div>
+      </div>
+
       <ul id="cuClientList" class="client-list"></ul>
     </div>
 

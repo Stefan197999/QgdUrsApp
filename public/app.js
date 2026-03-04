@@ -47,6 +47,9 @@ let nearbyMarkerGroup = null;
 let nearbyCircle = null;
 let nearbyUserMarker = null;
 
+/* Nearby Census Ursus state */
+let cuNearbyMarkerGroup = null;
+
 /* Filter selections per tab */
 const censusSel = { sr: new Set(), agent: new Set(), city: new Set(), canal: new Set(), format: new Set(), stare: new Set(), munic: new Set(), activ: new Set(), achizitii: new Set() };
 const auditSel = { sr: new Set(), agent: new Set(), city: new Set(), canal: new Set(), format: new Set(), achizitii: new Set() };
@@ -6787,6 +6790,8 @@ let cuMarkers = null; // separate cluster group
 const cuSel = { semafor: new Set(), sis: new Set(), agent: new Set(), uat: new Set(), localitate: new Set(), distrib: new Set(), canal: new Set(), stare: new Set(), tipLocatie: new Set(), zona: new Set(), volum: new Set(), pondere: new Set() };
 
 async function loadCensusUrsus() {
+  const cuNearby = document.getElementById("cuNearbySection");
+  if (cuNearby) cuNearby.style.display = "";
   if (allCensusUrsus.length) {
     applyCuFilters();
     renderCuMap();
@@ -7251,3 +7256,132 @@ document.addEventListener("DOMContentLoaded", () => {
     cuSearchEl.addEventListener("input", () => { applyCuFilters(); });
   }
 });
+
+/* ── Census Ursus: Nearby (GPS proximity) ── */
+async function findNearbyCensusUrsus() {
+  const statusEl = document.getElementById("cuNearbyStatus");
+  const resultsEl = document.getElementById("cuNearbyResults");
+  const radius = parseInt(document.getElementById("cuNearbyRadiusSelect").value) || 500;
+
+  statusEl.textContent = "📡 Se obține locația GPS...";
+  statusEl.style.color = "var(--text)";
+  resultsEl.innerHTML = "";
+  clearCuNearbyMarkers();
+
+  if (!navigator.geolocation) {
+    statusEl.textContent = "❌ GPS indisponibil pe acest dispozitiv";
+    statusEl.style.color = "var(--danger)";
+    return;
+  }
+
+  try {
+    const pos = await new Promise((resolve, reject) => {
+      navigator.geolocation.getCurrentPosition(resolve, reject, {
+        enableHighAccuracy: true, timeout: 15000, maximumAge: 30000
+      });
+    });
+
+    const lat = pos.coords.latitude;
+    const lon = pos.coords.longitude;
+    const radiusLabel = radius >= 1000 ? (radius/1000)+'km' : radius+'m';
+    statusEl.textContent = `📡 Căutare clienți Census Ursus în raza de ${radiusLabel}...`;
+
+    const r = await fetch(`/api/census-ursus/nearby?lat=${lat}&lon=${lon}&radius=${radius}`);
+    const data = await r.json();
+    if (!data.ok) {
+      statusEl.textContent = "❌ " + (data.error || "Eroare");
+      statusEl.style.color = "var(--danger)";
+      return;
+    }
+
+    if (data.total === 0) {
+      statusEl.textContent = `Niciun client găsit în raza de ${radiusLabel}`;
+      statusEl.style.color = "var(--warning)";
+      showCuNearbyOnMap(lat, lon, radius, []);
+      return;
+    }
+
+    statusEl.innerHTML = `<strong style="color:var(--success)">✅ ${data.total} clienți găsiți</strong> în raza de ${radiusLabel}`;
+
+    showCuNearbyOnMap(lat, lon, radius, data.clients);
+
+    resultsEl.innerHTML = `
+      <div style="margin-bottom:6px;display:flex;gap:4px;flex-wrap:wrap">
+        <button class="btn small" onclick="clearCuNearbyMarkers();document.getElementById('cuNearbyResults').innerHTML='';document.getElementById('cuNearbyStatus').textContent=''" style="font-size:11px;background:var(--muted);color:#fff">✕ Închide</button>
+      </div>
+    ` + data.clients.map(c => {
+      const sColor = c.semafor === "GREEN" ? "#27ae60" : c.semafor === "YELLOW" ? "#f39c12" : "#e74c3c";
+      const distLabel = c.distance >= 1000 ? (c.distance/1000).toFixed(1)+'km' : c.distance+'m';
+      return `
+        <li class="client-item" style="border-left:3px solid ${sColor}">
+          <p class="client-title">${esc((c.customer_name||'').toUpperCase())} <span style="color:${sColor};font-weight:700;font-size:11px">${c.semafor||''}</span> <span style="font-size:11px;color:#10b981;font-weight:600">${distLabel}</span></p>
+          <p class="client-meta" style="font-style:italic">${esc(c.outlet_name||'')}</p>
+          <p class="client-meta">${esc(c.locality||'')} • ${esc(c.address||'')} • ${esc(c.channel||'')}</p>
+          <p class="client-meta">Agent: ${esc(c.agent_alocat||'—')} • Distrib: ${esc(c.distributor1||'—')} ${c.is_sis ? '• <span style="color:#8e44ad;font-weight:600">SIS</span>' : ''}</p>
+          <div class="tiny-actions">
+            <button class="chip-btn" onclick="focusCuOnMap(${c.id});clearCuNearbyMarkers()">Pe hartă</button>
+            <button class="chip-btn" onclick="navigateTo(${c.lat},${c.lon})">Navighează</button>
+            <button class="chip-btn" onclick="showCuDetail(${c.id})">Detalii</button>
+          </div>
+        </li>`;
+    }).join("");
+
+  } catch(e) {
+    if (e.code === 1) {
+      statusEl.textContent = "❌ Acces GPS refuzat. Permite localizarea în browser.";
+    } else if (e.code === 2) {
+      statusEl.textContent = "❌ Locație indisponibilă. Verifică GPS-ul.";
+    } else if (e.code === 3) {
+      statusEl.textContent = "❌ Timeout GPS. Încearcă din nou.";
+    } else {
+      statusEl.textContent = "❌ Eroare: " + e.message;
+    }
+    statusEl.style.color = "var(--danger)";
+  }
+}
+
+function showCuNearbyOnMap(lat, lon, radius, clients) {
+  clearCuNearbyMarkers();
+  cuNearbyMarkerGroup = L.layerGroup().addTo(map);
+
+  // User position marker (blue dot)
+  const userMk = L.marker([lat, lon], {
+    icon: L.divIcon({
+      className: "cu-nearby-user",
+      html: '<div style="background:#3b82f6;width:16px;height:16px;border-radius:50%;border:3px solid #fff;box-shadow:0 0 8px rgba(59,130,246,0.6)"></div>',
+      iconSize: [22, 22], iconAnchor: [11, 11]
+    })
+  }).bindTooltip("📍 Poziția ta", { permanent: true, direction: "top", offset: [0, -12] });
+  cuNearbyMarkerGroup.addLayer(userMk);
+
+  // Radius circle
+  cuNearbyMarkerGroup.addLayer(L.circle([lat, lon], {
+    radius, color: "#3b82f6", fillColor: "#3b82f6", fillOpacity: 0.08, weight: 2, dashArray: "6, 4"
+  }));
+
+  // Client markers
+  clients.forEach(c => {
+    if (!validGPS(c.lat, c.lon)) return;
+    const m = L.marker([c.lat, c.lon], {
+      icon: L.divIcon({
+        className: "cu-nearby-client",
+        html: `<div style="background:#10b981;color:#fff;padding:2px 6px;border-radius:10px;font-size:11px;font-weight:600;white-space:nowrap;box-shadow:0 1px 4px rgba(0,0,0,.3)">${c.distance}m</div>`,
+        iconSize: [50, 20], iconAnchor: [25, 10]
+      })
+    });
+    m.bindTooltip(`<b>${esc(c.customer_name||c.outlet_name||'')}</b><br>${c.distance}m`, { direction: "top", offset: [0, -10] });
+    m.on("click", () => { m.unbindPopup(); m.bindPopup(cuPopup(c), { maxWidth: 320 }).openPopup(); });
+    cuNearbyMarkerGroup.addLayer(m);
+  });
+
+  // Fit bounds
+  const bounds = L.latLngBounds([[lat, lon]]);
+  clients.forEach(c => { if (c.lat && c.lon) bounds.extend([c.lat, c.lon]); });
+  bounds.extend([lat - radius/111000, lon - radius/111000]);
+  bounds.extend([lat + radius/111000, lon + radius/111000]);
+  map.fitBounds(bounds, { padding: [30, 30] });
+}
+
+function clearCuNearbyMarkers() {
+  if (cuNearbyMarkerGroup) { map.removeLayer(cuNearbyMarkerGroup); cuNearbyMarkerGroup = null; }
+}
