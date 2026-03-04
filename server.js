@@ -1093,6 +1093,53 @@ db.exec(`
   );
 `);
 
+/* ───────── Auto-seed Census Ursus from gz file if table empty ───────── */
+const censusCount = db.prepare("SELECT COUNT(*) as c FROM census_ursus").get().c;
+if (censusCount === 0) {
+  const seedGz = path.join(__dirname, "seeds", "census_ursus_seed.json.gz");
+  const seedJson = path.join(__dirname, "seeds", "census_ursus_seed.json");
+  let seedData = null;
+  try {
+    if (fs.existsSync(seedGz)) {
+      const zlib = require("zlib");
+      const buf = fs.readFileSync(seedGz);
+      seedData = JSON.parse(zlib.gunzipSync(buf).toString("utf8"));
+      console.log("[Census] Auto-seed from .gz:", seedData.length, "rows");
+    } else if (fs.existsSync(seedJson)) {
+      seedData = JSON.parse(fs.readFileSync(seedJson, "utf8"));
+      console.log("[Census] Auto-seed from .json:", seedData.length, "rows");
+    }
+  } catch (e) { console.error("[Census] Seed parse error:", e.message); }
+  if (seedData && seedData.length) {
+    const ins = db.prepare(`INSERT INTO census_ursus (
+      cui, outlet_name, locality, address, lat, lon,
+      contact_person, phone, distributor1, distributor2,
+      location_type, stare, channel, semafor, is_sis,
+      agent_alocat, cc_alocat,
+      bergenbier_med12, bergenbier_med3, ursus_med12, ursus_med3,
+      maspex_med12, maspex_med3, spring_harghita_med12, spring_harghita_med3,
+      altele_med12, altele_med3, jti_dist_bax_med12, jti_dist_bax_med3,
+      top3_clase, census_full_json
+    ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`);
+    const tx = db.transaction((rows) => {
+      for (const r of rows) {
+        ins.run(
+          r.cui||'', r.outlet_name||'', r.locality||'', r.address||'', r.lat||0, r.lon||0,
+          r.contact_person||'', r.phone||'', r.distributor1||'', r.distributor2||'',
+          r.location_type||'', r.stare||'', r.channel||'', r.semafor||'RED', r.is_sis||0,
+          r.agent_alocat||'', r.cc_alocat||'',
+          r.bergenbier_med12||0, r.bergenbier_med3||0, r.ursus_med12||0, r.ursus_med3||0,
+          r.maspex_med12||0, r.maspex_med3||0, r.spring_harghita_med12||0, r.spring_harghita_med3||0,
+          r.altele_med12||0, r.altele_med3||0, r.jti_dist_bax_med12||0, r.jti_dist_bax_med3||0,
+          r.top3_clase||'[]', r.census_full_json||'{}'
+        );
+      }
+    });
+    tx(seedData);
+    console.log("[Census] Seeded", seedData.length, "census locations");
+  }
+}
+
 /* ───────── Seed default users if table is empty ───────── */
 const userCount = db.prepare("SELECT COUNT(*) as c FROM users").get().c;
 if (userCount === 0) {
