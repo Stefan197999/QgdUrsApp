@@ -1223,7 +1223,7 @@ if (userCount === 0) {
     // Admin
     insUser.run("admin", "admin2026", "Administrator", "admin", "");
     // Supervisor
-    insUser.run("ibrian", "spv2026", "Ibrian Benone (SPV)", "spv", "");
+    insUser.run("aluchian", "spv2026", "Andrei Luchian (SPV)", "spv", "");
     // URSUS Agents
     insUser.run("apostol_urs1", "agent2026", "Apostol Ionela Elena URS1", "agent", "APOSTOL IONELA ELENA");
     insUser.run("butnaru_urs2", "agent2026", "Butnaru Ionut URS2", "agent", "BUTNARU IONUT");
@@ -1252,11 +1252,20 @@ if (userCount === 0) {
 /* ───────── Migrate existing qgdrapoarte to upload role ───────── */
 db.prepare("UPDATE users SET role='upload' WHERE username='qgdrapoarte'").run();
 
+/* ───────── Migrate SPV ibrian → aluchian ───────── */
+{
+  const oldSpv = db.prepare("SELECT id FROM users WHERE username='ibrian'").get();
+  if (oldSpv) {
+    db.prepare("UPDATE users SET username='aluchian', display_name='Andrei Luchian (SPV)' WHERE username='ibrian'").run();
+    console.log("Migrated SPV: ibrian → aluchian (Andrei Luchian)");
+  }
+}
+
 /* ───────── Set divisions for all agents/SPV ───────── */
 {
   const setDiv = db.prepare("UPDATE users SET division=? WHERE username=?");
-  // SPV Ibrian
-  setDiv.run("URSUS", "ibrian");
+  // SPV Andrei Luchian
+  setDiv.run("URSUS", "aluchian");
   // URSUS Agents
   setDiv.run("URSUS", "apostol_urs1");
   setDiv.run("URSUS", "butnaru_urs2");
@@ -2745,7 +2754,7 @@ app.post("/api/email/test-monthly", auth, adminOnly, async (req, res) => {
 
 /* ── GPS email endpoints removed — GPS is now sent as part of daily/monthly reports ──
    GPS goes to CFG.gpsEmailTo (popa.stefan@quatrogrup.com)
-   Audit+Încasări+Expirări goes to CFG.emailTo (raportzilnic, ibrian, florin.rata)
+   Audit+Încasări+Expirări goes to CFG.emailTo (raportzilnic, andrei.luchian, florin.rata)
    Use /api/email/test-daily and /api/email/test-monthly to trigger both emails ── */
 
 /* ═══════════ OBIECTIVE (Target vs Realizat) ═══════════ */
@@ -8900,10 +8909,10 @@ async function sendClientNouEmail(entry, agentName) {
   try {
     const admins = db.prepare("SELECT username FROM users WHERE role IN ('admin','spv') AND active=1").all();
     // Use default BB recipients
-    const defaultTo = (process.env.REPORT_EMAIL_TO || "raportzilnic@quatrogrup.com,ibrian@quatrogrup.com").split(",").map(s => s.trim()).filter(Boolean);
+    const defaultTo = (process.env.REPORT_EMAIL_TO || "raportzilnic@quatrogrup.com,andrei.luchian@quatrogrup.com").split(",").map(s => s.trim()).filter(Boolean);
     recipients.push(...defaultTo);
   } catch(e) {}
-  if (recipients.length === 0) recipients.push("ibrian@quatrogrup.com");
+  if (recipients.length === 0) recipients.push("andrei.luchian@quatrogrup.com");
 
   const today = new Date();
   const dateStr = `${today.getDate().toString().padStart(2, "0")}.${(today.getMonth() + 1).toString().padStart(2, "0")}.${today.getFullYear()}`;

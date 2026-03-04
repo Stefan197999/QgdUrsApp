@@ -14,7 +14,7 @@ const CFG = {
   emailFrom:     process.env.REPORT_EMAIL_FROM || "",
   /* TOȚI destinatarii într-o singură listă (eliminăm duplicatele) */
   emailTo:       [...new Set([
-    ...(process.env.REPORT_EMAIL_TO || "raportzilnic@quatrogrup.com,ibrian@quatrogrup.com,florin.rata@quatrogrup.com").split(",").map(s => s.trim()).filter(Boolean),
+    ...(process.env.REPORT_EMAIL_TO || "raportzilnic@quatrogrup.com,andrei.luchian@quatrogrup.com,florin.rata@quatrogrup.com").split(",").map(s => s.trim()).filter(Boolean),
     ...(process.env.GPS_EMAIL_TO || "popa.stefan@quatrogrup.com").split(",").map(s => s.trim()).filter(Boolean)
   ])],
   smtpHost:      process.env.REPORT_SMTP_HOST || "",

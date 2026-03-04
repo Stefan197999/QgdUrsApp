@@ -16,5 +16,5 @@ Aplicație audit pentru Divizia Ursus - Quatro Grup Distribuție.
 
 ## Autentificare
 - Admin: admin / admin2026
-- SPV: ibrian / spv2026
+- SPV: aluchian / spv2026
 - Agenți: [username]_urs[N] / agent2026
