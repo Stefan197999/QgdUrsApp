@@ -1093,9 +1093,16 @@ db.exec(`
   );
 `);
 
-/* ───────── Auto-seed Census Ursus from gz file if table empty ───────── */
+/* ───────── Auto-seed Census Ursus from gz file ───────── */
+const CENSUS_SEED_VERSION = 3; // bump this to force re-seed on deploy
 const censusCount = db.prepare("SELECT COUNT(*) as c FROM census_ursus").get().c;
-if (censusCount === 0) {
+const censusMeta = (() => { try { return db.prepare("SELECT value FROM app_settings WHERE key='census_seed_version'").get(); } catch(e) { return null; } })();
+const currentSeedVer = censusMeta ? parseInt(censusMeta.value) : 0;
+if (censusCount === 0 || currentSeedVer < CENSUS_SEED_VERSION) {
+  if (censusCount > 0) {
+    console.log(`[Census] Re-seeding: version ${currentSeedVer} -> ${CENSUS_SEED_VERSION}, dropping ${censusCount} old rows`);
+    db.prepare("DELETE FROM census_ursus").run();
+  }
   const seedGz = path.join(__dirname, "seeds", "census_ursus_seed.json.gz");
   const seedJson = path.join(__dirname, "seeds", "census_ursus_seed.json");
   let seedData = null;
@@ -1137,6 +1144,10 @@ if (censusCount === 0) {
     });
     tx(seedData);
     console.log("[Census] Seeded", seedData.length, "census locations");
+    // Save seed version
+    db.prepare("CREATE TABLE IF NOT EXISTS app_settings (key TEXT PRIMARY KEY, value TEXT)").run();
+    db.prepare("INSERT OR REPLACE INTO app_settings (key, value) VALUES ('census_seed_version', ?)").run(String(CENSUS_SEED_VERSION));
+    console.log("[Census] Seed version set to", CENSUS_SEED_VERSION);
   }
 }
 
