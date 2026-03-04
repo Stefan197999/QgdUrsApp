@@ -342,10 +342,10 @@ function groupBy(arr, key) {
 
 function renderFilterChecklist(containerId, items, selectedSet, searchId) {
   const container = document.getElementById(containerId);
-  container.innerHTML = items.map(([val, cnt]) => `
+  container.innerHTML = items.map(([val, cnt, label]) => `
     <label class="check-item">
       <input type="checkbox" data-val="${esc(val)}" ${selectedSet.has(val) ? "checked" : ""}>
-      <span>${esc(val)}</span>
+      <span>${esc(label || val)}</span>
       <em>${cnt}</em>
     </label>
   `).join("");
@@ -6806,7 +6806,13 @@ async function loadCensusUrsus() {
 }
 
 function buildCuFilters() {
-  renderFilterChecklist("cuSemaforFilter", groupBy(allCensusUrsus, "semafor"), cuSel.semafor);
+  // Semafor with friendly labels: GREEN=Activ, YELLOW=Inactiv >3 luni, RED=Necumparat
+  const semaforItems = [
+    ["GREEN", allCensusUrsus.filter(c => c.semafor === "GREEN").length, "DA - cumpara activ"],
+    ["YELLOW", allCensusUrsus.filter(c => c.semafor === "YELLOW").length, "VECHI >3 luni"],
+    ["RED", allCensusUrsus.filter(c => c.semafor === "RED").length, "NU - necumparat"]
+  ];
+  renderFilterChecklist("cuSemaforFilter", semaforItems, cuSel.semafor);
   const sisItems = [
     ["DA", allCensusUrsus.filter(c => c.is_sis).length],
     ["NU", allCensusUrsus.filter(c => !c.is_sis).length]

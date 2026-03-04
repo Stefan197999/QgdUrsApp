@@ -356,47 +356,52 @@
             <label>Caută (firmă / CUI / localitate)</label>
             <input id="cuSearch" type="search" placeholder="Ex: KAUFLAND, 12345678, IASI...">
           </div>
+          <!-- 1. AGENT -->
           <div class="split">
             <section>
-              <p class="label">SEMAFOR</p>
-              <div id="cuSemaforFilter" class="checklist" style="max-height:80px"></div>
-            </section>
-            <section>
-              <p class="label">SIS QUATRO</p>
-              <div id="cuSisFilter" class="checklist" style="max-height:60px"></div>
-            </section>
-          </div>
-          <div class="split" style="margin-top:.5rem">
-            <section>
-              <p class="label">AGENT ALOCAT</p>
-              <input id="cuAgentSearch" type="search" placeholder="Caută...">
+              <p class="label">AGENT</p>
+              <input id="cuAgentSearch" type="search" placeholder="Caută agent...">
               <div id="cuAgentFilter" class="checklist"></div>
             </section>
             <section>
               <p class="label">LOCALITATE</p>
-              <input id="cuLocalitateSearch" type="search" placeholder="Caută...">
+              <input id="cuLocalitateSearch" type="search" placeholder="Caută localitate...">
               <div id="cuLocalitateFilter" class="checklist"></div>
             </section>
           </div>
+          <!-- 2. ACTIV QUATRO + DISTRIBUITOR -->
           <div class="split" style="margin-top:.5rem">
             <section>
-              <p class="label">DISTRIBUITOR CENSUS</p>
+              <p class="label">ACTIV QUATRO</p>
+              <div id="cuSemaforFilter" class="checklist" style="max-height:80px"></div>
+            </section>
+            <section>
+              <p class="label">DISTRIBUITOR</p>
               <input id="cuDistribSearch" type="search" placeholder="Caută...">
               <div id="cuDistribFilter" class="checklist"></div>
             </section>
+          </div>
+          <!-- 3. STARE CENSUS + CANAL -->
+          <div class="split" style="margin-top:.5rem">
+            <section>
+              <p class="label">STARE CENSUS</p>
+              <div id="cuStareFilter" class="checklist" style="max-height:120px"></div>
+            </section>
             <section>
               <p class="label">CANAL</p>
-              <div id="cuCanalFilter" class="checklist" style="max-height:100px"></div>
-              <p class="label" style="margin-top:.4rem">STARE</p>
-              <div id="cuStareFilter" class="checklist" style="max-height:80px"></div>
+              <div id="cuCanalFilter" class="checklist" style="max-height:80px"></div>
+              <p class="label" style="margin-top:.4rem">SIS QUATRO</p>
+              <div id="cuSisFilter" class="checklist" style="max-height:60px"></div>
             </section>
           </div>
+          <!-- 4. CULOARE HARTA -->
           <div style="margin-top:.5rem">
             <p class="label">CULOARE HARTĂ</p>
             <div style="display:flex;gap:4px;flex-wrap:wrap">
-              <button class="chip-btn" id="cuColorSemafor" onclick="switchCuColor('semafor')" style="background:var(--primary);color:#fff">Semafor</button>
+              <button class="chip-btn" id="cuColorSemafor" onclick="switchCuColor('semafor')" style="background:var(--primary);color:#fff">Activ Quatro</button>
               <button class="chip-btn" id="cuColorDistrib" onclick="switchCuColor('distributor')">Distribuitor</button>
-              <button class="chip-btn" id="cuColorVolum" onclick="switchCuColor('volume')">Volum</button>
+              <button class="chip-btn" id="cuColorVolum" onclick="switchCuColor('volume')">Volum Bere</button>
+              <button class="chip-btn" id="cuColorStare" onclick="switchCuColor('stare')">Stare Census</button>
             </div>
           </div>
           <div class="btn-row">

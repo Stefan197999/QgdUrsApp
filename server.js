@@ -1048,17 +1048,37 @@ db.exec(`
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     cui TEXT NOT NULL,
     outlet_name TEXT DEFAULT '',
+    customer_name TEXT DEFAULT '',
     locality TEXT DEFAULT '',
     address TEXT DEFAULT '',
     lat REAL DEFAULT 0,
     lon REAL DEFAULT 0,
     contact_person TEXT DEFAULT '',
     phone TEXT DEFAULT '',
+    email TEXT DEFAULT '',
     distributor1 TEXT DEFAULT '',
+    sr_distributor1 TEXT DEFAULT '',
     distributor2 TEXT DEFAULT '',
-    location_type TEXT DEFAULT '',
-    stare TEXT DEFAULT '',
+    sr_distributor2 TEXT DEFAULT '',
     channel TEXT DEFAULT '',
+    outlet_type TEXT DEFAULT '',
+    stare TEXT DEFAULT '',
+    functionare TEXT DEFAULT '',
+    tip_locatie TEXT DEFAULT '',
+    location_type TEXT DEFAULT '',
+    volum_bere_hl TEXT DEFAULT '',
+    pct_volum_ub TEXT DEFAULT '',
+    sursa_aprovizionare TEXT DEFAULT '',
+    mod_comanda TEXT DEFAULT '',
+    comercializeaza_sticla TEXT DEFAULT '',
+    comercializeaza_doza TEXT DEFAULT '',
+    comercializeaza_draught TEXT DEFAULT '',
+    contract_pub TEXT DEFAULT '',
+    nr_vitrine_ub TEXT DEFAULT '',
+    nr_dozatoare_ub TEXT DEFAULT '',
+    mapat_census TEXT DEFAULT '',
+    facturabil TEXT DEFAULT '',
+    tr TEXT DEFAULT '',
     semafor TEXT DEFAULT 'RED',
     is_sis INTEGER DEFAULT 0,
     agent_alocat TEXT DEFAULT '',
@@ -1094,14 +1114,46 @@ db.exec(`
 `);
 
 /* ───────── Auto-seed Census Ursus from gz file ───────── */
-const CENSUS_SEED_VERSION = 3; // bump this to force re-seed on deploy
+const CENSUS_SEED_VERSION = 4; // bump this to force re-seed on deploy
 const censusCount = db.prepare("SELECT COUNT(*) as c FROM census_ursus").get().c;
 const censusMeta = (() => { try { return db.prepare("SELECT value FROM app_settings WHERE key='census_seed_version'").get(); } catch(e) { return null; } })();
 const currentSeedVer = censusMeta ? parseInt(censusMeta.value) : 0;
 if (censusCount === 0 || currentSeedVer < CENSUS_SEED_VERSION) {
   if (censusCount > 0) {
-    console.log(`[Census] Re-seeding: version ${currentSeedVer} -> ${CENSUS_SEED_VERSION}, dropping ${censusCount} old rows`);
-    db.prepare("DELETE FROM census_ursus").run();
+    console.log(`[Census] Re-seeding: version ${currentSeedVer} -> ${CENSUS_SEED_VERSION}, dropping old table and recreating`);
+    db.exec("DROP TABLE IF EXISTS census_ursus");
+    // Recreate with all columns
+    db.exec(`CREATE TABLE census_ursus (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      cui TEXT NOT NULL, outlet_name TEXT DEFAULT '', customer_name TEXT DEFAULT '',
+      locality TEXT DEFAULT '', address TEXT DEFAULT '', lat REAL DEFAULT 0, lon REAL DEFAULT 0,
+      contact_person TEXT DEFAULT '', phone TEXT DEFAULT '', email TEXT DEFAULT '',
+      distributor1 TEXT DEFAULT '', sr_distributor1 TEXT DEFAULT '',
+      distributor2 TEXT DEFAULT '', sr_distributor2 TEXT DEFAULT '',
+      channel TEXT DEFAULT '', outlet_type TEXT DEFAULT '', stare TEXT DEFAULT '',
+      functionare TEXT DEFAULT '', tip_locatie TEXT DEFAULT '', location_type TEXT DEFAULT '',
+      volum_bere_hl TEXT DEFAULT '', pct_volum_ub TEXT DEFAULT '',
+      sursa_aprovizionare TEXT DEFAULT '', mod_comanda TEXT DEFAULT '',
+      comercializeaza_sticla TEXT DEFAULT '', comercializeaza_doza TEXT DEFAULT '',
+      comercializeaza_draught TEXT DEFAULT '', contract_pub TEXT DEFAULT '',
+      nr_vitrine_ub TEXT DEFAULT '', nr_dozatoare_ub TEXT DEFAULT '',
+      mapat_census TEXT DEFAULT '', facturabil TEXT DEFAULT '', tr TEXT DEFAULT '',
+      semafor TEXT DEFAULT 'RED', is_sis INTEGER DEFAULT 0,
+      agent_alocat TEXT DEFAULT '', cc_alocat TEXT DEFAULT '',
+      bergenbier_med12 REAL DEFAULT 0, bergenbier_med3 REAL DEFAULT 0,
+      ursus_med12 REAL DEFAULT 0, ursus_med3 REAL DEFAULT 0,
+      maspex_med12 REAL DEFAULT 0, maspex_med3 REAL DEFAULT 0,
+      spring_harghita_med12 REAL DEFAULT 0, spring_harghita_med3 REAL DEFAULT 0,
+      altele_med12 REAL DEFAULT 0, altele_med3 REAL DEFAULT 0,
+      jti_dist_bax_med12 REAL DEFAULT 0, jti_dist_bax_med3 REAL DEFAULT 0,
+      top3_clase TEXT DEFAULT '[]', census_full_json TEXT DEFAULT '{}',
+      created_at TEXT DEFAULT (datetime('now'))
+    )`);
+    db.exec(`CREATE INDEX idx_census_cui ON census_ursus(cui)`);
+    db.exec(`CREATE INDEX idx_census_semafor ON census_ursus(semafor)`);
+    db.exec(`CREATE INDEX idx_census_agent ON census_ursus(agent_alocat)`);
+    db.exec(`CREATE INDEX idx_census_locality ON census_ursus(locality)`);
+    db.exec(`CREATE INDEX idx_census_sis ON census_ursus(is_sis)`);
   }
   const seedGz = path.join(__dirname, "seeds", "census_ursus_seed.json.gz");
   const seedJson = path.join(__dirname, "seeds", "census_ursus_seed.json");
@@ -1118,28 +1170,33 @@ if (censusCount === 0 || currentSeedVer < CENSUS_SEED_VERSION) {
     }
   } catch (e) { console.error("[Census] Seed parse error:", e.message); }
   if (seedData && seedData.length) {
-    const ins = db.prepare(`INSERT INTO census_ursus (
-      cui, outlet_name, locality, address, lat, lon,
-      contact_person, phone, distributor1, distributor2,
-      location_type, stare, channel, semafor, is_sis,
-      agent_alocat, cc_alocat,
-      bergenbier_med12, bergenbier_med3, ursus_med12, ursus_med3,
-      maspex_med12, maspex_med3, spring_harghita_med12, spring_harghita_med3,
-      altele_med12, altele_med3, jti_dist_bax_med12, jti_dist_bax_med3,
-      top3_clase, census_full_json
-    ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`);
+    const SEED_COLS = [
+      "cui","outlet_name","customer_name","locality","address","lat","lon",
+      "contact_person","phone","email","distributor1","sr_distributor1",
+      "distributor2","sr_distributor2","channel","outlet_type","stare",
+      "functionare","tip_locatie","location_type","volum_bere_hl","pct_volum_ub",
+      "sursa_aprovizionare","mod_comanda","comercializeaza_sticla",
+      "comercializeaza_doza","comercializeaza_draught","contract_pub",
+      "nr_vitrine_ub","nr_dozatoare_ub","mapat_census","facturabil","tr",
+      "semafor","is_sis","agent_alocat","cc_alocat",
+      "bergenbier_med12","bergenbier_med3","ursus_med12","ursus_med3",
+      "maspex_med12","maspex_med3","spring_harghita_med12","spring_harghita_med3",
+      "altele_med12","altele_med3","jti_dist_bax_med12","jti_dist_bax_med3",
+      "top3_clase","census_full_json"
+    ];
+    const placeholders = SEED_COLS.map(() => "?").join(",");
+    const ins = db.prepare(`INSERT INTO census_ursus (${SEED_COLS.join(",")}) VALUES (${placeholders})`);
+    const REAL_COLS = new Set(["lat","lon","bergenbier_med12","bergenbier_med3","ursus_med12","ursus_med3","maspex_med12","maspex_med3","spring_harghita_med12","spring_harghita_med3","altele_med12","altele_med3","jti_dist_bax_med12","jti_dist_bax_med3"]);
+    const INT_COLS = new Set(["is_sis"]);
     const tx = db.transaction((rows) => {
       for (const r of rows) {
-        ins.run(
-          r.cui||'', r.outlet_name||'', r.locality||'', r.address||'', r.lat||0, r.lon||0,
-          r.contact_person||'', r.phone||'', r.distributor1||'', r.distributor2||'',
-          r.location_type||'', r.stare||'', r.channel||'', r.semafor||'RED', r.is_sis||0,
-          r.agent_alocat||'', r.cc_alocat||'',
-          r.bergenbier_med12||0, r.bergenbier_med3||0, r.ursus_med12||0, r.ursus_med3||0,
-          r.maspex_med12||0, r.maspex_med3||0, r.spring_harghita_med12||0, r.spring_harghita_med3||0,
-          r.altele_med12||0, r.altele_med3||0, r.jti_dist_bax_med12||0, r.jti_dist_bax_med3||0,
-          r.top3_clase||'[]', r.census_full_json||'{}'
-        );
+        const vals = SEED_COLS.map(col => {
+          const v = r[col];
+          if (REAL_COLS.has(col)) return v || 0;
+          if (INT_COLS.has(col)) return v || 0;
+          return v != null ? String(v) : '';
+        });
+        ins.run(...vals);
       }
     });
     tx(seedData);
@@ -8286,24 +8343,20 @@ app.get("/api/census-ursus", auth, (req, res) => {
     const role = req.role;
     const agentDtr = req.agentDtr || "";
     let rows;
-    if (role === "agent" && agentDtr) {
-      rows = db.prepare(`SELECT id, cui, outlet_name, locality, address, lat, lon,
-        contact_person, phone, distributor1, distributor2, location_type, stare, channel,
+    const listCols = `id, cui, outlet_name, customer_name, locality, address, lat, lon,
+        contact_person, phone, distributor1, distributor2, channel, outlet_type, stare,
+        location_type, volum_bere_hl, pct_volum_ub, tip_locatie,
         semafor, is_sis, agent_alocat, cc_alocat,
         bergenbier_med12, bergenbier_med3, ursus_med12, ursus_med3,
         maspex_med12, maspex_med3, spring_harghita_med12, spring_harghita_med3,
         altele_med12, altele_med3, jti_dist_bax_med12, jti_dist_bax_med3,
-        top3_clase FROM census_ursus
+        top3_clase`;
+    if (role === "agent" && agentDtr) {
+      rows = db.prepare(`SELECT ${listCols} FROM census_ursus
         WHERE UPPER(REPLACE(agent_alocat, ';', ' ')) = UPPER(REPLACE(?, ';', ' '))
       `).all(agentDtr);
     } else {
-      rows = db.prepare(`SELECT id, cui, outlet_name, locality, address, lat, lon,
-        contact_person, phone, distributor1, distributor2, location_type, stare, channel,
-        semafor, is_sis, agent_alocat, cc_alocat,
-        bergenbier_med12, bergenbier_med3, ursus_med12, ursus_med3,
-        maspex_med12, maspex_med3, spring_harghita_med12, spring_harghita_med3,
-        altele_med12, altele_med3, jti_dist_bax_med12, jti_dist_bax_med3,
-        top3_clase FROM census_ursus`).all();
+      rows = db.prepare(`SELECT ${listCols} FROM census_ursus`).all();
     }
     res.json(rows);
   } catch (e) { res.status(500).json({ error: e.message }); }
