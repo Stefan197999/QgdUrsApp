@@ -6839,7 +6839,7 @@ function buildCuFilters() {
   renderFilterChecklist("cuVolumFilter", volumRanges, cuSel.volum);
   // Pondere UB % - group into ranges
   const pondereRanges = [
-    ["0%", allCensusUrsus.filter(c => parseInt(c.pct_volum_ub)||0 === 0 && (c.pct_volum_ub === "0" || c.pct_volum_ub === 0 || !c.pct_volum_ub)).length],
+    ["0%", allCensusUrsus.filter(c => { const v = parseInt(c.pct_volum_ub)||0; return v === 0; }).length],
     ["1-25%", allCensusUrsus.filter(c => { const v = parseInt(c.pct_volum_ub)||0; return v >= 1 && v <= 25; }).length],
     ["26-50%", allCensusUrsus.filter(c => { const v = parseInt(c.pct_volum_ub)||0; return v >= 26 && v <= 50; }).length],
     ["51-75%", allCensusUrsus.filter(c => { const v = parseInt(c.pct_volum_ub)||0; return v >= 51 && v <= 75; }).length],
