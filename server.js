@@ -1098,6 +1098,10 @@ db.exec(`
     altele_med3 REAL DEFAULT 0,
     jti_dist_bax_med12 REAL DEFAULT 0,
     jti_dist_bax_med3 REAL DEFAULT 0,
+    qgd_bb_client_name TEXT DEFAULT '', qgd_bb_codpart TEXT DEFAULT '',
+    qgd_bb_val_12m REAL DEFAULT 0, qgd_bb_cant_12m REAL DEFAULT 0,
+    qgd_urs_client_name TEXT DEFAULT '', qgd_urs_codpart TEXT DEFAULT '',
+    qgd_urs_val_12m REAL DEFAULT 0, qgd_urs_cant_12m REAL DEFAULT 0,
     top3_clase TEXT DEFAULT '[]',
     census_full_json TEXT DEFAULT '{}',
     created_at TEXT DEFAULT (datetime('now'))
@@ -1117,7 +1121,7 @@ db.exec(`
 `);
 
 /* ───────── Auto-seed Census Ursus from gz file ───────── */
-const CENSUS_SEED_VERSION = 7; // bump this to force re-seed on deploy
+const CENSUS_SEED_VERSION = 8; // bump this to force re-seed on deploy
 const censusCount = db.prepare("SELECT COUNT(*) as c FROM census_ursus").get().c;
 const censusMeta = (() => { try { return db.prepare("SELECT value FROM app_settings WHERE key='census_seed_version'").get(); } catch(e) { return null; } })();
 const currentSeedVer = censusMeta ? parseInt(censusMeta.value) : 0;
@@ -1151,6 +1155,10 @@ if (censusCount === 0 || currentSeedVer < CENSUS_SEED_VERSION) {
       spring_harghita_med12 REAL DEFAULT 0, spring_harghita_med3 REAL DEFAULT 0,
       altele_med12 REAL DEFAULT 0, altele_med3 REAL DEFAULT 0,
       jti_dist_bax_med12 REAL DEFAULT 0, jti_dist_bax_med3 REAL DEFAULT 0,
+      qgd_bb_client_name TEXT DEFAULT '', qgd_bb_codpart TEXT DEFAULT '',
+      qgd_bb_val_12m REAL DEFAULT 0, qgd_bb_cant_12m REAL DEFAULT 0,
+      qgd_urs_client_name TEXT DEFAULT '', qgd_urs_codpart TEXT DEFAULT '',
+      qgd_urs_val_12m REAL DEFAULT 0, qgd_urs_cant_12m REAL DEFAULT 0,
       top3_clase TEXT DEFAULT '[]', census_full_json TEXT DEFAULT '{}',
       created_at TEXT DEFAULT (datetime('now'))
     )`);
@@ -1188,11 +1196,13 @@ if (censusCount === 0 || currentSeedVer < CENSUS_SEED_VERSION) {
       "bergenbier_med12","bergenbier_med3","ursus_med12","ursus_med3",
       "maspex_med12","maspex_med3","spring_harghita_med12","spring_harghita_med3",
       "altele_med12","altele_med3","jti_dist_bax_med12","jti_dist_bax_med3",
+      "qgd_bb_client_name","qgd_bb_codpart","qgd_bb_val_12m","qgd_bb_cant_12m",
+      "qgd_urs_client_name","qgd_urs_codpart","qgd_urs_val_12m","qgd_urs_cant_12m",
       "top3_clase","census_full_json"
     ];
     const placeholders = SEED_COLS.map(() => "?").join(",");
     const ins = db.prepare(`INSERT INTO census_ursus (${SEED_COLS.join(",")}) VALUES (${placeholders})`);
-    const REAL_COLS = new Set(["lat","lon","bergenbier_med12","bergenbier_med3","ursus_med12","ursus_med3","maspex_med12","maspex_med3","spring_harghita_med12","spring_harghita_med3","altele_med12","altele_med3","jti_dist_bax_med12","jti_dist_bax_med3"]);
+    const REAL_COLS = new Set(["lat","lon","bergenbier_med12","bergenbier_med3","ursus_med12","ursus_med3","maspex_med12","maspex_med3","spring_harghita_med12","spring_harghita_med3","altele_med12","altele_med3","jti_dist_bax_med12","jti_dist_bax_med3","qgd_bb_val_12m","qgd_bb_cant_12m","qgd_urs_val_12m","qgd_urs_cant_12m"]);
     const INT_COLS = new Set(["is_sis"]);
     const tx = db.transaction((rows) => {
       for (const r of rows) {

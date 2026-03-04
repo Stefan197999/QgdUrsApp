@@ -7045,6 +7045,18 @@ function cuPopup(c) {
     salesHtml += '</div>';
   }
 
+  // QGD Division Sales (Bergenbier + Ursus classes)
+  let qgdHtml = '';
+  const qgdBbVal = c.qgd_bb_val_12m || 0;
+  const qgdUrsVal = c.qgd_urs_val_12m || 0;
+  if (qgdBbVal > 0 || qgdUrsVal > 0) {
+    qgdHtml += '<div style="font-size:.75rem;margin-top:4px;background:#eafaf1;padding:4px 6px;border-radius:4px">';
+    qgdHtml += '<b>QGD Vânzări (12L):</b><br>';
+    qgdHtml += qgdBbVal > 0 ? `<span style="color:#00b894">BB: ${fmtRON(qgdBbVal)} RON, ${Math.round(c.qgd_bb_cant_12m||0)} buc</span> · ` : '<span style="color:#e94560">BB: fără</span> · ';
+    qgdHtml += qgdUrsVal > 0 ? `<span style="color:#00b894">Ursus: ${fmtRON(qgdUrsVal)} RON, ${Math.round(c.qgd_urs_cant_12m||0)} buc</span>` : '<span style="color:#e94560">Ursus: fără</span>';
+    qgdHtml += '</div>';
+  }
+
   return `
     <strong>${esc((c.customer_name||'').toUpperCase())}</strong><br>
     <small><i>${esc(c.outlet_name||'')}</i></small><br>
@@ -7055,6 +7067,7 @@ function cuPopup(c) {
     <small>Agent: ${esc(c.agent_alocat)}</small><br>
     <span class="chip ${sColor}">${c.semafor}</span> ${sisTag}
     ${salesHtml}
+    ${qgdHtml}
     <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px">
       <button class="chip-btn" onclick="navigateTo(${c.lat},${c.lon})">🧭 Navighează</button>
       <button class="chip-btn" onclick="showCuDetail(${c.id})">📋 Detalii</button>
@@ -7083,6 +7096,9 @@ function renderCuClientList() {
     if (totalDrinks12 > 0) salesBrief += `${fmtRON(totalDrinks12)}/lună`;
     if (jti12 > 0) salesBrief += `${salesBrief ? ' · ' : ''}JTI ${jti12.toFixed(1)} bax`;
     if (!salesBrief) salesBrief = 'Fără vânzări';
+    const qgdBb = c.qgd_bb_val_12m || 0;
+    const qgdUrs = c.qgd_urs_val_12m || 0;
+    const qgdBrief = (qgdBb > 0 || qgdUrs > 0) ? `QGD: ${qgdBb > 0 ? 'BB ' + fmtRON(qgdBb) : ''}${qgdBb > 0 && qgdUrs > 0 ? ' · ' : ''}${qgdUrs > 0 ? 'URS ' + fmtRON(qgdUrs) : ''}` : '';
 
     return `
       <li class="client-item" data-id="${parseInt(c.id)||0}">
@@ -7092,6 +7108,7 @@ function renderCuClientList() {
         <p class="client-meta">Distrib: ${esc(c.distributor1)} • Canal: ${esc(c.channel)}</p>
         <p class="client-meta">Agent: ${esc(c.agent_alocat)}</p>
         <p class="client-meta">${salesBrief}</p>
+        ${qgdBrief ? `<p class="client-meta" style="color:#00b894">${qgdBrief}</p>` : ''}
         <div class="tiny-actions">
           <button class="chip-btn" onclick="focusCuOnMap(${c.id})">Pe hartă</button>
           <button class="chip-btn" onclick="navigateTo(${c.lat},${c.lon})">Navighează</button>
@@ -7211,6 +7228,17 @@ async function showCuDetail(id) {
   html += salesRow("JTI (distribuție)", c.jti_dist_bax_med12||0, c.jti_dist_bax_med3||0, "bax");
 
   html += `</table>`;
+
+  // QGD Division Sales
+  const qgdBbV = c.qgd_bb_val_12m || 0;
+  const qgdUrsV = c.qgd_urs_val_12m || 0;
+  if (qgdBbV > 0 || qgdUrsV > 0) {
+    html += `<h4 style="margin:.8rem 0 .3rem;color:#00b894">QGD Vânzări Divizii (12 luni)</h4>`;
+    html += `<table style="width:100%;border-collapse:collapse;font-size:.82rem">`;
+    html += row("QGD Bergenbier", qgdBbV > 0 ? `<span style="color:#00b894">${fmtRON(qgdBbV)} RON · ${Math.round(c.qgd_bb_cant_12m||0)} buc</span>` : '<span style="color:#e94560">fără vânzări</span>');
+    html += row("QGD Ursus", qgdUrsV > 0 ? `<span style="color:#00b894">${fmtRON(qgdUrsV)} RON · ${Math.round(c.qgd_urs_cant_12m||0)} buc</span>` : '<span style="color:#e94560">fără vânzări</span>');
+    html += `</table>`;
+  }
 
   // Cortex columns (only visible if present in data - server strips them for agents)
   const cortexLY1 = fullData["Cortex LY-1"] || fullData["CortexLY-1"];
