@@ -6784,7 +6784,7 @@ let allCensusUrsus = [];
 let cuFiltered = [];
 let cuColorMode = "semafor";
 let cuMarkers = null; // separate cluster group
-const cuSel = { semafor: new Set(), sis: new Set(), agent: new Set(), localitate: new Set(), distrib: new Set(), canal: new Set(), stare: new Set() };
+const cuSel = { semafor: new Set(), sis: new Set(), agent: new Set(), localitate: new Set(), distrib: new Set(), canal: new Set(), stare: new Set(), tipLocatie: new Set(), zona: new Set(), functionare: new Set(), volum: new Set(), pondere: new Set() };
 
 async function loadCensusUrsus() {
   if (allCensusUrsus.length) {
@@ -6823,6 +6823,29 @@ function buildCuFilters() {
   renderFilterChecklist("cuDistribFilter", groupBy(allCensusUrsus, "distributor1"), cuSel.distrib, "cuDistribSearch");
   renderFilterChecklist("cuCanalFilter", groupBy(allCensusUrsus, "channel"), cuSel.canal);
   renderFilterChecklist("cuStareFilter", groupBy(allCensusUrsus, "stare"), cuSel.stare);
+  // New filters
+  renderFilterChecklist("cuTipLocatieFilter", groupBy(allCensusUrsus, "tip_locatie"), cuSel.tipLocatie, "cuTipLocatieSearch");
+  renderFilterChecklist("cuZonaFilter", groupBy(allCensusUrsus, "location_type"), cuSel.zona);
+  renderFilterChecklist("cuFunctionareFilter", groupBy(allCensusUrsus, "functionare"), cuSel.functionare);
+  // Volum bere HL - group into ranges
+  const volumRanges = [
+    ["0-30", allCensusUrsus.filter(c => { const v = parseInt(c.volum_bere_hl)||0; return v >= 0 && v <= 30; }).length],
+    ["31-60", allCensusUrsus.filter(c => { const v = parseInt(c.volum_bere_hl)||0; return v > 30 && v <= 60; }).length],
+    ["61-100", allCensusUrsus.filter(c => { const v = parseInt(c.volum_bere_hl)||0; return v > 60 && v <= 100; }).length],
+    ["101-150", allCensusUrsus.filter(c => { const v = parseInt(c.volum_bere_hl)||0; return v > 100 && v <= 150; }).length],
+    ["151-300", allCensusUrsus.filter(c => { const v = parseInt(c.volum_bere_hl)||0; return v > 150 && v <= 300; }).length],
+    ["300+", allCensusUrsus.filter(c => { const v = parseInt(c.volum_bere_hl)||0; return v > 300; }).length]
+  ];
+  renderFilterChecklist("cuVolumFilter", volumRanges, cuSel.volum);
+  // Pondere UB % - group into ranges
+  const pondereRanges = [
+    ["0%", allCensusUrsus.filter(c => parseInt(c.pct_volum_ub)||0 === 0 && (c.pct_volum_ub === "0" || c.pct_volum_ub === 0 || !c.pct_volum_ub)).length],
+    ["1-25%", allCensusUrsus.filter(c => { const v = parseInt(c.pct_volum_ub)||0; return v >= 1 && v <= 25; }).length],
+    ["26-50%", allCensusUrsus.filter(c => { const v = parseInt(c.pct_volum_ub)||0; return v >= 26 && v <= 50; }).length],
+    ["51-75%", allCensusUrsus.filter(c => { const v = parseInt(c.pct_volum_ub)||0; return v >= 51 && v <= 75; }).length],
+    ["76-100%", allCensusUrsus.filter(c => { const v = parseInt(c.pct_volum_ub)||0; return v >= 76 && v <= 100; }).length]
+  ];
+  renderFilterChecklist("cuPondereFilter", pondereRanges, cuSel.pondere);
 }
 
 function applyCuFilters() {
@@ -6839,6 +6862,30 @@ function applyCuFilters() {
     if (cuSel.distrib.size && !cuSel.distrib.has(c.distributor1)) return false;
     if (cuSel.canal.size && !cuSel.canal.has(c.channel)) return false;
     if (cuSel.stare.size && !cuSel.stare.has(c.stare)) return false;
+    if (cuSel.tipLocatie.size && !cuSel.tipLocatie.has(c.tip_locatie)) return false;
+    if (cuSel.zona.size && !cuSel.zona.has(c.location_type)) return false;
+    if (cuSel.functionare.size && !cuSel.functionare.has(c.functionare)) return false;
+    if (cuSel.volum.size) {
+      const v = parseInt(c.volum_bere_hl)||0;
+      let match = false;
+      if (cuSel.volum.has("0-30") && v >= 0 && v <= 30) match = true;
+      if (cuSel.volum.has("31-60") && v > 30 && v <= 60) match = true;
+      if (cuSel.volum.has("61-100") && v > 60 && v <= 100) match = true;
+      if (cuSel.volum.has("101-150") && v > 100 && v <= 150) match = true;
+      if (cuSel.volum.has("151-300") && v > 150 && v <= 300) match = true;
+      if (cuSel.volum.has("300+") && v > 300) match = true;
+      if (!match) return false;
+    }
+    if (cuSel.pondere.size) {
+      const v = parseInt(c.pct_volum_ub)||0;
+      let match = false;
+      if (cuSel.pondere.has("0%") && v === 0) match = true;
+      if (cuSel.pondere.has("1-25%") && v >= 1 && v <= 25) match = true;
+      if (cuSel.pondere.has("26-50%") && v >= 26 && v <= 50) match = true;
+      if (cuSel.pondere.has("51-75%") && v >= 51 && v <= 75) match = true;
+      if (cuSel.pondere.has("76-100%") && v >= 76 && v <= 100) match = true;
+      if (!match) return false;
+    }
     return true;
   });
 
@@ -6876,9 +6923,18 @@ function getCuMarkerColor(c) {
     return "#95a5a6";
   }
   if (cuColorMode === "volume") {
-    const vol = (c.ursus_med12 || 0) + (c.bergenbier_med12 || 0);
-    if (vol > 5000) return "#e74c3c";
-    if (vol > 1000) return "#f39c12";
+    const vol = parseInt(c.volum_bere_hl) || 0;
+    if (vol > 200) return "#e74c3c";
+    if (vol > 100) return "#f39c12";
+    if (vol > 50) return "#3498db";
+    return "#95a5a6";
+  }
+  if (cuColorMode === "stare") {
+    const s = (c.stare || "").toLowerCase();
+    if (s === "activ") return "#27ae60";
+    if (s === "audit") return "#3498db";
+    if (s === "hunt") return "#e74c3c";
+    if (s === "potential") return "#f39c12";
     return "#95a5a6";
   }
   return "#3498db";
