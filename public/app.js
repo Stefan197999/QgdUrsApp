@@ -6912,7 +6912,7 @@ function renderCuLocalitateFilter() {
 function applyCuFilters() {
   const q = (document.getElementById("cuSearch")?.value || "").toLowerCase();
   cuFiltered = allCensusUrsus.filter(c => {
-    if (q && !(c.outlet_name||"").toLowerCase().includes(q) && !(c.cui||"").includes(q) && !(c.locality||"").toLowerCase().includes(q) && !(c.address||"").toLowerCase().includes(q)) return false;
+    if (q && !(c.customer_name||"").toLowerCase().includes(q) && !(c.outlet_name||"").toLowerCase().includes(q) && !(c.cui||"").includes(q) && !(c.locality||"").toLowerCase().includes(q) && !(c.address||"").toLowerCase().includes(q)) return false;
     if (cuSel.alocare.size) {
       const isAlocat = (c.agent_alocat||"").trim() ? "ALOCAT" : "NEALOCAT";
       if (!cuSel.alocare.has(isAlocat)) return false;
@@ -7015,7 +7015,7 @@ function renderCuMap() {
     const color = getCuMarkerColor(c);
     const m = L.marker([c.lat, c.lon], { icon: createIcon(color) });
     m.bindPopup(cuPopup(c), { maxWidth: 320 });
-    m.bindTooltip(`<b>${esc((c.outlet_name||'').toUpperCase())}</b><br>${esc(c.locality)}<br><span style="color:${color}">${c.semafor}</span>${c.is_sis ? ' · SIS' : ''}`, { direction: "top", offset: [0, -8] });
+    m.bindTooltip(`<b>${esc((c.customer_name||'').toUpperCase())}</b>${c.outlet_name && c.outlet_name !== c.customer_name ? '<br><i>'+esc(c.outlet_name)+'</i>' : ''}<br>${esc(c.locality)}<br><span style="color:${color}">${c.semafor}</span>${c.is_sis ? ' · SIS' : ''}`, { direction: "top", offset: [0, -8] });
     m._clientId = c.id;
     m._clientData = c;
     m.on("click", () => { if (routeMode) toggleRouteClient(c, m); });
@@ -7051,7 +7051,8 @@ function cuPopup(c) {
   }
 
   return `
-    <strong>${esc((c.outlet_name||'').toUpperCase())}</strong><br>
+    <strong>${esc((c.customer_name||'').toUpperCase())}</strong><br>
+    ${c.outlet_name && c.outlet_name !== c.customer_name ? '<small><i>'+esc(c.outlet_name)+'</i></small><br>' : ''}
     <small>CUI: ${esc(c.cui)} • ${esc(c.locality)}</small><br>
     <small>${esc(c.address)}</small><br>
     <small>Canal: ${esc(c.channel)} • Stare: ${esc(c.stare)}</small><br>
@@ -7090,7 +7091,8 @@ function renderCuClientList() {
 
     return `
       <li class="client-item" data-id="${parseInt(c.id)||0}">
-        <p class="client-title">${esc((c.outlet_name||'').toUpperCase())} <span class="chip ${sColor}">${c.semafor}</span>${sisTag}</p>
+        <p class="client-title">${esc((c.customer_name||'').toUpperCase())} <span class="chip ${sColor}">${c.semafor}</span>${sisTag}</p>
+        ${c.outlet_name && c.outlet_name !== c.customer_name ? '<p class="client-meta" style="font-style:italic">'+esc(c.outlet_name)+'</p>' : ''}
         <p class="client-meta">CUI: ${esc(c.cui)} • ${esc(c.locality)}</p>
         <p class="client-meta">Distrib: ${esc(c.distributor1)} • Canal: ${esc(c.channel)}</p>
         <p class="client-meta">Agent: ${esc(c.agent_alocat)}</p>
@@ -7145,7 +7147,10 @@ async function showCuDetail(id) {
   const sColor = c.semafor === "GREEN" ? "#27ae60" : c.semafor === "YELLOW" ? "#f39c12" : "#e74c3c";
 
   let html = `<div style="font-size:.85rem;line-height:1.5">`;
-  html += `<h3 style="margin:0 0 .5rem;color:var(--accent)">${esc((c.outlet_name||'').toUpperCase())}</h3>`;
+  html += `<h3 style="margin:0 0 .2rem;color:var(--accent)">${esc((c.customer_name||'').toUpperCase())}</h3>`;
+  if (c.outlet_name && c.outlet_name !== c.customer_name) {
+    html += `<p style="margin:0 0 .5rem;font-style:italic;color:var(--muted)">${esc(c.outlet_name)}</p>`;
+  }
   html += `<table style="width:100%;border-collapse:collapse;font-size:.82rem">`;
 
   const row = (label, val) => `<tr><td style="padding:3px 6px;font-weight:600;white-space:nowrap;color:var(--muted)">${label}</td><td style="padding:3px 6px">${val}</td></tr>`;
