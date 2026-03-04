@@ -80,7 +80,7 @@ details.panel[open]>summary::before{transform:rotate(90deg)}
 .check-item{display:flex;align-items:center;gap:.4rem;padding:.25rem .4rem;cursor:pointer;border-radius:4px;font-size:.82rem;color:var(--text)}
 .check-item:hover{background:var(--bg2)}
 .check-item em{margin-left:auto;font-style:normal;font-size:.72rem;color:var(--muted);background:var(--bg2);padding:0 .4rem;border-radius:8px}
-.split{display:grid;grid-template-columns:1fr 1fr;gap:.6rem}
+.split{display:grid;grid-template-columns:1fr 1fr;gap:.6rem;align-items:start}
 
 /* ── Buttons ── */
 .btn{padding:.45rem .8rem;border:none;border-radius:6px;cursor:pointer;font-size:.8rem;display:inline-flex;align-items:center;gap:.3rem}
