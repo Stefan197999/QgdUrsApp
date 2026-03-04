@@ -7167,6 +7167,9 @@ async function showCuDetail(id) {
   html += row("SIS Quatro", c.is_sis ? '<span style="color:#8e44ad;font-weight:700">DA</span>' : 'NU');
   html += row("Agent alocat", esc(c.agent_alocat));
   html += row("CC", esc(c.cc_alocat));
+  html += row("Componenta ON", esc(fullData["Componenta ON"] || '-'));
+  html += row("Sursa Aprovizionare", esc(c.sursa_aprovizionare || fullData["Sursa Aprovizionare"] || '-'));
+  html += row("Mod Comandă (80%)", esc(c.mod_comanda || fullData["Mod Comanda majoritara 80%"] || '-'));
 
   html += `</table>`;
 

@@ -8362,6 +8362,7 @@ app.get("/api/census-ursus", auth, (req, res) => {
         contact_person, phone, distributor1, distributor2, channel, outlet_type, stare,
         functionare, location_type, volum_bere_hl, pct_volum_ub, tip_locatie,
         semafor, is_sis, agent_alocat, cc_alocat, zi_vizita, ruta_geografica, uat,
+        sursa_aprovizionare, mod_comanda,
         bergenbier_med12, bergenbier_med3, ursus_med12, ursus_med3,
         maspex_med12, maspex_med3, spring_harghita_med12, spring_harghita_med3,
         altele_med12, altele_med3, jti_dist_bax_med12, jti_dist_bax_med3,
