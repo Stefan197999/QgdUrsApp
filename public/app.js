@@ -6784,7 +6784,7 @@ let allCensusUrsus = [];
 let cuFiltered = [];
 let cuColorMode = "semafor";
 let cuMarkers = null; // separate cluster group
-const cuSel = { semafor: new Set(), sis: new Set(), agent: new Set(), localitate: new Set(), distrib: new Set(), canal: new Set(), stare: new Set(), tipLocatie: new Set(), zona: new Set(), functionare: new Set(), volum: new Set(), pondere: new Set() };
+const cuSel = { alocare: new Set(), semafor: new Set(), sis: new Set(), agent: new Set(), localitate: new Set(), distrib: new Set(), canal: new Set(), stare: new Set(), tipLocatie: new Set(), zona: new Set(), functionare: new Set(), volum: new Set(), pondere: new Set() };
 
 async function loadCensusUrsus() {
   if (allCensusUrsus.length) {
@@ -6806,6 +6806,12 @@ async function loadCensusUrsus() {
 }
 
 function buildCuFilters() {
+  // Alocare filter
+  const alocareItems = [
+    ["ALOCAT", allCensusUrsus.filter(c => (c.agent_alocat||"").trim()).length],
+    ["NEALOCAT", allCensusUrsus.filter(c => !(c.agent_alocat||"").trim()).length]
+  ];
+  renderFilterChecklist("cuAlocareFilter", alocareItems, cuSel.alocare);
   // Semafor with friendly labels: GREEN=Activ, YELLOW=Inactiv >3 luni, RED=Necumparat
   const semaforItems = [
     ["GREEN", allCensusUrsus.filter(c => c.semafor === "GREEN").length, "DA - cumpara activ"],
@@ -6852,6 +6858,10 @@ function applyCuFilters() {
   const q = (document.getElementById("cuSearch")?.value || "").toLowerCase();
   cuFiltered = allCensusUrsus.filter(c => {
     if (q && !(c.outlet_name||"").toLowerCase().includes(q) && !(c.cui||"").includes(q) && !(c.locality||"").toLowerCase().includes(q) && !(c.address||"").toLowerCase().includes(q)) return false;
+    if (cuSel.alocare.size) {
+      const isAlocat = (c.agent_alocat||"").trim() ? "ALOCAT" : "NEALOCAT";
+      if (!cuSel.alocare.has(isAlocat)) return false;
+    }
     if (cuSel.semafor.size && !cuSel.semafor.has(c.semafor)) return false;
     if (cuSel.sis.size) {
       const sisLabel = c.is_sis ? "DA" : "NU";
@@ -6894,8 +6904,9 @@ function applyCuFilters() {
   const yellow = cuFiltered.filter(c => c.semafor === "YELLOW").length;
   const red = cuFiltered.filter(c => c.semafor === "RED").length;
   const sis = cuFiltered.filter(c => c.is_sis).length;
+  const nealocati = cuFiltered.filter(c => !(c.agent_alocat||"").trim()).length;
   const withGps = cuFiltered.filter(c => validGPS(c.lat, c.lon)).length;
-  document.getElementById("cuStats").innerHTML = `Locații: <b>${cuFiltered.length}</b> (GPS: ${withGps}) · <span style="color:#27ae60">●</span> ${green} · <span style="color:#f39c12">●</span> ${yellow} · <span style="color:#e74c3c">●</span> ${red} · SIS: ${sis}`;
+  document.getElementById("cuStats").innerHTML = `Locații: <b>${cuFiltered.length}</b> (GPS: ${withGps}) · <span style="color:#27ae60">●</span> ${green} · <span style="color:#f39c12">●</span> ${yellow} · <span style="color:#e74c3c">●</span> ${red} · SIS: ${sis}` + (nealocati ? ` · <span style="color:#000">■</span> Nealocați: ${nealocati}` : '');
 
   renderCuMap();
   renderCuClientList();
@@ -6910,6 +6921,8 @@ function resetCuFilters() {
 }
 
 function getCuMarkerColor(c) {
+  // Nealocati = always black
+  if (!(c.agent_alocat||"").trim()) return "#000000";
   if (cuColorMode === "semafor") {
     if (c.semafor === "GREEN") return "#27ae60";
     if (c.semafor === "YELLOW") return "#f39c12";
