@@ -7023,14 +7023,14 @@ function cuPopup(c) {
   const sColor = c.semafor === "GREEN" ? "ok" : c.semafor === "YELLOW" ? "warn" : "bad";
   const sisTag = c.is_sis ? '<span class="chip" style="background:#8e44ad;color:#fff">SIS Quatro</span>' : '';
 
-  // Sales summary
+  // Sales summary (valorile din seed sunt totaluri pe 12 luni → /12 pt medie lunară)
   let salesHtml = '';
-  const bbVal = (c.bergenbier_med12 || 0);
-  const ursVal = (c.ursus_med12 || 0);
-  const maspexVal = (c.maspex_med12 || 0);
-  const shVal = (c.spring_harghita_med12 || 0);
-  const altVal = (c.altele_med12 || 0);
-  const jtiVal = (c.jti_dist_bax_med12 || 0);
+  const bbVal = (c.bergenbier_med12 || 0) / 12;
+  const ursVal = (c.ursus_med12 || 0) / 12;
+  const maspexVal = (c.maspex_med12 || 0) / 12;
+  const shVal = (c.spring_harghita_med12 || 0) / 12;
+  const altVal = (c.altele_med12 || 0) / 12;
+  const jtiVal = (c.jti_dist_bax_med12 || 0) / 12;
   const totalDrinks = bbVal + ursVal + maspexVal + shVal + altVal;
 
   if (totalDrinks > 0 || jtiVal > 0) {
@@ -7077,8 +7077,8 @@ function renderCuClientList() {
   list.innerHTML = shown.map(c => {
     const sColor = c.semafor === "GREEN" ? "ok" : c.semafor === "YELLOW" ? "warn" : "bad";
     const sisTag = c.is_sis ? ' <span class="chip" style="background:#8e44ad;color:#fff;font-size:.65rem">SIS</span>' : '';
-    const totalDrinks12 = (c.bergenbier_med12||0) + (c.ursus_med12||0) + (c.maspex_med12||0) + (c.spring_harghita_med12||0) + (c.altele_med12||0);
-    const jti12 = c.jti_dist_bax_med12 || 0;
+    const totalDrinks12 = ((c.bergenbier_med12||0) + (c.ursus_med12||0) + (c.maspex_med12||0) + (c.spring_harghita_med12||0) + (c.altele_med12||0)) / 12;
+    const jti12 = (c.jti_dist_bax_med12 || 0) / 12;
     let salesBrief = '';
     if (totalDrinks12 > 0) salesBrief += `${fmtRON(totalDrinks12)}/lună`;
     if (jti12 > 0) salesBrief += `${salesBrief ? ' · ' : ''}JTI ${jti12.toFixed(1)} bax`;
@@ -7202,12 +7202,13 @@ async function showCuDetail(id) {
     return `<tr><td style="padding:3px 6px">${label}</td><td style="padding:3px 6px;text-align:right">${fmt(v12)}</td><td style="padding:3px 6px;text-align:right">${fmt(v3)}</td><td style="padding:3px 6px;text-align:right;${tColor}">${tArrow} ${trend === '—' ? '—' : trend + '%'}</td></tr>`;
   };
 
-  html += salesRow("Ursus", c.ursus_med12||0, c.ursus_med3||0, "ron");
-  html += salesRow("Bergenbier", c.bergenbier_med12||0, c.bergenbier_med3||0, "ron");
-  html += salesRow("Maspex", c.maspex_med12||0, c.maspex_med3||0, "ron");
-  html += salesRow("Spring Harghita", c.spring_harghita_med12||0, c.spring_harghita_med3||0, "ron");
-  html += salesRow("Altele", c.altele_med12||0, c.altele_med3||0, "ron");
-  html += salesRow("JTI (distribuție)", c.jti_dist_bax_med12||0, c.jti_dist_bax_med3||0, "bax");
+  // Valorile din seed sunt totaluri pe 12/3 luni → împărțim pentru medie lunară
+  html += salesRow("Ursus", (c.ursus_med12||0)/12, (c.ursus_med3||0)/3, "ron");
+  html += salesRow("Bergenbier", (c.bergenbier_med12||0)/12, (c.bergenbier_med3||0)/3, "ron");
+  html += salesRow("Maspex", (c.maspex_med12||0)/12, (c.maspex_med3||0)/3, "ron");
+  html += salesRow("Spring Harghita", (c.spring_harghita_med12||0)/12, (c.spring_harghita_med3||0)/3, "ron");
+  html += salesRow("Altele", (c.altele_med12||0)/12, (c.altele_med3||0)/3, "ron");
+  html += salesRow("JTI (distribuție)", (c.jti_dist_bax_med12||0)/12, (c.jti_dist_bax_med3||0)/3, "bax");
 
   html += `</table>`;
 
