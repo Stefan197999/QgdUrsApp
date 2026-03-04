@@ -361,7 +361,7 @@
             <p class="label">ALOCARE AGENT</p>
             <div id="cuAlocareFilter" class="checklist" style="max-height:60px"></div>
           </div>
-          <!-- 1. AGENT -->
+          <!-- 1. AGENT + UAT + LOCALITATE -->
           <div class="split">
             <section>
               <p class="label">AGENT</p>
@@ -369,7 +369,10 @@
               <div id="cuAgentFilter" class="checklist"></div>
             </section>
             <section>
-              <p class="label">LOCALITATE</p>
+              <p class="label">UAT (Comună/Oraș)</p>
+              <input id="cuUatSearch" type="search" placeholder="Caută UAT...">
+              <div id="cuUatFilter" class="checklist"></div>
+              <p class="label" style="margin-top:.4rem">LOCALITATE <small id="cuLocalitateHint" style="color:var(--muted);font-weight:400"></small></p>
               <input id="cuLocalitateSearch" type="search" placeholder="Caută localitate...">
               <div id="cuLocalitateFilter" class="checklist"></div>
             </section>
@@ -409,8 +412,6 @@
             <section>
               <p class="label">ZONA</p>
               <div id="cuZonaFilter" class="checklist" style="max-height:80px"></div>
-              <p class="label" style="margin-top:.4rem">FUNCȚIONARE</p>
-              <div id="cuFunctionareFilter" class="checklist" style="max-height:60px"></div>
             </section>
           </div>
           <!-- 5. VOLUM BERE + PONDERE UB -->

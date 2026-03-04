@@ -6784,7 +6784,7 @@ let allCensusUrsus = [];
 let cuFiltered = [];
 let cuColorMode = "semafor";
 let cuMarkers = null; // separate cluster group
-const cuSel = { alocare: new Set(), semafor: new Set(), sis: new Set(), agent: new Set(), localitate: new Set(), distrib: new Set(), canal: new Set(), stare: new Set(), tipLocatie: new Set(), zona: new Set(), functionare: new Set(), volum: new Set(), pondere: new Set() };
+const cuSel = { alocare: new Set(), semafor: new Set(), sis: new Set(), agent: new Set(), uat: new Set(), localitate: new Set(), distrib: new Set(), canal: new Set(), stare: new Set(), tipLocatie: new Set(), zona: new Set(), volum: new Set(), pondere: new Set() };
 
 async function loadCensusUrsus() {
   if (allCensusUrsus.length) {
@@ -6825,14 +6825,19 @@ function buildCuFilters() {
   ];
   renderFilterChecklist("cuSisFilter", sisItems, cuSel.sis);
   renderFilterChecklist("cuAgentFilter", groupBy(allCensusUrsus, "agent_alocat"), cuSel.agent, "cuAgentSearch");
-  renderFilterChecklist("cuLocalitateFilter", groupBy(allCensusUrsus, "locality"), cuSel.localitate, "cuLocalitateSearch");
+  // UAT filter with cascading to LOCALITATE
+  renderCuUatFilter();
+  renderCuLocalitateFilter();
   renderFilterChecklist("cuDistribFilter", groupBy(allCensusUrsus, "distributor1"), cuSel.distrib, "cuDistribSearch");
   renderFilterChecklist("cuCanalFilter", groupBy(allCensusUrsus, "channel"), cuSel.canal);
   renderFilterChecklist("cuStareFilter", groupBy(allCensusUrsus, "stare"), cuSel.stare);
   // New filters
   renderFilterChecklist("cuTipLocatieFilter", groupBy(allCensusUrsus, "tip_locatie"), cuSel.tipLocatie, "cuTipLocatieSearch");
-  renderFilterChecklist("cuZonaFilter", groupBy(allCensusUrsus, "location_type"), cuSel.zona);
-  renderFilterChecklist("cuFunctionareFilter", groupBy(allCensusUrsus, "functionare"), cuSel.functionare);
+  const zonaItems = [
+    ["RURAL", allCensusUrsus.filter(c => (c.location_type||"").toUpperCase() === "RURAL").length],
+    ["URBAN", allCensusUrsus.filter(c => (c.location_type||"").toUpperCase() === "URBAN").length]
+  ];
+  renderFilterChecklist("cuZonaFilter", zonaItems, cuSel.zona);
   // Volum bere HL - group into ranges
   const volumRanges = [
     ["0-30", allCensusUrsus.filter(c => { const v = parseInt(c.volum_bere_hl)||0; return v >= 0 && v <= 30; }).length],
@@ -6854,6 +6859,56 @@ function buildCuFilters() {
   renderFilterChecklist("cuPondereFilter", pondereRanges, cuSel.pondere);
 }
 
+/* ── UAT ↔ LOCALITATE cascading filters ── */
+function renderCuUatFilter() {
+  const items = groupBy(allCensusUrsus, "uat");
+  const container = document.getElementById("cuUatFilter");
+  container.innerHTML = items.map(([val, cnt]) => `
+    <label class="check-item">
+      <input type="checkbox" data-val="${esc(val)}" ${cuSel.uat.has(val) ? "checked" : ""}>
+      <span>${esc(val)}</span>
+      <em>${cnt}</em>
+    </label>
+  `).join("");
+  container.querySelectorAll("input").forEach(cb => {
+    cb.addEventListener("change", () => {
+      if (cb.checked) cuSel.uat.add(cb.dataset.val);
+      else cuSel.uat.delete(cb.dataset.val);
+      // Cascade: refresh LOCALITATE to show only localities within selected UATs
+      renderCuLocalitateFilter();
+    });
+  });
+  const searchEl = document.getElementById("cuUatSearch");
+  if (searchEl && !searchEl.dataset.bound) {
+    searchEl.dataset.bound = "1";
+    searchEl.addEventListener("input", e => {
+      const q = e.target.value.toLowerCase();
+      container.querySelectorAll(".check-item").forEach(el => {
+        el.style.display = el.textContent.toLowerCase().includes(q) ? "" : "none";
+      });
+    });
+  }
+}
+
+function renderCuLocalitateFilter() {
+  // If UATs selected, show only localities within those UATs
+  let pool = allCensusUrsus;
+  const hint = document.getElementById("cuLocalitateHint");
+  if (cuSel.uat.size) {
+    pool = allCensusUrsus.filter(c => cuSel.uat.has(c.uat));
+    if (hint) hint.textContent = `(din ${cuSel.uat.size} UAT selectate)`;
+    // Remove localities that are no longer in the pool from selected set
+    const availLocs = new Set(pool.map(c => c.locality));
+    for (const l of cuSel.localitate) {
+      if (!availLocs.has(l)) cuSel.localitate.delete(l);
+    }
+  } else {
+    if (hint) hint.textContent = "";
+  }
+  const items = groupBy(pool, "locality");
+  renderFilterChecklist("cuLocalitateFilter", items, cuSel.localitate, "cuLocalitateSearch");
+}
+
 function applyCuFilters() {
   const q = (document.getElementById("cuSearch")?.value || "").toLowerCase();
   cuFiltered = allCensusUrsus.filter(c => {
@@ -6868,13 +6923,13 @@ function applyCuFilters() {
       if (!cuSel.sis.has(sisLabel)) return false;
     }
     if (cuSel.agent.size && !cuSel.agent.has(c.agent_alocat)) return false;
+    if (cuSel.uat.size && !cuSel.uat.has(c.uat)) return false;
     if (cuSel.localitate.size && !cuSel.localitate.has(c.locality)) return false;
     if (cuSel.distrib.size && !cuSel.distrib.has(c.distributor1)) return false;
     if (cuSel.canal.size && !cuSel.canal.has(c.channel)) return false;
     if (cuSel.stare.size && !cuSel.stare.has(c.stare)) return false;
     if (cuSel.tipLocatie.size && !cuSel.tipLocatie.has(c.tip_locatie)) return false;
-    if (cuSel.zona.size && !cuSel.zona.has(c.location_type)) return false;
-    if (cuSel.functionare.size && !cuSel.functionare.has(c.functionare)) return false;
+    if (cuSel.zona.size && !cuSel.zona.has((c.location_type||"").toUpperCase())) return false;
     if (cuSel.volum.size) {
       const v = parseInt(c.volum_bere_hl)||0;
       let match = false;
@@ -7110,6 +7165,26 @@ async function showCuDetail(id) {
   html += row("Agent alocat", esc(c.agent_alocat));
   html += row("CC", esc(c.cc_alocat));
 
+  html += `</table>`;
+
+  // Date Census detaliate
+  html += `<h4 style="margin:.8rem 0 .3rem;color:var(--accent)">Date Census</h4>`;
+  html += `<table style="width:100%;border-collapse:collapse;font-size:.82rem">`;
+  html += row("Volum total bere (HL)", fullData["Volum estimat total bere (hl)"] || c.volum_bere_hl || '-');
+  html += row("% Volum UB", (fullData["% Volum UB"] || c.pct_volum_ub || '-') + '%');
+  html += row("Comercializează Sticlă", fullData["Comercializeaza Sticla?"] || c.comercializeaza_sticla || '-');
+  html += row("Pondere RGB", (fullData["Pondere RGB din total volum"] || '-') + '%');
+  html += row("Comercializează Doză", fullData["Comercializeaza Doza?"] || c.comercializeaza_doza || '-');
+  html += row("Pondere PET", (fullData["Pondere PET din total volum"] || '-') + '%');
+  html += row("Pondere Premium+", (fullData["Pondere Premium+ din total volum"] || '-') + '%');
+  html += row("Comercializează Draught", fullData["Comercializeaza Draught?"] || c.comercializeaza_draught || '-');
+  html += row("Pondere Draught", (fullData["Pondere Draught din total volum"] || '-') + '%');
+  html += row("Nr. Medalioane Draught Comp.", fullData["Numar de Medalioane Draught Competitie"] || '-');
+  html += row("Contract PUB", fullData["Contract PUB"] || c.contract_pub || '-');
+  html += row("Contract nonUB activ", fullData["Contract Pub nonUB activ?"] || '-');
+  html += row("Expirare contract nonUB", fullData["Data expirare contract nonUB"] || '-');
+  html += row("Nr. Vitrine UB", fullData["Nr Vitrine UB"] || c.nr_vitrine_ub || '-');
+  html += row("Nr. Dozatoare UB", fullData["Nr Dozatoare UB"] || c.nr_dozatoare_ub || '-');
   html += `</table>`;
 
   // Vanzari medii lunare

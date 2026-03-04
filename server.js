@@ -1085,6 +1085,7 @@ db.exec(`
     cc_alocat TEXT DEFAULT '',
     zi_vizita TEXT DEFAULT '',
     ruta_geografica TEXT DEFAULT '',
+    uat TEXT DEFAULT '',
     bergenbier_med12 REAL DEFAULT 0,
     bergenbier_med3 REAL DEFAULT 0,
     ursus_med12 REAL DEFAULT 0,
@@ -1116,7 +1117,7 @@ db.exec(`
 `);
 
 /* ───────── Auto-seed Census Ursus from gz file ───────── */
-const CENSUS_SEED_VERSION = 5; // bump this to force re-seed on deploy
+const CENSUS_SEED_VERSION = 6; // bump this to force re-seed on deploy
 const censusCount = db.prepare("SELECT COUNT(*) as c FROM census_ursus").get().c;
 const censusMeta = (() => { try { return db.prepare("SELECT value FROM app_settings WHERE key='census_seed_version'").get(); } catch(e) { return null; } })();
 const currentSeedVer = censusMeta ? parseInt(censusMeta.value) : 0;
@@ -1143,6 +1144,7 @@ if (censusCount === 0 || currentSeedVer < CENSUS_SEED_VERSION) {
       semafor TEXT DEFAULT 'RED', is_sis INTEGER DEFAULT 0,
       agent_alocat TEXT DEFAULT '', cc_alocat TEXT DEFAULT '',
       zi_vizita TEXT DEFAULT '', ruta_geografica TEXT DEFAULT '',
+      uat TEXT DEFAULT '',
       bergenbier_med12 REAL DEFAULT 0, bergenbier_med3 REAL DEFAULT 0,
       ursus_med12 REAL DEFAULT 0, ursus_med3 REAL DEFAULT 0,
       maspex_med12 REAL DEFAULT 0, maspex_med3 REAL DEFAULT 0,
@@ -1182,7 +1184,7 @@ if (censusCount === 0 || currentSeedVer < CENSUS_SEED_VERSION) {
       "comercializeaza_doza","comercializeaza_draught","contract_pub",
       "nr_vitrine_ub","nr_dozatoare_ub","mapat_census","facturabil","tr",
       "semafor","is_sis","agent_alocat","cc_alocat",
-      "zi_vizita","ruta_geografica",
+      "zi_vizita","ruta_geografica","uat",
       "bergenbier_med12","bergenbier_med3","ursus_med12","ursus_med3",
       "maspex_med12","maspex_med3","spring_harghita_med12","spring_harghita_med3",
       "altele_med12","altele_med3","jti_dist_bax_med12","jti_dist_bax_med3",
@@ -8350,7 +8352,7 @@ app.get("/api/census-ursus", auth, (req, res) => {
     const listCols = `id, cui, outlet_name, customer_name, locality, address, lat, lon,
         contact_person, phone, distributor1, distributor2, channel, outlet_type, stare,
         functionare, location_type, volum_bere_hl, pct_volum_ub, tip_locatie,
-        semafor, is_sis, agent_alocat, cc_alocat, zi_vizita, ruta_geografica,
+        semafor, is_sis, agent_alocat, cc_alocat, zi_vizita, ruta_geografica, uat,
         bergenbier_med12, bergenbier_med3, ursus_med12, ursus_med3,
         maspex_med12, maspex_med3, spring_harghita_med12, spring_harghita_med3,
         altele_med12, altele_med3, jti_dist_bax_med12, jti_dist_bax_med3,
