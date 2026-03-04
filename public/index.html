@@ -25,6 +25,7 @@
     <button id="tabDropdownBtn" class="tab-dropdown-btn" onclick="toggleTabMenu()">VIZITE ▾</button>
     <div id="tabDropdownMenu" class="tab-dropdown-menu">
       <button id="tabCensus" class="tab-menu-item" onclick="selectTab('census','CENSUS')">CENSUS</button>
+      <button id="tabCensusUrsus" class="tab-menu-item" onclick="selectTab('censusUrsus','CENSUS URSUS')">🎯 CENSUS URSUS</button>
       <button id="tabAudit" class="tab-menu-item" onclick="selectTab('audit','AUDIT')">AUDIT</button>
       <button id="tabObiective" class="tab-menu-item" onclick="selectTab('obiective','OBIECTIVE')">OBIECTIVE</button>
       <button id="tabIncasari" class="tab-menu-item" onclick="selectTab('incasari','ÎNCASĂRI')">ÎNCASĂRI</button>
@@ -124,6 +125,10 @@
       <div class="grid-icon-card" onclick="openFromGrid('census','CENSUS')" style="--icon-bg:linear-gradient(135deg,#4fc3f7,#0288d1)">
         <div class="grid-icon-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
         <span>Census</span>
+      </div>
+      <div class="grid-icon-card" onclick="openFromGrid('censusUrsus','CENSUS URSUS')" style="--icon-bg:linear-gradient(135deg,#ef5350,#b71c1c)">
+        <div class="grid-icon-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg></div>
+        <span>Census Ursus</span>
       </div>
       <div class="grid-icon-card" onclick="openFromGrid('audit','AUDIT')" style="--icon-bg:linear-gradient(135deg,#81c784,#2e7d32)">
         <div class="grid-icon-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></div>
@@ -343,6 +348,74 @@
       </div>
 
       <ul id="censusClientList" class="client-list"></ul>
+    </div>
+
+    <!-- ═══════════════════════════════════════════
+         TAB: CENSUS URSUS (intelligence competitiv)
+         ═══════════════════════════════════════════ -->
+    <div id="panelCensusUrsus" class="tab-panel" style="display:none">
+      <details class="panel" open>
+        <summary>CENSUS URSUS 🎯 <button class="help-btn" onclick="event.stopPropagation();showHelp('censusUrsus')">?</button></summary>
+        <div class="panel-inner">
+          <div class="filter-row">
+            <label>Caută (firmă / CUI / localitate)</label>
+            <input id="cuSearch" type="search" placeholder="Ex: KAUFLAND, 12345678, IASI...">
+          </div>
+          <div class="split">
+            <section>
+              <p class="label">SEMAFOR</p>
+              <div id="cuSemaforFilter" class="checklist" style="max-height:80px"></div>
+            </section>
+            <section>
+              <p class="label">SIS QUATRO</p>
+              <div id="cuSisFilter" class="checklist" style="max-height:60px"></div>
+            </section>
+          </div>
+          <div class="split" style="margin-top:.5rem">
+            <section>
+              <p class="label">AGENT ALOCAT</p>
+              <input id="cuAgentSearch" type="search" placeholder="Caută...">
+              <div id="cuAgentFilter" class="checklist"></div>
+            </section>
+            <section>
+              <p class="label">LOCALITATE</p>
+              <input id="cuLocalitateSearch" type="search" placeholder="Caută...">
+              <div id="cuLocalitateFilter" class="checklist"></div>
+            </section>
+          </div>
+          <div class="split" style="margin-top:.5rem">
+            <section>
+              <p class="label">DISTRIBUITOR CENSUS</p>
+              <input id="cuDistribSearch" type="search" placeholder="Caută...">
+              <div id="cuDistribFilter" class="checklist"></div>
+            </section>
+            <section>
+              <p class="label">CANAL</p>
+              <div id="cuCanalFilter" class="checklist" style="max-height:100px"></div>
+              <p class="label" style="margin-top:.4rem">STARE</p>
+              <div id="cuStareFilter" class="checklist" style="max-height:80px"></div>
+            </section>
+          </div>
+          <div style="margin-top:.5rem">
+            <p class="label">CULOARE HARTĂ</p>
+            <div style="display:flex;gap:4px;flex-wrap:wrap">
+              <button class="chip-btn" id="cuColorSemafor" onclick="switchCuColor('semafor')" style="background:var(--primary);color:#fff">Semafor</button>
+              <button class="chip-btn" id="cuColorDistrib" onclick="switchCuColor('distributor')">Distribuitor</button>
+              <button class="chip-btn" id="cuColorVolum" onclick="switchCuColor('volume')">Volum</button>
+            </div>
+          </div>
+          <div class="btn-row">
+            <button class="btn primary small" onclick="applyCuFilters()">Aplică filtre</button>
+            <button class="btn ghost small" onclick="resetCuFilters()">Reset</button>
+          </div>
+        </div>
+      </details>
+
+      <div class="stats-bar">
+        <span id="cuStats">Locații: 0</span>
+      </div>
+
+      <ul id="cuClientList" class="client-list"></ul>
     </div>
 
     <!-- ═══════════════════════════════════════════

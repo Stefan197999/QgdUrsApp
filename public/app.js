@@ -90,7 +90,7 @@ function openFromGrid(tab, label) {
 }
 
 /* ── Tab dropdown menu ── */
-const tabLabels = { census: "CENSUS", audit: "AUDIT", obiective: "OBIECTIVE", incasari: "ÎNCASĂRI", vizite: "VIZITE", reports: "RAPOARTE", comunicare: "COMUNICARE", taskuri: "TASKURI", gps: "GPS TRACKING", competitie: "COMPETIȚIE", frigider: "FRIGIDER", promotii: "PROMOȚII", calendar: "CALENDAR", expirari: "EXPIRĂRI", solduri: "SCADENȚAR", escaladari: "ESCALADĂRI SPV", alertaClient: "ALERTĂ CLIENT", riscFinanciar: "RISC FINANCIAR", cuiVerify: "VERIFICARE CUI", perfTargete: "PERFORMANȚĂ TARGETE", ranking: "RANKING AGENȚI", discounturi: "CONTROL DISCOUNTURI", contracte: "CONTRACTE B2B", contracteB2C: "CONTRACTE B2C", smartTargets: "OBIECTIVE LUNARE", promoBudgets: "BUGETE PROMO", dashboardAll: "DASHBOARD VÂNZĂRI", uploadRapoarte: "ÎNCĂRCARE RAPOARTE", bugetGt: "BUGET GT" };
+const tabLabels = { census: "CENSUS", censusUrsus: "CENSUS URSUS", audit: "AUDIT", obiective: "OBIECTIVE", incasari: "ÎNCASĂRI", vizite: "VIZITE", reports: "RAPOARTE", comunicare: "COMUNICARE", taskuri: "TASKURI", gps: "GPS TRACKING", competitie: "COMPETIȚIE", frigider: "FRIGIDER", promotii: "PROMOȚII", calendar: "CALENDAR", expirari: "EXPIRĂRI", solduri: "SCADENȚAR", escaladari: "ESCALADĂRI SPV", alertaClient: "ALERTĂ CLIENT", riscFinanciar: "RISC FINANCIAR", cuiVerify: "VERIFICARE CUI", perfTargete: "PERFORMANȚĂ TARGETE", ranking: "RANKING AGENȚI", discounturi: "CONTROL DISCOUNTURI", contracte: "CONTRACTE B2B", contracteB2C: "CONTRACTE B2C", smartTargets: "OBIECTIVE LUNARE", promoBudgets: "BUGETE PROMO", dashboardAll: "DASHBOARD VÂNZĂRI", uploadRapoarte: "ÎNCĂRCARE RAPOARTE", bugetGt: "BUGET GT" };
 
 function toggleTabMenu() {
   const menu = document.getElementById("tabDropdownMenu");
@@ -124,6 +124,7 @@ function switchTab(tab) {
   if (btn && tabLabels[tab]) btn.textContent = tabLabels[tab] + " ▾";
 
   if (tab === "census") renderCensusMap();
+  else if (tab === "censusUrsus") loadCensusUrsus();
   else if (tab === "audit") renderAuditMap();
   else if (tab === "obiective") loadObiective();
   else if (tab === "incasari") loadIncasari();
@@ -4915,6 +4916,7 @@ function closeWhatsNew() {
 
 const helpTexts = {
   census: { title: "Census Clienți", body: `<div class="help-section"><h4>Descriere</h4><p>Vizualizare completă a bazei de clienți cu filtre multiple (agent, oraș, canal, format, stare) și afișare pe hartă. Folosește filtrele din stânga pentru a restrânge rezultatele.</p></div><div class="help-section"><h4>Funcții</h4><p>Căutare client după firmă, cod sau oraș. Filtrare multi-criteriu. Click pe client = navigare pe hartă. Popup cu detalii complete.</p></div>` },
+  censusUrsus: { title: "Census Ursus", body: `<div class="help-section"><h4>Descriere</h4><p>Intelligence competitiv bazat pe Census-ul Ursus/Asahi 2026 pentru județul Iași. Afișează toate locațiile din census cu date de vânzări istorice Quatro suprapuse.</p></div><div class="help-section"><h4>Semafor</h4><p><span style="color:#27ae60">● GREEN</span> = client activ (achiziții ultimele 3 luni)<br><span style="color:#f39c12">● YELLOW</span> = client inactiv recent (achiziții >3 luni, fără cele recente)<br><span style="color:#e74c3c">● RED</span> = non-client (fără achiziții Quatro = TARGET)</p></div><div class="help-section"><h4>Vânzări</h4><p>Băuturi: medie lunară în RON fără TVA. Țigări JTI: medie lunară în baxuri (1 bax = 500 pachete). SIS: DA/NU.</p></div><div class="help-section"><h4>Culori hartă</h4><p>3 moduri: Semafor (verde/galben/roșu), Distribuitor (Inter Uno/Migdalin/Quatro), Volum vânzări.</p></div>` },
   audit: { title: "Audit", body: `<div class="help-section"><h4>Descriere</h4><p>Sistem de audit vizite la clienți. Permite deschiderea unui audit cu foto + GPS, completarea cu produse, și închiderea cu raport final.</p></div><div class="help-section"><h4>Pași</h4><p>1. Selectează client → 2. Deschide audit (foto + GPS) → 3. Adaugă produse → 4. Închide auditul.</p></div>` },
   obiective: { title: "Obiective", body: `<div class="help-section"><h4>Descriere</h4><p>Upload și monitorizare obiective lunare per agent. Admin/SPV încarcă fișierul Excel cu targeturi, agenții văd progresul lor.</p></div>` },
   incasari: { title: "Încasări", body: `<div class="help-section"><h4>Descriere</h4><p>Evidență încasări pe teren. Agentul raportează suma încasată, metoda de plată, și atașează dovadă foto dacă e cazul.</p></div>` },
@@ -6773,3 +6775,334 @@ async function deleteB2C(id) {
     loadContractsB2C();
   } catch(e) { toast('Eroare: ' + e.message, 'err'); }
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   CENSUS URSUS - Intelligence competitiv
+   ═══════════════════════════════════════════════════════════════ */
+
+let allCensusUrsus = [];
+let cuFiltered = [];
+let cuColorMode = "semafor";
+let cuMarkers = null; // separate cluster group
+const cuSel = { semafor: new Set(), sis: new Set(), agent: new Set(), localitate: new Set(), distrib: new Set(), canal: new Set(), stare: new Set() };
+
+async function loadCensusUrsus() {
+  if (allCensusUrsus.length) {
+    applyCuFilters();
+    renderCuMap();
+    return;
+  }
+  try {
+    const r = await fetch("/api/census-ursus");
+    if (!r.ok) throw new Error("Eroare server");
+    const d = await r.json();
+    allCensusUrsus = Array.isArray(d) ? d : (d.data || []);
+    buildCuFilters();
+    applyCuFilters();
+    renderCuMap();
+  } catch (e) {
+    toast("Eroare încărcare Census Ursus: " + e.message, "err");
+  }
+}
+
+function buildCuFilters() {
+  renderFilterChecklist("cuSemaforFilter", groupBy(allCensusUrsus, "semafor"), cuSel.semafor);
+  const sisItems = [
+    ["DA", allCensusUrsus.filter(c => c.is_sis).length],
+    ["NU", allCensusUrsus.filter(c => !c.is_sis).length]
+  ];
+  renderFilterChecklist("cuSisFilter", sisItems, cuSel.sis);
+  renderFilterChecklist("cuAgentFilter", groupBy(allCensusUrsus, "agent_alocat"), cuSel.agent, "cuAgentSearch");
+  renderFilterChecklist("cuLocalitateFilter", groupBy(allCensusUrsus, "locality"), cuSel.localitate, "cuLocalitateSearch");
+  renderFilterChecklist("cuDistribFilter", groupBy(allCensusUrsus, "distributor1"), cuSel.distrib, "cuDistribSearch");
+  renderFilterChecklist("cuCanalFilter", groupBy(allCensusUrsus, "channel"), cuSel.canal);
+  renderFilterChecklist("cuStareFilter", groupBy(allCensusUrsus, "stare"), cuSel.stare);
+}
+
+function applyCuFilters() {
+  const q = (document.getElementById("cuSearch")?.value || "").toLowerCase();
+  cuFiltered = allCensusUrsus.filter(c => {
+    if (q && !(c.outlet_name||"").toLowerCase().includes(q) && !(c.cui||"").includes(q) && !(c.locality||"").toLowerCase().includes(q) && !(c.address||"").toLowerCase().includes(q)) return false;
+    if (cuSel.semafor.size && !cuSel.semafor.has(c.semafor)) return false;
+    if (cuSel.sis.size) {
+      const sisLabel = c.is_sis ? "DA" : "NU";
+      if (!cuSel.sis.has(sisLabel)) return false;
+    }
+    if (cuSel.agent.size && !cuSel.agent.has(c.agent_alocat)) return false;
+    if (cuSel.localitate.size && !cuSel.localitate.has(c.locality)) return false;
+    if (cuSel.distrib.size && !cuSel.distrib.has(c.distributor1)) return false;
+    if (cuSel.canal.size && !cuSel.canal.has(c.channel)) return false;
+    if (cuSel.stare.size && !cuSel.stare.has(c.stare)) return false;
+    return true;
+  });
+
+  // Stats bar
+  const green = cuFiltered.filter(c => c.semafor === "GREEN").length;
+  const yellow = cuFiltered.filter(c => c.semafor === "YELLOW").length;
+  const red = cuFiltered.filter(c => c.semafor === "RED").length;
+  const sis = cuFiltered.filter(c => c.is_sis).length;
+  const withGps = cuFiltered.filter(c => validGPS(c.lat, c.lon)).length;
+  document.getElementById("cuStats").innerHTML = `Locații: <b>${cuFiltered.length}</b> (GPS: ${withGps}) · <span style="color:#27ae60">●</span> ${green} · <span style="color:#f39c12">●</span> ${yellow} · <span style="color:#e74c3c">●</span> ${red} · SIS: ${sis}`;
+
+  renderCuMap();
+  renderCuClientList();
+}
+
+function resetCuFilters() {
+  for (const k of Object.keys(cuSel)) cuSel[k].clear();
+  const searchEl = document.getElementById("cuSearch");
+  if (searchEl) searchEl.value = "";
+  buildCuFilters();
+  applyCuFilters();
+}
+
+function getCuMarkerColor(c) {
+  if (cuColorMode === "semafor") {
+    if (c.semafor === "GREEN") return "#27ae60";
+    if (c.semafor === "YELLOW") return "#f39c12";
+    return "#e74c3c";
+  }
+  if (cuColorMode === "distributor") {
+    const d = (c.distributor1 || "").toUpperCase();
+    if (d.includes("INTER UNO") || d.includes("INTERUNO")) return "#c0392b";
+    if (d.includes("MIGDALIN")) return "#e67e22";
+    if (d.includes("QUATRO")) return "#27ae60";
+    return "#95a5a6";
+  }
+  if (cuColorMode === "volume") {
+    const vol = (c.ursus_med12 || 0) + (c.bergenbier_med12 || 0);
+    if (vol > 5000) return "#e74c3c";
+    if (vol > 1000) return "#f39c12";
+    return "#95a5a6";
+  }
+  return "#3498db";
+}
+
+function renderCuMap() {
+  if (currentTab !== "censusUrsus") return;
+  markers.clearLayers();
+  for (const c of cuFiltered) {
+    if (!validGPS(c.lat, c.lon)) continue;
+    const color = getCuMarkerColor(c);
+    const m = L.marker([c.lat, c.lon], { icon: createIcon(color) });
+    m.bindPopup(cuPopup(c), { maxWidth: 320 });
+    m.bindTooltip(`<b>${esc((c.outlet_name||'').toUpperCase())}</b><br>${esc(c.locality)}<br><span style="color:${color}">${c.semafor}</span>${c.is_sis ? ' · SIS' : ''}`, { direction: "top", offset: [0, -8] });
+    m._clientId = c.id;
+    m._clientData = c;
+    m.on("click", () => { if (routeMode) toggleRouteClient(c, m); });
+    markers.addLayer(m);
+  }
+  fitBounds(cuFiltered);
+}
+
+function cuPopup(c) {
+  const sColor = c.semafor === "GREEN" ? "ok" : c.semafor === "YELLOW" ? "warn" : "bad";
+  const sisTag = c.is_sis ? '<span class="chip" style="background:#8e44ad;color:#fff">SIS Quatro</span>' : '';
+
+  // Sales summary
+  let salesHtml = '';
+  const bbVal = (c.bergenbier_med12 || 0);
+  const ursVal = (c.ursus_med12 || 0);
+  const maspexVal = (c.maspex_med12 || 0);
+  const shVal = (c.spring_harghita_med12 || 0);
+  const altVal = (c.altele_med12 || 0);
+  const jtiVal = (c.jti_dist_bax_med12 || 0);
+  const totalDrinks = bbVal + ursVal + maspexVal + shVal + altVal;
+
+  if (totalDrinks > 0 || jtiVal > 0) {
+    salesHtml += '<div style="font-size:.75rem;margin-top:4px;background:#f8f9fa;padding:4px 6px;border-radius:4px">';
+    salesHtml += '<b>Medii lunare (12L):</b><br>';
+    if (ursVal > 0) salesHtml += `Ursus: ${fmtRON(ursVal)} · `;
+    if (bbVal > 0) salesHtml += `BB: ${fmtRON(bbVal)} · `;
+    if (maspexVal > 0) salesHtml += `Maspex: ${fmtRON(maspexVal)} · `;
+    if (shVal > 0) salesHtml += `Spring H: ${fmtRON(shVal)} · `;
+    if (altVal > 0) salesHtml += `Altele: ${fmtRON(altVal)} · `;
+    if (jtiVal > 0) salesHtml += `<br>JTI: ${jtiVal.toFixed(1)} bax/lună`;
+    salesHtml += '</div>';
+  }
+
+  return `
+    <strong>${esc((c.outlet_name||'').toUpperCase())}</strong><br>
+    <small>CUI: ${esc(c.cui)} • ${esc(c.locality)}</small><br>
+    <small>${esc(c.address)}</small><br>
+    <small>Canal: ${esc(c.channel)} • Stare: ${esc(c.stare)}</small><br>
+    <small>Distrib: ${esc(c.distributor1)}${c.distributor2 ? ' / ' + esc(c.distributor2) : ''}</small><br>
+    <small>Agent: ${esc(c.agent_alocat)}</small><br>
+    <span class="chip ${sColor}">${c.semafor}</span> ${sisTag}
+    ${salesHtml}
+    <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px">
+      <button class="chip-btn" onclick="navigateTo(${c.lat},${c.lon})">🧭 Navighează</button>
+      <button class="chip-btn" onclick="showCuDetail(${c.id})">📋 Detalii</button>
+      <button class="chip-btn" onclick="addToRoute(${c.id})" style="background:#00b894;color:#fff">+ Traseu</button>
+    </div>
+  `;
+}
+
+function fmtRON(v) {
+  return v.toLocaleString("ro-RO", { minimumFractionDigits: 0, maximumFractionDigits: 0 }) + " lei";
+}
+
+function renderCuClientList() {
+  const list = document.getElementById("cuClientList");
+  if (!cuFiltered.length) {
+    list.innerHTML = '<li style="padding:1rem;color:var(--muted);text-align:center">Nicio locație găsită</li>';
+    return;
+  }
+  const shown = cuFiltered.slice(0, 200);
+  list.innerHTML = shown.map(c => {
+    const sColor = c.semafor === "GREEN" ? "ok" : c.semafor === "YELLOW" ? "warn" : "bad";
+    const sisTag = c.is_sis ? ' <span class="chip" style="background:#8e44ad;color:#fff;font-size:.65rem">SIS</span>' : '';
+    const totalDrinks12 = (c.bergenbier_med12||0) + (c.ursus_med12||0) + (c.maspex_med12||0) + (c.spring_harghita_med12||0) + (c.altele_med12||0);
+    const jti12 = c.jti_dist_bax_med12 || 0;
+    let salesBrief = '';
+    if (totalDrinks12 > 0) salesBrief += `${fmtRON(totalDrinks12)}/lună`;
+    if (jti12 > 0) salesBrief += `${salesBrief ? ' · ' : ''}JTI ${jti12.toFixed(1)} bax`;
+    if (!salesBrief) salesBrief = 'Fără vânzări';
+
+    return `
+      <li class="client-item" data-id="${parseInt(c.id)||0}">
+        <p class="client-title">${esc((c.outlet_name||'').toUpperCase())} <span class="chip ${sColor}">${c.semafor}</span>${sisTag}</p>
+        <p class="client-meta">CUI: ${esc(c.cui)} • ${esc(c.locality)}</p>
+        <p class="client-meta">Distrib: ${esc(c.distributor1)} • Canal: ${esc(c.channel)}</p>
+        <p class="client-meta">Agent: ${esc(c.agent_alocat)}</p>
+        <p class="client-meta">${salesBrief}</p>
+        <div class="tiny-actions">
+          <button class="chip-btn" onclick="focusCuOnMap(${c.id})">Pe hartă</button>
+          <button class="chip-btn" onclick="navigateTo(${c.lat},${c.lon})">Navighează</button>
+          <button class="chip-btn" onclick="showCuDetail(${c.id})">Detalii</button>
+        </div>
+      </li>
+    `;
+  }).join("");
+  if (cuFiltered.length > 200) {
+    list.innerHTML += `<li style="padding:.5rem;text-align:center;color:var(--muted);font-size:.8rem">Se afișează primele 200 din ${cuFiltered.length}. Folosește filtrele.</li>`;
+  }
+}
+
+function focusCuOnMap(id) {
+  const c = allCensusUrsus.find(x => x.id === id);
+  if (!c || !validGPS(c.lat, c.lon)) return;
+  map.setView([c.lat, c.lon], 17);
+  markers.eachLayer(m => {
+    if (m._clientId === id) { m.openPopup(); }
+  });
+}
+
+function switchCuColor(mode) {
+  cuColorMode = mode;
+  document.getElementById("cuColorSemafor").style.background = mode === "semafor" ? "var(--primary)" : "";
+  document.getElementById("cuColorSemafor").style.color = mode === "semafor" ? "#fff" : "";
+  document.getElementById("cuColorDistrib").style.background = mode === "distributor" ? "var(--primary)" : "";
+  document.getElementById("cuColorDistrib").style.color = mode === "distributor" ? "#fff" : "";
+  document.getElementById("cuColorVolum").style.background = mode === "volume" ? "var(--primary)" : "";
+  document.getElementById("cuColorVolum").style.color = mode === "volume" ? "#fff" : "";
+  renderCuMap();
+}
+
+async function showCuDetail(id) {
+  const c = allCensusUrsus.find(x => x.id === id);
+  if (!c) return;
+
+  // Fetch full detail from API (includes census_full_json and Cortex columns)
+  let fullData = {};
+  try {
+    const r = await fetch(`/api/census-ursus/${id}`);
+    if (r.ok) {
+      const detail = await r.json();
+      fullData = detail.census_detail || {};
+    }
+  } catch(e) {}
+
+  const sColor = c.semafor === "GREEN" ? "#27ae60" : c.semafor === "YELLOW" ? "#f39c12" : "#e74c3c";
+
+  let html = `<div style="font-size:.85rem;line-height:1.5">`;
+  html += `<h3 style="margin:0 0 .5rem;color:var(--accent)">${esc((c.outlet_name||'').toUpperCase())}</h3>`;
+  html += `<table style="width:100%;border-collapse:collapse;font-size:.82rem">`;
+
+  const row = (label, val) => `<tr><td style="padding:3px 6px;font-weight:600;white-space:nowrap;color:var(--muted)">${label}</td><td style="padding:3px 6px">${val}</td></tr>`;
+
+  html += row("CUI", esc(c.cui));
+  html += row("Localitate", esc(c.locality));
+  html += row("Adresă", esc(c.address));
+  html += row("Contact", esc(c.contact_person));
+  html += row("Telefon", esc(c.phone));
+  html += row("Canal", esc(c.channel));
+  html += row("Stare", esc(c.stare));
+  html += row("Tip locație", esc(c.location_type));
+  html += row("Distribuitor 1", esc(c.distributor1));
+  html += row("Distribuitor 2", esc(c.distributor2));
+  html += row("Semafor", `<span style="color:${sColor};font-weight:700">${c.semafor}</span>`);
+  html += row("SIS Quatro", c.is_sis ? '<span style="color:#8e44ad;font-weight:700">DA</span>' : 'NU');
+  html += row("Agent alocat", esc(c.agent_alocat));
+  html += row("CC", esc(c.cc_alocat));
+
+  html += `</table>`;
+
+  // Vanzari medii lunare
+  html += `<h4 style="margin:.8rem 0 .3rem;color:var(--accent)">Medii lunare vânzări</h4>`;
+  html += `<table style="width:100%;border-collapse:collapse;font-size:.8rem">`;
+  html += `<tr style="background:var(--surface);font-weight:600"><td style="padding:4px 6px">Categorie</td><td style="padding:4px 6px;text-align:right">12 luni</td><td style="padding:4px 6px;text-align:right">3 luni</td><td style="padding:4px 6px;text-align:right">Trend</td></tr>`;
+
+  const salesRow = (label, v12, v3, unit) => {
+    if (v12 === 0 && v3 === 0) return '';
+    const trend = v12 > 0 ? ((v3 - v12) / v12 * 100).toFixed(0) : '—';
+    const tColor = trend === '—' ? '' : (parseFloat(trend) >= 0 ? 'color:#27ae60' : 'color:#e74c3c');
+    const tArrow = trend === '—' ? '' : (parseFloat(trend) >= 0 ? '▲' : '▼');
+    const fmt = unit === 'bax' ? (v => v.toFixed(1) + ' bax') : (v => fmtRON(v));
+    return `<tr><td style="padding:3px 6px">${label}</td><td style="padding:3px 6px;text-align:right">${fmt(v12)}</td><td style="padding:3px 6px;text-align:right">${fmt(v3)}</td><td style="padding:3px 6px;text-align:right;${tColor}">${tArrow} ${trend === '—' ? '—' : trend + '%'}</td></tr>`;
+  };
+
+  html += salesRow("Ursus", c.ursus_med12||0, c.ursus_med3||0, "ron");
+  html += salesRow("Bergenbier", c.bergenbier_med12||0, c.bergenbier_med3||0, "ron");
+  html += salesRow("Maspex", c.maspex_med12||0, c.maspex_med3||0, "ron");
+  html += salesRow("Spring Harghita", c.spring_harghita_med12||0, c.spring_harghita_med3||0, "ron");
+  html += salesRow("Altele", c.altele_med12||0, c.altele_med3||0, "ron");
+  html += salesRow("JTI (distribuție)", c.jti_dist_bax_med12||0, c.jti_dist_bax_med3||0, "bax");
+
+  html += `</table>`;
+
+  // Cortex columns (only visible if present in data - server strips them for agents)
+  const cortexLY1 = fullData["Cortex LY-1"] || fullData["CortexLY-1"];
+  const cortexLY = fullData["Cortex LY"] || fullData["CortexLY"];
+  const cortexCurent = fullData["Cortex An curent"] || fullData["CortexAncurent"];
+  if (cortexLY1 || cortexLY || cortexCurent) {
+    html += `<h4 style="margin:.8rem 0 .3rem;color:#8e44ad">Cortex (SPV/Admin)</h4>`;
+    html += `<table style="width:100%;border-collapse:collapse;font-size:.8rem">`;
+    if (cortexLY1) html += row("Cortex LY-1", cortexLY1);
+    if (cortexLY) html += row("Cortex LY", cortexLY);
+    if (cortexCurent) html += row("Cortex An curent", cortexCurent);
+    html += `</table>`;
+  }
+
+  // Top 3 classes
+  let top3 = [];
+  try { top3 = JSON.parse(c.top3_clase || "[]"); } catch(e) {}
+  if (top3.length) {
+    html += `<h4 style="margin:.8rem 0 .3rem;color:var(--accent)">Top 3 categorii (12 luni)</h4>`;
+    html += `<ol style="margin:0;padding-left:1.2rem;font-size:.82rem">`;
+    for (const t of top3) {
+      html += `<li>${esc(t.grupa)}: ${fmtRON(t.valoare_med_lunara)}/lună</li>`;
+    }
+    html += `</ol>`;
+  }
+
+  html += `<div style="display:flex;gap:6px;margin-top:.8rem;flex-wrap:wrap">`;
+  html += `<button class="btn primary small" onclick="navigateTo(${c.lat},${c.lon})">🧭 Navighează</button>`;
+  html += `<button class="btn ghost small" onclick="addToRoute(${c.id})">+ Traseu</button>`;
+  html += `</div>`;
+  html += `</div>`;
+
+  // Use existing modal pattern
+  const overlay = document.getElementById("helpOverlay");
+  document.getElementById("helpTitle").textContent = "Detalii Census Ursus";
+  document.getElementById("helpBody").innerHTML = html;
+  overlay.style.display = "flex";
+}
+
+// Search binding for Census Ursus
+document.addEventListener("DOMContentLoaded", () => {
+  const cuSearchEl = document.getElementById("cuSearch");
+  if (cuSearchEl) {
+    cuSearchEl.addEventListener("input", () => { applyCuFilters(); });
+  }
+});

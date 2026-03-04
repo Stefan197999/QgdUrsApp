@@ -1042,6 +1042,57 @@ if (agentDivCount === 0) {
   console.log("Seeded agent_divisions with URSUS agents");
 }
 
+/* ═══════════ CENSUS URSUS — Tables ═══════════ */
+db.exec(`
+  CREATE TABLE IF NOT EXISTS census_ursus (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    cui TEXT NOT NULL,
+    outlet_name TEXT DEFAULT '',
+    locality TEXT DEFAULT '',
+    address TEXT DEFAULT '',
+    lat REAL DEFAULT 0,
+    lon REAL DEFAULT 0,
+    contact_person TEXT DEFAULT '',
+    phone TEXT DEFAULT '',
+    distributor1 TEXT DEFAULT '',
+    distributor2 TEXT DEFAULT '',
+    location_type TEXT DEFAULT '',
+    stare TEXT DEFAULT '',
+    channel TEXT DEFAULT '',
+    semafor TEXT DEFAULT 'RED',
+    is_sis INTEGER DEFAULT 0,
+    agent_alocat TEXT DEFAULT '',
+    cc_alocat TEXT DEFAULT '',
+    bergenbier_med12 REAL DEFAULT 0,
+    bergenbier_med3 REAL DEFAULT 0,
+    ursus_med12 REAL DEFAULT 0,
+    ursus_med3 REAL DEFAULT 0,
+    maspex_med12 REAL DEFAULT 0,
+    maspex_med3 REAL DEFAULT 0,
+    spring_harghita_med12 REAL DEFAULT 0,
+    spring_harghita_med3 REAL DEFAULT 0,
+    altele_med12 REAL DEFAULT 0,
+    altele_med3 REAL DEFAULT 0,
+    jti_dist_bax_med12 REAL DEFAULT 0,
+    jti_dist_bax_med3 REAL DEFAULT 0,
+    top3_clase TEXT DEFAULT '[]',
+    census_full_json TEXT DEFAULT '{}',
+    created_at TEXT DEFAULT (datetime('now'))
+  );
+  CREATE INDEX IF NOT EXISTS idx_census_cui ON census_ursus(cui);
+  CREATE INDEX IF NOT EXISTS idx_census_semafor ON census_ursus(semafor);
+  CREATE INDEX IF NOT EXISTS idx_census_agent ON census_ursus(agent_alocat);
+  CREATE INDEX IF NOT EXISTS idx_census_locality ON census_ursus(locality);
+  CREATE INDEX IF NOT EXISTS idx_census_sis ON census_ursus(is_sis);
+
+  CREATE TABLE IF NOT EXISTS census_columns_config (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    column_name TEXT NOT NULL UNIQUE,
+    display_mode TEXT DEFAULT 'all',
+    restricted INTEGER DEFAULT 0
+  );
+`);
+
 /* ───────── Seed default users if table is empty ───────── */
 const userCount = db.prepare("SELECT COUNT(*) as c FROM users").get().c;
 if (userCount === 0) {
@@ -8154,6 +8205,82 @@ try {
   }
 } catch(e) { console.error("[Changelog] Seed error:", e.message); }
 
+/* ═══════════════════════════════════════════
+   CENSUS URSUS — API Endpoints
+   ═══════════════════════════════════════════ */
+
+/* ── Census Ursus: Stats (must be before :id to avoid conflict) ── */
+app.get("/api/census-ursus/stats/summary", auth, (req, res) => {
+  try {
+    const total = db.prepare("SELECT COUNT(*) as c FROM census_ursus").get().c;
+    const green = db.prepare("SELECT COUNT(*) as c FROM census_ursus WHERE semafor='GREEN'").get().c;
+    const yellow = db.prepare("SELECT COUNT(*) as c FROM census_ursus WHERE semafor='YELLOW'").get().c;
+    const red = db.prepare("SELECT COUNT(*) as c FROM census_ursus WHERE semafor='RED'").get().c;
+    const sis = db.prepare("SELECT COUNT(*) as c FROM census_ursus WHERE is_sis=1").get().c;
+    const allocated = db.prepare("SELECT COUNT(*) as c FROM census_ursus WHERE agent_alocat != ''").get().c;
+    res.json({ total, green, yellow, red, sis, allocated, unallocated: total - allocated });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+/* ── Census Ursus: List (filtered by agent for role=agent) ── */
+app.get("/api/census-ursus", auth, (req, res) => {
+  try {
+    const role = req.role;
+    const agentDtr = req.agentDtr || "";
+    let rows;
+    if (role === "agent" && agentDtr) {
+      rows = db.prepare(`SELECT id, cui, outlet_name, locality, address, lat, lon,
+        contact_person, phone, distributor1, distributor2, location_type, stare, channel,
+        semafor, is_sis, agent_alocat, cc_alocat,
+        bergenbier_med12, bergenbier_med3, ursus_med12, ursus_med3,
+        maspex_med12, maspex_med3, spring_harghita_med12, spring_harghita_med3,
+        altele_med12, altele_med3, jti_dist_bax_med12, jti_dist_bax_med3,
+        top3_clase FROM census_ursus
+        WHERE UPPER(REPLACE(agent_alocat, ';', ' ')) = UPPER(REPLACE(?, ';', ' '))
+      `).all(agentDtr);
+    } else {
+      rows = db.prepare(`SELECT id, cui, outlet_name, locality, address, lat, lon,
+        contact_person, phone, distributor1, distributor2, location_type, stare, channel,
+        semafor, is_sis, agent_alocat, cc_alocat,
+        bergenbier_med12, bergenbier_med3, ursus_med12, ursus_med3,
+        maspex_med12, maspex_med3, spring_harghita_med12, spring_harghita_med3,
+        altele_med12, altele_med3, jti_dist_bax_med12, jti_dist_bax_med3,
+        top3_clase FROM census_ursus`).all();
+    }
+    res.json(rows);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+/* ── Census Ursus: Detail (full JSON, Cortex restricted) ── */
+app.get("/api/census-ursus/:id", auth, (req, res) => {
+  try {
+    const row = db.prepare("SELECT * FROM census_ursus WHERE id=?").get(req.params.id);
+    if (!row) return res.status(404).json({ error: "Not found" });
+
+    let fullData = {};
+    try { fullData = JSON.parse(row.census_full_json || "{}"); } catch(e) {}
+
+    // Cortex columns restricted for agents
+    const RESTRICTED_COLS = ["Cortex LY-1", "Cortex LY", "Cortex An curent"];
+    if (req.role === "agent") {
+      for (const col of RESTRICTED_COLS) {
+        delete fullData[col];
+      }
+    }
+
+    // Column config
+    const colConfig = db.prepare("SELECT column_name, display_mode, restricted FROM census_columns_config").all();
+    const configMap = {};
+    for (const cc of colConfig) configMap[cc.column_name] = cc;
+
+    res.json({
+      ...row,
+      census_detail: fullData,
+      column_config: configMap
+    });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 /* ── SPA fallback ── */
 app.get("*", (req, res) => {
   if (req.path.startsWith("/api/")) return res.status(404).json({ error: "Not found" });
@@ -8707,6 +8834,90 @@ app.post("/api/client-nou/delete", auth, (req, res) => {
     db.prepare("DELETE FROM client_nou WHERE id=?").run(id);
     res.json({ ok: true });
   } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+/* ── Census Ursus: Upload/Import (admin only) ── */
+app.post("/api/census-ursus/upload", auth, (req, res) => {
+  if (req.role !== "admin") return res.status(403).json({ error: "Admin only" });
+  try {
+    const { data, metadata, headers } = req.body;
+    if (!data || !Array.isArray(data)) return res.status(400).json({ error: "Invalid data" });
+
+    const clearTx = db.transaction(() => {
+      db.prepare("DELETE FROM census_ursus").run();
+      db.prepare("DELETE FROM census_columns_config").run();
+    });
+    clearTx();
+
+    // Insert column config
+    if (metadata && headers) {
+      const insCol = db.prepare("INSERT OR REPLACE INTO census_columns_config (column_name, display_mode, restricted) VALUES (?,?,?)");
+      const RESTRICTED = ["Cortex LY-1", "Cortex LY", "Cortex An curent"];
+      const colTx = db.transaction(() => {
+        for (const h of headers) {
+          const mode = metadata[h] || "all";
+          const restricted = RESTRICTED.includes(h) ? 1 : 0;
+          insCol.run(h, mode, restricted);
+        }
+      });
+      colTx();
+    }
+
+    // Insert census rows
+    const ins = db.prepare(`INSERT INTO census_ursus (
+      cui, outlet_name, locality, address, lat, lon, contact_person, phone,
+      distributor1, distributor2, location_type, stare, channel,
+      semafor, is_sis, agent_alocat, cc_alocat,
+      bergenbier_med12, bergenbier_med3, ursus_med12, ursus_med3,
+      maspex_med12, maspex_med3, spring_harghita_med12, spring_harghita_med3,
+      altele_med12, altele_med3, jti_dist_bax_med12, jti_dist_bax_med3,
+      top3_clase, census_full_json
+    ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`);
+
+    const insertTx = db.transaction(() => {
+      for (const entry of data) {
+        const c = entry.census || entry;
+        const v = entry.vanzari || {};
+        ins.run(
+          c.cui_norm || c.cui || "",
+          c.OutletName || c.outlet_name || "",
+          c.City || c.Locality || c.locality || "",
+          c["Address (Outlet)"] || c.Address || c.address || "",
+          (() => { const g = String(c.GPS||"").split(";"); return g.length===2 ? parseFloat(g[0].replace(",","."))||0 : parseFloat(c.lat)||0; })(),
+          (() => { const g = String(c.GPS||"").split(";"); return g.length===2 ? parseFloat(g[1].replace(",","."))||0 : parseFloat(c.lon)||0; })(),
+          c["Persoana Contact"] || c["Contact person"] || c.contact_person || "",
+          c["Telefon Persoana Contact"] || c.Phone || c.phone || "",
+          c["Distribuitor 1"] || c.DistributorName || c.distributor1 || "",
+          c["Distribuitor 2"] || c.Distributor2Name || c.distributor2 || "",
+          c.LocationType || c.LocationTypeName || c.location_type || "",
+          c.Stare || c.stare || "",
+          c["SalesForce Channel"] || c.Channel || c.channel || "",
+          v.semafor || "RED",
+          v.is_sis || 0,
+          v.agent_alocat || "",
+          v.cc_alocat || "",
+          v.bergenbier_med12 || 0,
+          v.bergenbier_med3 || 0,
+          v.ursus_med12 || 0,
+          v.ursus_med3 || 0,
+          v.maspex_med12 || 0,
+          v.maspex_med3 || 0,
+          v.spring_harghita_med12 || 0,
+          v.spring_harghita_med3 || 0,
+          v.altele_med12 || 0,
+          v.altele_med3 || 0,
+          v.jti_dist_bax_med12 || 0,
+          v.jti_dist_bax_med3 || 0,
+          v.top3_clase || "[]",
+          JSON.stringify(c)
+        );
+      }
+    });
+    insertTx();
+
+    const count = db.prepare("SELECT COUNT(*) as c FROM census_ursus").get().c;
+    res.json({ ok: true, imported: count });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 /* ── Global multer error handler ── */
