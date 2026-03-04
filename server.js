@@ -1791,9 +1791,9 @@ function getProductsForClient(canal, subformat, code) {
   const c = canal.toUpperCase();
   const sf = subformat.trim();
   if (c.includes("OFF")) {
-    return matrix.off_trade[sf] || [];
+    return (matrix.off_trade && matrix.off_trade[sf]) || [];
   } else if (c.includes("ON")) {
-    return matrix.on_trade[sf] || [];
+    return (matrix.on_trade && matrix.on_trade[sf]) || [];
   }
   return [];
 }
