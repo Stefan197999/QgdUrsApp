@@ -1224,16 +1224,16 @@ if (userCount === 0) {
     insUser.run("admin", "admin2026", "Administrator", "admin", "");
     // Supervisor
     insUser.run("aluchian", "spv2026", "Andrei Luchian (SPV)", "spv", "");
-    // URSUS Agents
-    insUser.run("apostol_urs1", "agent2026", "Apostol Ionela Elena URS1", "agent", "APOSTOL IONELA ELENA");
+    // URSUS Agents (username = nume_ursCC conform centrului de cost)
+    insUser.run("todica_urs1", "agent2026", "Todica Constantin URS1", "agent", "TODICA CONSTANTIN");
     insUser.run("butnaru_urs2", "agent2026", "Butnaru Ionut URS2", "agent", "BUTNARU IONUT");
-    insUser.run("smochina_urs3", "agent2026", "Smochina Costel-Petronel URS3", "agent", "SMOCHINA COSTEL-PETRONEL");
-    insUser.run("todica_urs4", "agent2026", "Todica Constantin URS4", "agent", "TODICA CONSTANTIN");
-    insUser.run("apetrei_urs5", "agent2026", "Apetrei Claudiu Daniel URS5", "agent", "APETREI CLAUDIU DANIEL");
-    insUser.run("avram_urs6", "agent2026", "Avram Lavinia Andreea URS6", "agent", "AVRAM LAVINIA ANDREEA");
-    insUser.run("cazacu_urs7", "agent2026", "Cazacu Sergiu Ioan URS7", "agent", "CAZACU SERGIU IOAN");
-    insUser.run("mocanu_urs8", "agent2026", "Mocanu Mihai URS8", "agent", "MOCANU MIHAI");
-    insUser.run("palade_urs9", "agent2026", "Palade Andrei Cosmin URS9", "agent", "PALADE ANDREI COSMIN");
+    insUser.run("apostol_urs3", "agent2026", "Apostol Ionela Elena URS3", "agent", "APOSTOL IONELA ELENA");
+    insUser.run("palade_urs4", "agent2026", "Palade Andrei Cosmin URS4", "agent", "PALADE ANDREI COSMIN");
+    insUser.run("smochina_urs5", "agent2026", "Smochina Costel-Petronel URS5", "agent", "SMOCHINA COSTEL-PETRONEL");
+    insUser.run("mocanu_urs6", "agent2026", "Mocanu Mihai URS6", "agent", "MOCANU MIHAI");
+    insUser.run("cazacu_urs8", "agent2026", "Cazacu Sergiu Ioan URS8", "agent", "CAZACU SERGIU IOAN");
+    insUser.run("avram_urs9", "agent2026", "Avram Lavinia Andreea URS9", "agent", "AVRAM LAVINIA ANDREEA");
+    insUser.run("apetrei_urs10", "agent2026", "Apetrei Claudiu Daniel URS10", "agent", "APETREI CLAUDIU DANIEL");
   });
   seedTx();
   console.log("Created 11 default users (admin, spv, 9 URSUS agents)");
@@ -1261,21 +1261,50 @@ db.prepare("UPDATE users SET role='upload' WHERE username='qgdrapoarte'").run();
   }
 }
 
+/* ───────── Migrate agent usernames to match CC ───────── */
+{
+  const renames = [
+    ["apostol_urs1", "apostol_urs3", "Apostol Ionela Elena URS3"],
+    ["todica_urs4", "todica_urs1", "Todica Constantin URS1"],
+    ["apetrei_urs5", "apetrei_urs10", "Apetrei Claudiu Daniel URS10"],
+    ["avram_urs6", "avram_urs9", "Avram Lavinia Andreea URS9"],
+    ["cazacu_urs7", "cazacu_urs8", "Cazacu Sergiu Ioan URS8"],
+    ["mocanu_urs8", "mocanu_urs6", "Mocanu Mihai URS6"],
+    ["palade_urs9", "palade_urs4", "Palade Andrei Cosmin URS4"],
+    ["smochina_urs3", "smochina_urs5", "Smochina Costel-Petronel URS5"],
+  ];
+  // Use temp names to avoid conflicts (e.g. apostol_urs1->urs3 while smochina is still urs3)
+  const renStmt = db.prepare("UPDATE users SET username=?, display_name=? WHERE username=?");
+  // Step 1: rename to temp
+  renames.forEach(([oldName], i) => {
+    const exists = db.prepare("SELECT id FROM users WHERE username=?").get(oldName);
+    if (exists) renStmt.run("_tmp_rename_" + i, "_tmp_" + i, oldName);
+  });
+  // Step 2: rename to final
+  renames.forEach(([oldName, newName, displayName], i) => {
+    const tmp = db.prepare("SELECT id FROM users WHERE username=?").get("_tmp_rename_" + i);
+    if (tmp) {
+      renStmt.run(newName, displayName, "_tmp_rename_" + i);
+      console.log("Migrated agent: " + oldName + " → " + newName);
+    }
+  });
+}
+
 /* ───────── Set divisions for all agents/SPV ───────── */
 {
   const setDiv = db.prepare("UPDATE users SET division=? WHERE username=?");
   // SPV Andrei Luchian
   setDiv.run("URSUS", "aluchian");
-  // URSUS Agents
-  setDiv.run("URSUS", "apostol_urs1");
+  // URSUS Agents (conform CC)
+  setDiv.run("URSUS", "todica_urs1");
   setDiv.run("URSUS", "butnaru_urs2");
-  setDiv.run("URSUS", "smochina_urs3");
-  setDiv.run("URSUS", "todica_urs4");
-  setDiv.run("URSUS", "apetrei_urs5");
-  setDiv.run("URSUS", "avram_urs6");
-  setDiv.run("URSUS", "cazacu_urs7");
-  setDiv.run("URSUS", "mocanu_urs8");
-  setDiv.run("URSUS", "palade_urs9");
+  setDiv.run("URSUS", "apostol_urs3");
+  setDiv.run("URSUS", "palade_urs4");
+  setDiv.run("URSUS", "smochina_urs5");
+  setDiv.run("URSUS", "mocanu_urs6");
+  setDiv.run("URSUS", "cazacu_urs8");
+  setDiv.run("URSUS", "avram_urs9");
+  setDiv.run("URSUS", "apetrei_urs10");
   console.log("Divisions assigned to all URSUS agents/SPV");
 }
 
