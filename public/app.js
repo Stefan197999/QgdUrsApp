@@ -6787,7 +6787,7 @@ let allCensusUrsus = [];
 let cuFiltered = [];
 let cuColorMode = "semafor";
 let cuMarkers = null; // separate cluster group
-const cuSel = { semafor: new Set(), sis: new Set(), agent: new Set(), uat: new Set(), localitate: new Set(), distrib: new Set(), canal: new Set(), stare: new Set(), tipLocatie: new Set(), zona: new Set(), volum: new Set(), pondere: new Set() };
+const cuSel = { semafor: new Set(), sis: new Set(), agent: new Set(), uat: new Set(), localitate: new Set(), distrib: new Set(), canal: new Set(), stare: new Set(), tipLocatie: new Set(), zona: new Set(), volum: new Set(), pondere: new Set(), cartier: new Set() };
 
 async function loadCensusUrsus() {
   const cuNearby = document.getElementById("cuNearbySection");
@@ -6856,6 +6856,8 @@ function buildCuFilters() {
     ["76-100%", allCensusUrsus.filter(c => { const v = parseInt(c.pct_volum_ub)||0; return v >= 76 && v <= 100; }).length]
   ];
   renderFilterChecklist("cuPondereFilter", pondereRanges, cuSel.pondere);
+  // Cartier filter (Iași + Pașcani)
+  renderFilterChecklist("cuCartierFilter", groupBy(allCensusUrsus.filter(c => c.cartier), "cartier"), cuSel.cartier, "cuCartierSearch");
 }
 
 /* ── UAT ↔ LOCALITATE cascading filters ── */
@@ -6925,6 +6927,7 @@ function applyCuFilters() {
     if (cuSel.stare.size && !cuSel.stare.has(c.stare)) return false;
     if (cuSel.tipLocatie.size && !cuSel.tipLocatie.has(c.tip_locatie)) return false;
     if (cuSel.zona.size && !cuSel.zona.has((c.location_type||"").toUpperCase())) return false;
+    if (cuSel.cartier.size && !cuSel.cartier.has(c.cartier)) return false;
     if (cuSel.volum.size) {
       const v = parseInt(c.volum_bere_hl)||0;
       let match = false;
@@ -7179,6 +7182,7 @@ async function showCuDetail(id) {
   html += row("SIS Quatro", c.is_sis ? '<span style="color:#8e44ad;font-weight:700">DA</span>' : 'NU');
   html += row("Agent alocat", esc(c.agent_alocat));
   html += row("CC", esc(c.cc_alocat));
+  if (c.cartier) html += row("Cartier", esc(c.cartier));
   html += row("Componenta ON", esc(fullData["Componenta ON"] || '-'));
   html += row("Sursa Aprovizionare", esc(c.sursa_aprovizionare || fullData["Sursa Aprovizionare"] || '-'));
   html += row("Mod Comandă (80%)", esc(c.mod_comanda || fullData["Mod Comanda majoritara 80%"] || '-'));

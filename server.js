@@ -11,6 +11,7 @@ const http = require("http");
 const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
 const bcrypt = require("bcryptjs");
+const { getCartier } = require("./cartiere");
 const emailReports = require("./emailReports");
 const { generateContract, generateGDPR, generateContractB2B, generateGDPRB2B, generateContractB2C, generateGDPRB2C } = require("./docxGenerator");
 const { extractFromDocument } = require("./ocrExtractor");
@@ -8413,6 +8414,7 @@ app.get("/api/census-ursus", auth, (req, res) => {
     } else {
       rows = db.prepare(`SELECT ${listCols} FROM census_ursus`).all();
     }
+    rows.forEach(r => { r.cartier = getCartier(r); });
     res.json(rows);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
