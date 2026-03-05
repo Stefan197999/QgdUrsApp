@@ -1714,14 +1714,19 @@ function mapSalesClientToCensusCodes(salesClientName, salesCodFiscal, cifMap) {
 }
 
 /* ───────── Import / sync clients from JSON ───────── */
+const CLIENT_SEED_VERSION = 2; // bump to force re-seed of clients table (agent mappings update)
 const clientCount = db.prepare("SELECT COUNT(*) as c FROM clients").get().c;
 const clientsData = JSON.parse(fs.readFileSync("./seed/clients.json", "utf8"));
 // Check if deduplicated census loaded (2883 unique clients, not 3600+ duplicated)
 let hasJtiOnly = false;
 try { hasJtiOnly = db.prepare("SELECT count(*) as c FROM clients WHERE sursa='JTI'").get().c > 0; } catch(e) {}
 const needReseed = clientCount > 5000; // Old bloated census with duplicates
-if (clientCount > 0 && (!hasJtiOnly || needReseed)) {
-  console.log(`[CENSUS] Re-seed: ${!hasJtiOnly ? 'fără sursa JTI' : `${clientCount} clienți (duplicate)`}. Șterg și reincarc cu ${clientsData.length} clienți unici...`);
+// Version-based re-seed: force re-import when CLIENT_SEED_VERSION bumps
+let clientSeedVer = 0;
+try { clientSeedVer = Number(db.prepare("SELECT value FROM app_settings WHERE key='client_seed_version'").pluck().get() || 0); } catch(e) {}
+const needVersionReseed = clientSeedVer < CLIENT_SEED_VERSION;
+if (clientCount > 0 && (!hasJtiOnly || needReseed || needVersionReseed)) {
+  console.log(`[CLIENTS] Re-seed: ${needVersionReseed ? `version ${clientSeedVer}->${CLIENT_SEED_VERSION}` : !hasJtiOnly ? 'fără sursa JTI' : `${clientCount} clienți (duplicate)`}. Șterg și reincarc cu ${clientsData.length} clienți unici...`);
   db.exec('PRAGMA foreign_keys = OFF');
   db.prepare('DELETE FROM clients').run();
   db.exec('PRAGMA foreign_keys = ON');
@@ -1736,7 +1741,8 @@ if (clientCountNow === 0) {
     }
   });
   tx();
-  console.log(`Imported ${clientsData.length} clients`);
+  db.prepare("INSERT OR REPLACE INTO app_settings (key, value) VALUES ('client_seed_version', ?)").run(String(CLIENT_SEED_VERSION));
+  console.log(`Imported ${clientsData.length} clients (version ${CLIENT_SEED_VERSION})`);
 } else {
   // Sync: add any new codes from JSON that don't exist in DB yet
   const existingCodes = new Set(db.prepare("SELECT code FROM clients").all().map(r => r.code));
