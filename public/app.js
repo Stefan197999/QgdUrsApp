@@ -832,10 +832,20 @@ const visitDialog = document.getElementById("visitDialog");
 const photoViewDialog = document.getElementById("photoViewDialog");
 const clientDetailDialog = document.getElementById("clientDetailDialog");
 
-function openVisitDialog(clientId) {
+async function openVisitDialog(clientId) {
+  event && event.stopPropagation();
   currentVisitClientId = clientId;
   currentVisitId = null;
-  const c = auditClients.find(cl => cl.id === clientId);
+  let c = auditClients.find(cl => cl.id === clientId);
+  if (!c) {
+    c = allClients.find(cl => cl.id === clientId);
+    if (c) {
+      try {
+        const r = await fetch(`/api/audit/client-visit-today/${clientId}`);
+        if (r.ok) { const d = await r.json(); c = { ...c, today_visit: d.visit }; }
+      } catch(e) {}
+    }
+  }
   if (!c) return;
 
   document.getElementById("visitTitle").textContent = `Vizită: ${(c.firma||'').toUpperCase()} — ${c.nume_poc}`;
@@ -925,6 +935,10 @@ async function submitStartVisit() {
     document.getElementById("closeVisitBtn").style.display = "block";
     loadProductChecklist(currentVisitClientId, [], false);
     toast("Vizită pornită cu succes!", "success");
+    // Mark as visited in vizite tab
+    viziteTodayMap[currentVisitClientId] = { visit_time: new Date().toLocaleTimeString("ro-RO", { hour: "2-digit", minute: "2-digit" }) };
+    if (typeof renderViziteList === "function") renderViziteList();
+    if (typeof renderViziteMap === "function") renderViziteMap();
   } catch (ex) {
     toast("Eroare: " + ex.message, "error");
     btn.disabled = false;
@@ -1052,6 +1066,10 @@ async function submitCloseVisit() {
       buildAuditFilters();
       applyAuditFilters();
     }
+    // Also refresh vizite data (mark client as visited)
+    viziteTodayMap[currentVisitClientId] = { visit_time: new Date().toLocaleTimeString("ro-RO", { hour: "2-digit", minute: "2-digit" }) };
+    if (typeof renderViziteList === "function") renderViziteList();
+    if (typeof renderViziteMap === "function") renderViziteMap();
   } catch (ex) {
     toast("Eroare: " + ex.message, "error");
     btn.disabled = false;
@@ -2212,15 +2230,15 @@ function renderViziteList() {
     const purchBadge = purch
       ? `<span class="chip ok" style="font-size:.7rem">🛒 ${purch.valoare.toLocaleString("ro-RO",{minimumFractionDigits:0,maximumFractionDigits:0})} lei · ${purch.cantHL} HL</span>`
       : `<span class="chip bad" style="font-size:.7rem">Fără achiziție</span>`;
-    const checkinBtn = (!visited)
-      ? `<button class="chip-btn" onclick="openCheckinDialog(${c.id})" style="background:var(--success);color:#fff;border-color:var(--success)">📸 Check-in</button>`
+    const visitBtn = (!visited)
+      ? `<button class="chip-btn" onclick="openVisitDialog(${c.id})" style="background:var(--success);color:#fff;border-color:var(--success)">📋 Vizită + poză</button>`
       : "";
     const histBtn = `<button class="chip-btn" onclick="showVisitHistory(${c.id})">📋 Istoric</button>`;
     return `<li class="client-item" onclick="focusOnMap(${c.id},'vizite')" style="cursor:pointer">
       <div class="client-title">${esc(c.nume_poc)} ${visitBadge}</div>
       <div class="client-meta">${esc(c.firma)} · ${esc(c.oras)} · ${esc(c.agent)}</div>
       <div class="client-meta">Achiziții luna: ${purchBadge}</div>
-      <div class="tiny-actions">${checkinBtn} ${histBtn}
+      <div class="tiny-actions">${visitBtn} ${histBtn}
         <button class="chip-btn" onclick="event.stopPropagation();navigateTo(${c.lat},${c.lon})">🧭 Navighează</button>
       </div>
     </li>`;
@@ -2247,8 +2265,8 @@ function renderViziteMap() {
       const purchTag = purch
         ? `<span class="chip ok">🛒 ${purch.valoare.toLocaleString("ro-RO",{minimumFractionDigits:0,maximumFractionDigits:0})} lei · ${purch.cantHL} HL</span>`
         : `<span class="chip bad">Fără achiziție</span>`;
-      const checkinBtn = (!visited)
-        ? `<button class="chip-btn" onclick="openCheckinDialog(${c.id})" style="background:var(--success);color:#fff">📸 Check-in</button>`
+      const visitBtn = (!visited)
+        ? `<button class="chip-btn" onclick="openVisitDialog(${c.id})" style="background:var(--success);color:#fff">📋 Vizită + poză</button>`
         : "";
       const popup = `
         <strong>${esc(c.nume_poc)}</strong><br>
@@ -2257,7 +2275,7 @@ function renderViziteMap() {
         ${status}<br>
         Achiziții: ${purchTag}<br>
         <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px">
-          ${checkinBtn}
+          ${visitBtn}
           <button class="chip-btn" onclick="showVisitHistory(${c.id})">📋 Istoric</button>
           <button class="chip-btn" onclick="navigateTo(${c.lat},${c.lon})">🧭 Navighează</button>
           <button class="chip-btn" onclick="showClientDetail(${c.id})">📋 Detalii</button>
@@ -2571,8 +2589,8 @@ function showRuteOnMap() {
       const purchTag = purch
         ? `<span class="chip ok">🛒 ${purch.valoare.toLocaleString("ro-RO",{minimumFractionDigits:0,maximumFractionDigits:0})} lei</span>`
         : `<span class="chip bad">Fără achiziție</span>`;
-      const checkinBtn = (!visited)
-        ? `<button class="chip-btn" onclick="openCheckinDialog(${client.id})" style="background:var(--success);color:#fff">📸 Check-in</button>`
+      const visitBtn = (!visited)
+        ? `<button class="chip-btn" onclick="openVisitDialog(${client.id})" style="background:var(--success);color:#fff">📋 Vizită + poză</button>`
         : "";
       m.bindPopup(`
         <strong>${esc(client.nume_poc || r.client_name)}</strong><br>
@@ -2580,7 +2598,7 @@ function showRuteOnMap() {
         <small>Ruta: <b>${r.route_day}</b> · Vizite Excel: ${r.vizite}</small><br>
         ${visitStatus}<br>Achiziții: ${purchTag}<br>
         <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px">
-          ${checkinBtn}
+          ${visitBtn}
           <button class="chip-btn" onclick="showVisitHistory(${client.id})">📋 Istoric</button>
           <button class="chip-btn" onclick="navigateTo(${client.lat},${client.lon})">🧭 Nav</button>
         </div>

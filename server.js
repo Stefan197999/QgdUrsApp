@@ -2263,6 +2263,16 @@ app.get("/api/audit/clients", auth, (req, res) => {
   res.json(result);
 });
 
+/* ── Get today's visit for a single client (used by Vizite tab) ── */
+app.get("/api/audit/client-visit-today/:clientId", auth, (req, res) => {
+  const today = new Date().toISOString().slice(0, 10);
+  const visit = db.prepare(`
+    SELECT * FROM visits WHERE client_id = ? AND date(visited_at) = ?
+    ORDER BY visited_at DESC LIMIT 1
+  `).get(req.params.clientId, today) || null;
+  res.json({ visit });
+});
+
 /* ── Get products for a client (with delivery info) ── */
 app.get("/api/audit/products/:clientId", auth, (req, res) => {
   const client = db.prepare("SELECT * FROM clients WHERE id=?").get(req.params.clientId);
