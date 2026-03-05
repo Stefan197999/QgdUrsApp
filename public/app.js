@@ -470,6 +470,7 @@ function censusPopup(c) {
       <button class="chip-btn" onclick="addToRoute(${c.id})" style="background:#00b894;color:#fff" id="routeBtn_${c.id}">
         ${routeClients.some(rc => rc.id === c.id) ? '✓ În traseu' : '+ Traseu'}
       </button>
+      <button class="chip-btn" onclick="showSolduriClient('${esc(c.cif||'')}','${esc((c.firma||'').replace(/'/g,"\\'"))}')" style="background:#e67e22;color:#fff">💰 Sold</button>
     </div>
   `;
 }
@@ -498,6 +499,8 @@ function renderCensusClientList() {
           <button class="chip-btn" onclick="focusOnMap(${c.id},'census')">Pe hartă</button>
           <button class="chip-btn" onclick="navigateTo(${c.lat},${c.lon})">Navighează</button>
           <button class="chip-btn" onclick="showClientDetail(${c.id})">Detalii</button>
+          <button class="chip-btn" onclick="addToRoute(${c.id})" style="background:#00b894;color:#fff">+ Traseu</button>
+          <button class="chip-btn" onclick="showSolduriClient('${esc(c.cif||'')}','${esc((c.firma||'').replace(/'/g,"\\'"))}')" style="background:#e67e22;color:#fff">💰 Sold</button>
         </div>
       </li>
     `;
@@ -538,8 +541,10 @@ function showClientDetail(id) {
       <button class="btn primary small" onclick="saveClientContact(${c.id})">💾 Salvează contact</button>
       <button class="btn primary small" onclick="navigateTo(${c.lat},${c.lon})">Navighează Google Maps</button>
       <button class="btn ghost small" onclick="focusOnMap(${c.id},'census');clientDetailDialog.close()">Vezi pe hartă</button>
+      <button class="btn ghost small" onclick="addToRoute(${c.id})">+ Traseu</button>
       <button class="btn warning small" onclick="clientDetailDialog.close();openProposeDialog(${c.id})">Propune inactiv</button>
       <button class="btn primary small" onclick="clientDetailDialog.close();openRenameDialog(${c.id})">✏️ Propune redenumire</button>
+      <button class="btn ghost small" onclick="showSolduriClient('${esc(c.cif||'')}','${esc((c.firma||'').replace(/'/g,"\\'"))}')" style="color:#e67e22">💰 Sold</button>
     </div>
   `;
   document.getElementById("clientDetailDialog").showModal();
@@ -566,6 +571,71 @@ async function saveClientContact(id) {
     }
   } catch (e) {
     toast("Eroare la salvare", "error");
+  }
+}
+
+/* ═══════════════════════════════════════════
+   SOLDURI CLIENT (SCADENȚAR)
+   ═══════════════════════════════════════════ */
+async function showSolduriClient(cif, partener) {
+  const title = document.getElementById('helpTitle');
+  const body = document.getElementById('helpBody');
+  const overlay = document.getElementById('helpOverlay');
+  title.textContent = '💰 Solduri: ' + (partener || cif || 'Client');
+  body.innerHTML = '<div style="text-align:center;padding:1.5rem"><div class="spinner"></div> Se încarcă...</div>';
+  overlay.style.display = 'flex';
+  try {
+    let params = '';
+    if (cif) params += `cod_fiscal=${encodeURIComponent(cif)}`;
+    if (partener) params += (params ? '&' : '') + `partener=${encodeURIComponent(partener)}`;
+    const r = await fetch(`/api/scadentar/client?${params}`);
+    const d = await r.json();
+    if (!d.ok || !d.summary) {
+      body.innerHTML = '<div style="text-align:center;padding:1rem;color:var(--muted)">Nicio factură în scadențar.</div>';
+      return;
+    }
+    const s = d.summary;
+    const blocatBadge = s.blocat === 'DA' ? '<span style="background:#e74c3c;color:#fff;padding:2px 8px;border-radius:8px;font-size:11px;margin-left:6px">🔒 BLOCAT</span>' : '';
+    let html = `<div style="margin-bottom:10px">
+      <b>${esc(s.partener)}</b> ${blocatBadge}<br>
+      <span style="color:var(--muted);font-size:12px">CIF: ${esc(s.cod_fiscal)} | Divizii: ${s.divisions.join(', ') || '—'}</span>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
+      <div style="background:var(--bg2);padding:8px;border-radius:8px;text-align:center">
+        <div style="font-size:11px;color:var(--muted)">Sold restant</div>
+        <div style="font-size:16px;font-weight:700;color:${s.sold_restant > 0 ? '#e74c3c' : '#27ae60'}">${Number(s.sold_restant).toLocaleString('ro-RO', {minimumFractionDigits:2})} lei</div>
+      </div>
+      <div style="background:var(--bg2);padding:8px;border-radius:8px;text-align:center">
+        <div style="font-size:11px;color:var(--muted)">Depășire max</div>
+        <div style="font-size:16px;font-weight:700;color:${s.max_depasire_zile > 30 ? '#e74c3c' : '#27ae60'}">${s.max_depasire_zile} zile</div>
+      </div>
+      <div style="background:var(--bg2);padding:8px;border-radius:8px;text-align:center">
+        <div style="font-size:11px;color:var(--muted)">CA an curent</div>
+        <div style="font-size:14px;font-weight:600">${Number(s.ca_an_curent).toLocaleString('ro-RO', {minimumFractionDigits:0})} lei</div>
+      </div>
+      <div style="background:var(--bg2);padding:8px;border-radius:8px;text-align:center">
+        <div style="font-size:11px;color:var(--muted)">CA an precedent</div>
+        <div style="font-size:14px;font-weight:600">${Number(s.ca_an_precedent).toLocaleString('ro-RO', {minimumFractionDigits:0})} lei</div>
+      </div>
+    </div>`;
+    if (d.facturi.length > 0) {
+      html += `<div style="font-size:12px;color:var(--muted);margin-bottom:4px">${d.facturi.length} facturi, ${s.facturi_depasite} depășite</div>`;
+      html += '<div style="max-height:300px;overflow-y:auto"><table style="width:100%;font-size:.78rem;border-collapse:collapse">';
+      html += '<tr style="background:var(--bg2);position:sticky;top:0"><th style="padding:4px 6px;text-align:left">Document</th><th style="padding:4px 6px;text-align:right">Valoare</th><th style="padding:4px 6px;text-align:right">Rest</th><th style="padding:4px 6px;text-align:right">Depășire</th></tr>';
+      for (const f of d.facturi) {
+        const depColor = f.depasire_termen > 30 ? 'color:#e74c3c' : f.depasire_termen > 0 ? 'color:#f39c12' : '';
+        html += `<tr style="border-bottom:1px solid var(--border)">
+          <td style="padding:3px 6px">${esc(f.document||f.serie_document||'—')}</td>
+          <td style="padding:3px 6px;text-align:right">${Number(f.valoare||0).toLocaleString('ro-RO',{minimumFractionDigits:2})}</td>
+          <td style="padding:3px 6px;text-align:right;font-weight:600">${Number(f.rest||0).toLocaleString('ro-RO',{minimumFractionDigits:2})}</td>
+          <td style="padding:3px 6px;text-align:right;${depColor}">${f.depasire_termen||0} zile</td>
+        </tr>`;
+      }
+      html += '</table></div>';
+    }
+    body.innerHTML = html;
+  } catch (e) {
+    body.innerHTML = '<div style="text-align:center;padding:1rem;color:#e74c3c">Eroare la încărcarea soldurilor.</div>';
   }
 }
 
@@ -2240,6 +2310,8 @@ function renderViziteList() {
       <div class="client-meta">Achiziții luna: ${purchBadge}</div>
       <div class="tiny-actions">${visitBtn} ${histBtn}
         <button class="chip-btn" onclick="event.stopPropagation();navigateTo(${c.lat},${c.lon})">🧭 Navighează</button>
+        <button class="chip-btn" onclick="event.stopPropagation();addToRoute(${c.id})" style="background:#00b894;color:#fff">+ Traseu</button>
+        <button class="chip-btn" onclick="event.stopPropagation();showSolduriClient('${esc(c.cif||'')}','${esc((c.firma||'').replace(/'/g,"\\'"))}')" style="background:#e67e22;color:#fff">💰 Sold</button>
       </div>
     </li>`;
   }).join("");
@@ -2279,6 +2351,8 @@ function renderViziteMap() {
           <button class="chip-btn" onclick="showVisitHistory(${c.id})">📋 Istoric</button>
           <button class="chip-btn" onclick="navigateTo(${c.lat},${c.lon})">🧭 Navighează</button>
           <button class="chip-btn" onclick="showClientDetail(${c.id})">📋 Detalii</button>
+          <button class="chip-btn" onclick="addToRoute(${c.id})" style="background:#00b894;color:#fff">+ Traseu</button>
+          <button class="chip-btn" onclick="showSolduriClient('${esc(c.cif||'')}','${esc((c.firma||'').replace(/'/g,"\\\\'"))}')" style="background:#e67e22;color:#fff">💰 Sold</button>
         </div>`;
       m.bindPopup(popup, { maxWidth: 300 }).openPopup();
     });

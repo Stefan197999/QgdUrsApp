@@ -6510,6 +6510,44 @@ app.get("/api/scadentar/alerts", auth, (req, res) => {
   res.json(alerts);
 });
 
+/* GET /api/scadentar/client — Solduri per client (by cod_fiscal or partener) */
+app.get("/api/scadentar/client", auth, (req, res) => {
+  const { cod_fiscal, partener } = req.query;
+  if (!cod_fiscal && !partener) {
+    return res.status(400).json({ error: "Specifică cod_fiscal sau partener" });
+  }
+  let rows = [];
+  if (cod_fiscal) {
+    rows = db.prepare("SELECT * FROM scadentar WHERE cod_fiscal = ? ORDER BY depasire_termen DESC").all(cod_fiscal);
+  }
+  if (rows.length === 0 && partener) {
+    rows = db.prepare("SELECT * FROM scadentar WHERE UPPER(partener) = UPPER(?) ORDER BY depasire_termen DESC").all(partener);
+  }
+  if (rows.length === 0) return res.json({ ok: true, facturi: [], summary: null });
+
+  const restPozitiv = rows.filter(r => r.rest > 0).reduce((s, r) => s + r.rest, 0);
+  const facturiDepasite = rows.filter(r => r.depasire_termen > 0 && r.rest > 0);
+  const maxDepasire = facturiDepasite.length > 0 ? Math.max(...facturiDepasite.map(r => r.depasire_termen)) : 0;
+  const divisions = [...new Set(rows.map(r => r.divizie).filter(Boolean))];
+
+  res.json({
+    ok: true,
+    facturi: rows,
+    summary: {
+      total_facturi: rows.length,
+      sold_restant: Math.round(restPozitiv * 100) / 100,
+      facturi_depasite: facturiDepasite.length,
+      max_depasire_zile: maxDepasire,
+      ca_an_curent: rows[0]?.cifra_afaceri_curent || 0,
+      ca_an_precedent: rows[0]?.cifra_afaceri_prec || 0,
+      blocat: rows[0]?.blocat || "NU",
+      partener: rows[0]?.partener || "",
+      cod_fiscal: rows[0]?.cod_fiscal || "",
+      divisions
+    }
+  });
+});
+
 /* GET /api/scadentar/imports — Import history */
 app.get("/api/scadentar/imports", auth, (req, res) => {
   if (req.role === "agent") return res.status(403).json({ error: "Acces interzis" });
