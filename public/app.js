@@ -108,8 +108,14 @@ function toggleTabGroup(header) {
 function selectTab(tab, label) {
   document.getElementById("tabDropdownMenu").classList.remove("open");
   document.getElementById("tabDropdownBtn").textContent = label + " ▾";
+  // Ensure we leave homeGrid if open
+  const hg = document.getElementById('homeGrid');
+  const ml = document.getElementById('mainLayout');
+  if (hg && hg.style.display !== 'none') { hg.style.display = 'none'; }
+  if (ml) ml.style.display = 'flex';
   document.querySelectorAll(".tab-menu-item").forEach(b => b.classList.remove("active"));
-  document.getElementById("tab" + tab.charAt(0).toUpperCase() + tab.slice(1)).classList.add("active");
+  const tabEl = document.getElementById("tab" + tab.charAt(0).toUpperCase() + tab.slice(1));
+  if (tabEl) tabEl.classList.add("active");
   switchTab(tab);
 }
 
