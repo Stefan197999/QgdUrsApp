@@ -335,6 +335,30 @@ try { db.exec("ALTER TABLE status_proposals ADD COLUMN new_contact TEXT DEFAULT 
 try { db.exec("ALTER TABLE status_proposals ADD COLUMN new_telefon TEXT DEFAULT ''"); } catch(e) {}
 try { db.exec("ALTER TABLE status_proposals ADD COLUMN new_email TEXT DEFAULT ''"); } catch(e) {}
 
+/* ── Patch: fix broken lat/lon in census_ursus (missing decimals) ─── */
+try {
+  const badCoords = db.prepare(`SELECT id, lat, lon, customer_name FROM census_ursus WHERE (lat > 90 OR lon > 180 OR lat < -90 OR lon < -180) AND lat IS NOT NULL AND lon IS NOT NULL`).all();
+  if (badCoords.length > 0) {
+    const fixStmt = db.prepare('UPDATE census_ursus SET lat=?, lon=? WHERE id=?');
+    const txn = db.transaction(() => {
+      for (const c of badCoords) {
+        let lat = c.lat, lon = c.lon;
+        while (Math.abs(lat) > 90) lat = lat / 10;
+        while (Math.abs(lon) > 180) lon = lon / 10;
+        if (lat >= 43 && lat <= 49 && lon >= 20 && lon <= 31) {
+          fixStmt.run(lat, lon, c.id);
+          console.log(`  Fixed coords for ${c.customer_name}: ${c.lat},${c.lon} → ${lat},${lon}`);
+        } else {
+          db.prepare('UPDATE census_ursus SET lat=NULL, lon=NULL WHERE id=?').run(c.id);
+          console.log(`  Nulled bad coords for ${c.customer_name}: ${c.lat},${c.lon}`);
+        }
+      }
+    });
+    txn();
+    console.log(`[Coord Fix] Processed ${badCoords.length} census_ursus with bad lat/lon`);
+  }
+} catch(e) { console.log('census_ursus coord fix:', e.message); }
+
 /* ═══════════ SECȚIUNEA CLIENȚI TABLES ═══════════ */
 
 /* ── Solduri Critice ── */
