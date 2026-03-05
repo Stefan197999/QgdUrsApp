@@ -8414,7 +8414,10 @@ app.get("/api/census-ursus", auth, (req, res) => {
     } else {
       rows = db.prepare(`SELECT ${listCols} FROM census_ursus`).all();
     }
-    rows.forEach(r => { r.cartier = getCartier(r); });
+    rows.forEach(r => {
+      r.cartier = getCartier(r);
+      if (r.uat) r.uat = r.uat.replace(/^(Comuna|Municipiul|Orașul|Orasul)\s+/i, '');
+    });
     res.json(rows);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
