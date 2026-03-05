@@ -24,38 +24,76 @@
   <div class="tab-dropdown-wrap">
     <button id="tabDropdownBtn" class="tab-dropdown-btn" onclick="toggleTabMenu()">VIZITE ▾</button>
     <div id="tabDropdownMenu" class="tab-dropdown-menu">
-      <button id="tabCensusUrsus" class="tab-menu-item" onclick="selectTab('censusUrsus','CENSUS URSUS')">🎯 CENSUS URSUS</button>
-      <button id="tabAudit" class="tab-menu-item" onclick="selectTab('audit','AUDIT')">AUDIT</button>
-      <button id="tabObiective" class="tab-menu-item" onclick="selectTab('obiective','OBIECTIVE')">OBIECTIVE</button>
-      <button id="tabIncasari" class="tab-menu-item" onclick="selectTab('incasari','ÎNCASĂRI')">ÎNCASĂRI</button>
-      <button id="tabVizite" class="tab-menu-item active" onclick="selectTab('vizite','VIZITE')">VIZITE</button>
-      <button id="tabReports" class="tab-menu-item" onclick="selectTab('reports','RAPOARTE')">RAPOARTE</button>
-      <div style="border-top:1px solid var(--border);margin:4px 0"></div>
-      <button id="tabComunicare" class="tab-menu-item" onclick="selectTab('comunicare','COMUNICARE')">📢 COMUNICARE</button>
-      <button id="tabTaskuri" class="tab-menu-item" onclick="selectTab('taskuri','TASKURI')">✅ TASKURI</button>
-      <button id="tabGps" class="tab-menu-item" onclick="selectTab('gps','GPS TRACKING')" style="display:none">📍 GPS TRACKING</button>
-      <button id="tabCompetitie" class="tab-menu-item" onclick="selectTab('competitie','COMPETIȚIE')">🏆 COMPETIȚIE</button>
-      <button id="tabFrigider" class="tab-menu-item" onclick="selectTab('frigider','FRIGIDER')">🧊 FRIGIDER</button>
-      <button id="tabPromotii" class="tab-menu-item" onclick="selectTab('promotii','PROMOȚII')">🎯 PROMOȚII</button>
-      <button id="tabCalendar" class="tab-menu-item" onclick="selectTab('calendar','CALENDAR')">📅 CALENDAR</button>
-      <button id="tabExpirari" class="tab-menu-item" onclick="selectTab('expirari','EXPIRĂRI')">⏰ EXPIRĂRI</button>
-      <div style="border-top:1px solid var(--border);margin:4px 0"></div>
-      <button id="tabSolduri" class="tab-menu-item" onclick="selectTab('solduri','SCADENȚAR')">📊 SCADENȚAR</button>
-      <button id="tabEscaladari" class="tab-menu-item" onclick="selectTab('escaladari','ESCALADĂRI SPV')">🚨 ESCALADĂRI SPV</button>
-      <button id="tabAlertaClient" class="tab-menu-item" onclick="selectTab('alertaClient','ALERTĂ CLIENT')">⚠️ ALERTĂ CLIENT</button>
-      <button id="tabRiscFinanciar" class="tab-menu-item" onclick="selectTab('riscFinanciar','RISC FINANCIAR')">📊 RISC FINANCIAR</button>
-      <button id="tabCuiVerify" class="tab-menu-item" onclick="selectTab('cuiVerify','VERIFICARE CUI')">🔍 VERIFICARE CUI</button>
-      <div style="border-top:1px solid var(--border);margin:4px 0"></div>
-      <button id="tabPerfTargete" class="tab-menu-item" onclick="selectTab('perfTargete','PERFORMANȚĂ TARGETE')">📈 PERFORMANȚĂ TARGETE</button>
-      <button id="tabRanking" class="tab-menu-item" onclick="selectTab('ranking','RANKING AGENȚI')">🏅 RANKING AGENȚI</button>
-      <button id="tabDiscounturi" class="tab-menu-item" onclick="selectTab('discounturi','CONTROL DISCOUNTURI')">💸 CONTROL DISCOUNTURI</button>
-      <div style="border-top:1px solid var(--border);margin:4px 0"></div>
-      <button id="tabContracte" class="tab-menu-item" onclick="selectTab('contracte','CONTRACTE B2B')">📝 CONTRACTE B2B</button>
-      <button id="tabContracteB2C" class="tab-menu-item" onclick="selectTab('contracteB2C','CONTRACTE B2C')" style="display:none">🛒 CONTRACTE B2C</button>
-      <button id="tabSmartTargets" class="tab-menu-item" onclick="selectTab('smartTargets','OBIECTIVE LUNARE')">🎯 OBIECTIVE LUNARE</button>
-      <button id="tabPromoBudgets" class="tab-menu-item" onclick="selectTab('promoBudgets','BUGETE PROMO')">💰 BUGETE PROMO</button>
-      <button id="tabDashboardAll" class="tab-menu-item" onclick="selectTab('dashboardAll','DASHBOARD VÂNZĂRI')">📊 DASHBOARD VÂNZĂRI</button>
-      <button id="tabUploadRapoarte" class="tab-menu-item" onclick="selectTab('uploadRapoarte','ÎNCĂRCARE RAPOARTE')" style="display:none">📤 ÎNCĂRCARE RAPOARTE</button>
+      <!-- 📋 OPERAȚIUNI -->
+      <div class="tab-group" data-group="operatiuni">
+        <div class="tab-group-header" onclick="toggleTabGroup(this)">📋 OPERAȚIUNI <span class="tg-arrow">▸</span></div>
+        <div class="tab-group-items">
+          <button id="tabCensusUrsus" class="tab-menu-item" onclick="selectTab('censusUrsus','CENSUS URSUS')">Census Ursus</button>
+          <button id="tabAudit" class="tab-menu-item" onclick="selectTab('audit','AUDIT')">Audit</button>
+          <button id="tabVizite" class="tab-menu-item active" onclick="selectTab('vizite','VIZITE')">Vizite</button>
+          <button id="tabCalendar" class="tab-menu-item" onclick="selectTab('calendar','CALENDAR')">Calendar</button>
+          <button id="tabReports" class="tab-menu-item" onclick="selectTab('reports','RAPOARTE')">Rapoarte</button>
+        </div>
+      </div>
+      <!-- 💰 VÂNZĂRI -->
+      <div class="tab-group" data-group="vanzari">
+        <div class="tab-group-header" onclick="toggleTabGroup(this)">💰 VÂNZĂRI <span class="tg-arrow">▸</span></div>
+        <div class="tab-group-items">
+          <button id="tabObiective" class="tab-menu-item" onclick="selectTab('obiective','OBIECTIVE')">Obiective</button>
+          <button id="tabDashboardAll" class="tab-menu-item" onclick="selectTab('dashboardAll','DASHBOARD VÂNZĂRI')">Dashboard Vânzări</button>
+          <button id="tabIncasari" class="tab-menu-item" onclick="selectTab('incasari','ÎNCASĂRI')">Încasări</button>
+          <button id="tabPromoBudgets" class="tab-menu-item" onclick="selectTab('promoBudgets','BUGETE PROMO')">Bugete Promo</button>
+        </div>
+      </div>
+      <!-- 📊 PERFORMANȚĂ -->
+      <div class="tab-group" data-group="performanta">
+        <div class="tab-group-header" onclick="toggleTabGroup(this)">📊 PERFORMANȚĂ <span class="tg-arrow">▸</span></div>
+        <div class="tab-group-items">
+          <button id="tabPerfTargete" class="tab-menu-item" onclick="selectTab('perfTargete','PERFORMANȚĂ TARGETE')">Performanță Targete</button>
+          <button id="tabRanking" class="tab-menu-item" onclick="selectTab('ranking','RANKING AGENȚI')">Ranking Agenți</button>
+          <button id="tabSmartTargets" class="tab-menu-item" onclick="selectTab('smartTargets','OBIECTIVE LUNARE')">Obiective Lunare</button>
+          <button id="tabDiscounturi" class="tab-menu-item" onclick="selectTab('discounturi','CONTROL DISCOUNTURI')">Control Discounturi</button>
+        </div>
+      </div>
+      <!-- 📢 COMUNICARE -->
+      <div class="tab-group" data-group="comunicare">
+        <div class="tab-group-header" onclick="toggleTabGroup(this)">📢 COMUNICARE <span class="tg-arrow">▸</span></div>
+        <div class="tab-group-items">
+          <button id="tabComunicare" class="tab-menu-item" onclick="selectTab('comunicare','COMUNICARE')">Comunicare</button>
+          <button id="tabTaskuri" class="tab-menu-item" onclick="selectTab('taskuri','TASKURI')">Taskuri</button>
+          <button id="tabEscaladari" class="tab-menu-item" onclick="selectTab('escaladari','ESCALADĂRI SPV')">Escaladări SPV</button>
+          <button id="tabAlertaClient" class="tab-menu-item" onclick="selectTab('alertaClient','ALERTĂ CLIENT')">Alertă Client</button>
+        </div>
+      </div>
+      <!-- 🔍 MONITORIZARE -->
+      <div class="tab-group" data-group="monitorizare">
+        <div class="tab-group-header" onclick="toggleTabGroup(this)">🔍 MONITORIZARE <span class="tg-arrow">▸</span></div>
+        <div class="tab-group-items">
+          <button id="tabSolduri" class="tab-menu-item" onclick="selectTab('solduri','SCADENȚAR')">Scadențar</button>
+          <button id="tabRiscFinanciar" class="tab-menu-item" onclick="selectTab('riscFinanciar','RISC FINANCIAR')">Risc Financiar</button>
+          <button id="tabCuiVerify" class="tab-menu-item" onclick="selectTab('cuiVerify','VERIFICARE CUI')">Verificare CUI</button>
+          <button id="tabCompetitie" class="tab-menu-item" onclick="selectTab('competitie','COMPETIȚIE')">Competiție</button>
+          <button id="tabFrigider" class="tab-menu-item" onclick="selectTab('frigider','FRIGIDER')">Frigider</button>
+          <button id="tabExpirari" class="tab-menu-item" onclick="selectTab('expirari','EXPIRĂRI')">Expirări</button>
+          <button id="tabPromotii" class="tab-menu-item" onclick="selectTab('promotii','PROMOȚII')">Promoții</button>
+        </div>
+      </div>
+      <!-- 📝 CONTRACTE -->
+      <div class="tab-group" data-group="contracte">
+        <div class="tab-group-header" onclick="toggleTabGroup(this)">📝 CONTRACTE <span class="tg-arrow">▸</span></div>
+        <div class="tab-group-items">
+          <button id="tabContracte" class="tab-menu-item" onclick="selectTab('contracte','CONTRACTE B2B')">Contracte B2B</button>
+          <button id="tabContracteB2C" class="tab-menu-item" onclick="selectTab('contracteB2C','CONTRACTE B2C')" style="display:none">Contracte B2C</button>
+        </div>
+      </div>
+      <!-- ⚙️ ADMINISTRARE -->
+      <div class="tab-group" data-group="admin">
+        <div class="tab-group-header" onclick="toggleTabGroup(this)">⚙️ ADMINISTRARE <span class="tg-arrow">▸</span></div>
+        <div class="tab-group-items">
+          <button id="tabUploadRapoarte" class="tab-menu-item" onclick="selectTab('uploadRapoarte','ÎNCĂRCARE RAPOARTE')" style="display:none">Încărcare Rapoarte</button>
+          <button id="tabGps" class="tab-menu-item" onclick="selectTab('gps','GPS TRACKING')" style="display:none">GPS Tracking</button>
+        </div>
+      </div>
     </div>
   </div>
   <span id="userLabel" class="user"></span>
@@ -74,6 +112,7 @@
   </div>
   <button onclick="refreshData()" title="Reîncarcă datele de pe server">🔄</button>
   <button id="btnCleanup" onclick="cleanupTestData()" title="Curăță date test" style="display:none;background:#e74c3c;color:#fff">🧹</button>
+  <button id="btnToggleMap" onclick="toggleMapVisibility()" title="Ascunde/Arată harta">🗺️</button>
   <button onclick="toggleSidebar()">☰</button>
   <button onclick="logout()">Logout</button>
 </header>

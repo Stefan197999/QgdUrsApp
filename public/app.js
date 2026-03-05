@@ -100,6 +100,11 @@ function toggleTabMenu() {
   menu.classList.toggle("open");
 }
 
+function toggleTabGroup(header) {
+  const group = header.parentElement;
+  group.classList.toggle("open");
+}
+
 function selectTab(tab, label) {
   document.getElementById("tabDropdownMenu").classList.remove("open");
   document.getElementById("tabDropdownBtn").textContent = label + " ▾";
@@ -1249,6 +1254,19 @@ async function exportExcel() {
   window.open(`/api/reports/export-excel?date=${date}`, "_blank");
 }
 
+/* ── Map Toggle ── */
+function toggleMapVisibility() {
+  const layout = document.getElementById("mainLayout");
+  const btn = document.getElementById("btnToggleMap");
+  const isHidden = layout.classList.toggle("map-hidden");
+  if (btn) {
+    btn.textContent = isHidden ? "📋" : "🗺️";
+    btn.title = isHidden ? "Arată harta" : "Ascunde harta";
+    btn.classList.toggle("map-hidden-active", isHidden);
+  }
+  if (!isHidden) setTimeout(() => { if (typeof map !== "undefined" && map) map.invalidateSize(); }, 150);
+}
+
 /* ── Sidebar & Logout ── */
 function toggleSidebar() {
   const sb = document.getElementById("sidebar");
@@ -1546,9 +1564,11 @@ function toggleRouteMode() {
 }
 
 function addToRoute(id) {
-  // Find client in either census or audit lists
-  const c = allClients.find(cl => cl.id === id) || auditClients.find(cl => cl.id === id);
+  // Find client in census clienți, audit, or census ursus lists
+  const c = allClients.find(cl => cl.id === id) || auditClients.find(cl => cl.id === id) || allCensusUrsus.find(cl => cl.id === id);
   if (!c || !c.lat || !c.lon) { toast("Client fără coordonate!", "error"); return; }
+  // Resolve display name: census clienți uses firma/nume_poc, census ursus uses customer_name/outlet_name
+  const displayName = c.nume_poc || c.outlet_name || c.firma || c.customer_name || '?';
 
   const idx = routeClients.findIndex(rc => rc.id === id);
   if (idx >= 0) {
@@ -1559,16 +1579,16 @@ function addToRoute(id) {
     // Update popup button text
     const btn = document.getElementById("routeBtn_" + id);
     if (btn) { btn.textContent = "+ Traseu"; }
-    toast(`${c.nume_poc} scos din traseu`, "info", 2000);
+    toast(`${displayName} scos din traseu`, "info", 2000);
   } else {
     if (routeClients.length >= 25) { toast("Maxim 25 de puncte pe traseu!", "error"); return; }
-    routeClients.push({ id: c.id, lat: c.lat, lon: c.lon, name: c.nume_poc });
+    routeClients.push({ id: c.id, lat: c.lat, lon: c.lon, name: displayName });
     // Highlight marker
     markers.eachLayer(m => { if (m._clientId === id && m._icon) m._icon.classList.add("route-selected"); });
     // Update popup button text
     const btn = document.getElementById("routeBtn_" + id);
     if (btn) { btn.textContent = "✓ În traseu"; }
-    toast(`${c.nume_poc} adăugat la traseu (${routeClients.length})`, "success", 2000);
+    toast(`${displayName} adăugat la traseu (${routeClients.length})`, "success", 2000);
   }
 
   // Auto-show route bar when first client added

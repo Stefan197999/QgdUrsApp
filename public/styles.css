@@ -52,16 +52,36 @@ body{font-family:Arial,sans-serif;background:var(--bg);color:var(--text);font-si
 .tab-menu-item:hover{background:var(--bg2)}
 .tab-menu-item.active{color:var(--primary);background:var(--bg)}
 
+/* ── Tab Groups (collapsible menu sections) ── */
+.tab-group-header{padding:8px 12px;font-size:.78rem;font-weight:700;color:var(--muted);cursor:pointer;display:flex;justify-content:space-between;align-items:center;border-radius:6px;transition:all .15s;text-transform:uppercase;letter-spacing:.5px;user-select:none}
+.tab-group-header:hover{background:rgba(255,255,255,.05);color:var(--text)}
+.tab-group-header .tg-arrow{font-size:.7rem;transition:transform .2s;color:var(--muted)}
+.tab-group.open .tab-group-header{color:var(--primary)}
+.tab-group.open .tab-group-header .tg-arrow{transform:rotate(90deg);color:var(--primary)}
+.tab-group-items{max-height:0;overflow:hidden;transition:max-height .25s ease;padding-left:8px}
+.tab-group.open .tab-group-items{max-height:500px}
+.tab-group-items .tab-menu-item{font-size:.82rem;padding:6px 12px;border-left:2px solid transparent;margin:1px 0}
+.tab-group-items .tab-menu-item:hover{border-left-color:var(--primary);padding-left:14px}
+.tab-group-items .tab-menu-item.active{border-left-color:var(--primary);color:var(--primary);font-weight:600}
+.tab-group.has-active .tab-group-header{color:var(--primary-light)}
+
 /* ── Layout ── */
 .layout{display:flex;height:calc(100vh - 44px)}
 .sidebar{width:380px;overflow-y:auto;background:var(--card);border-right:1px solid var(--border);flex-shrink:0}
 .map-wrap{flex:1;position:relative}
 #map{width:100%;height:100%}
 
+/* Map toggle */
+.layout.map-hidden .map-wrap{display:none}
+.layout.map-hidden .sidebar{width:100%;height:100%;max-width:100%;flex:1;border-right:none}
+#btnToggleMap{transition:all .15s}
+.map-hidden-active{background:var(--primary)!important;color:#fff!important}
+
 @media(max-width:768px){
   .layout{flex-direction:column-reverse}
   .sidebar{width:100%;height:50vh;border-right:none;border-top:1px solid var(--border)}
   .map-wrap{height:50vh}
+  .layout.map-hidden .sidebar{height:100%;border-top:none}
 }
 
 /* ── Panels ── */
