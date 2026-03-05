@@ -2301,6 +2301,10 @@ app.get("/api/audit/client-visit-today/:clientId", auth, (req, res) => {
 app.get("/api/audit/products/:clientId", auth, (req, res) => {
   const client = db.prepare("SELECT * FROM clients WHERE id=?").get(req.params.clientId);
   if (!client) return res.status(404).json({ error: "Client negăsit" });
+  // Agent can only access their own clients
+  if (req.role === "agent" && req.agentDtr && client.agent !== req.agentDtr) {
+    return res.status(403).json({ error: "Acces interzis – client din altă zonă" });
+  }
   const products = getProductsForClient(client.canal, client.subformat, client.code);
 
   // Get current month delivery matching
@@ -2323,6 +2327,12 @@ app.get("/api/audit/products/:clientId", auth, (req, res) => {
 app.post("/api/audit/start-visit", auth, upload.single("photo"), (req, res) => {
   const { client_id, lat, lon } = req.body;
   if (!client_id) return res.status(400).json({ error: "client_id lipsă" });
+
+  // Agent can only start visits for their own clients
+  if (req.role === "agent" && req.agentDtr) {
+    const cl = db.prepare("SELECT agent FROM clients WHERE id=?").get(client_id);
+    if (!cl || cl.agent !== req.agentDtr) return res.status(403).json({ error: "Acces interzis – client din altă zonă" });
+  }
 
   const isAdmin = req.role === "admin";
   if (!isAdmin && !req.file) return res.status(400).json({ error: "Poza este obligatorie" });
@@ -2349,6 +2359,11 @@ app.post("/api/audit/close-visit", auth, (req, res) => {
 
   const visit = db.prepare("SELECT * FROM visits WHERE id=?").get(visit_id);
   if (!visit) return res.status(404).json({ error: "Vizită negăsită" });
+
+  // Agent can only close their own visits
+  if (req.role === "agent" && visit.visited_by !== req.username) {
+    return res.status(403).json({ error: "Acces interzis – vizită a altui agent" });
+  }
 
   const client = db.prepare("SELECT * FROM clients WHERE id=?").get(visit.client_id);
   const allProducts = getProductsForClient(client.canal, client.subformat, client.code);
@@ -5907,6 +5922,10 @@ app.get("/api/tasks", auth, (req, res) => {
 app.put("/api/tasks/:id", auth, (req, res) => {
   const task = db.prepare("SELECT * FROM tasks WHERE id=?").get(req.params.id);
   if (!task) return res.status(404).json({ error: "Task negăsit" });
+  // Agent can only update tasks assigned to them
+  if (req.role === "agent" && task.assigned_to !== req.username) {
+    return res.status(403).json({ error: "Acces interzis – sarcină asignată altui agent" });
+  }
   const { status, completed_note } = req.body;
   if (status === "completed") {
     db.prepare("UPDATE tasks SET status='completed', completed_at=datetime('now'), completed_note=? WHERE id=?")
@@ -6142,6 +6161,11 @@ app.get("/api/beat-plan", auth, (req, res) => {
 
 /* ── DELETE /api/beat-plan/:id ── Remove from beat plan ── */
 app.delete("/api/beat-plan/:id", auth, (req, res) => {
+  // Agent can only delete their own beat plan entries
+  if (req.role === "agent") {
+    const bp = db.prepare("SELECT agent_username FROM beat_plans WHERE id=?").get(req.params.id);
+    if (!bp || bp.agent_username !== req.username) return res.status(403).json({ error: "Acces interzis" });
+  }
   db.prepare("DELETE FROM beat_plans WHERE id=?").run(req.params.id);
   res.json({ ok: true });
 });
