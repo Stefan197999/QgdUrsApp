@@ -2079,7 +2079,7 @@ async function importClienti2Luni() {
 let viziteFiltered = [];
 let viziteTodayMap = {}; // client_id -> visit data
 let viziteStatusFilter = "all"; // all | visited | unvisited
-const viziteSel = { agent: new Set(), city: new Set(), achizitii: new Set() };
+const viziteSel = { agent: new Set(), city: new Set(), canal: new Set(), format: new Set(), munic: new Set(), stare: new Set(), achizitii: new Set() };
 let viziteCheckinClientId = null;
 
 /* Load vizite tab */
@@ -2109,59 +2109,17 @@ async function loadVizite() {
 }
 
 function buildViziteFilters() {
-  const agents = groupBy(allClients, "agent");
-  const cities = groupBy(allClients, "oras");
-
-  const agentContainer = document.getElementById("viziteAgentFilter");
-  agentContainer.innerHTML = agents.map(([val, cnt]) => `
-    <label class="check-item">
-      <input type="checkbox" data-val="${val}" ${viziteSel.agent.has(val) ? "checked" : ""}>
-      <span>${val}</span><em>${cnt}</em>
-    </label>
-  `).join("");
-  agentContainer.querySelectorAll("input").forEach(cb => {
-    cb.onchange = () => { cb.checked ? viziteSel.agent.add(cb.dataset.val) : viziteSel.agent.delete(cb.dataset.val); };
-  });
-
-  // If agent role, auto-select own agent (no action needed, filtered in applyViziteFilters)
-
-  const cityContainer = document.getElementById("viziteCityFilter");
-  cityContainer.innerHTML = cities.map(([val, cnt]) => `
-    <label class="check-item">
-      <input type="checkbox" data-val="${val}" ${viziteSel.city.has(val) ? "checked" : ""}>
-      <span>${val}</span><em>${cnt}</em>
-    </label>
-  `).join("");
-  cityContainer.querySelectorAll("input").forEach(cb => {
-    cb.onchange = () => { cb.checked ? viziteSel.city.add(cb.dataset.val) : viziteSel.city.delete(cb.dataset.val); };
-  });
-
-  // City search filter
-  const citySearch = document.getElementById("viziteCitySearch");
-  if (citySearch) {
-    citySearch.oninput = () => {
-      const q = citySearch.value.toLowerCase();
-      cityContainer.querySelectorAll(".check-item").forEach(item => {
-        item.style.display = item.textContent.toLowerCase().includes(q) ? "" : "none";
-      });
-    };
-  }
+  renderFilterChecklist("viziteAgentFilter", groupBy(allClients, "agent"), viziteSel.agent);
+  renderFilterChecklist("viziteCityFilter", groupBy(allClients, "oras"), viziteSel.city, "viziteCitySearch");
+  renderFilterChecklist("viziteCanalFilter", groupBy(allClients, "canal"), viziteSel.canal);
+  renderFilterChecklist("viziteFormatFilter", groupBy(allClients, "format"), viziteSel.format);
+  renderFilterChecklist("viziteMunicFilter", groupBy(allClients, "municipality"), viziteSel.munic, "viziteMunicSearch");
+  renderFilterChecklist("viziteStareFilter", groupBy(allClients, "stare_poc"), viziteSel.stare);
 
   // Achizitii filter
-  const achContainer = document.getElementById("viziteAchizitiiFilter");
-  if (achContainer) {
-    const achDa = allClients.filter(c => c.lat && c.lon && purchaseMap[c.code]).length;
-    const achNu = allClients.filter(c => c.lat && c.lon).length - achDa;
-    achContainer.innerHTML = [["Da - Achiziție luna", achDa], ["Nu - Fără achiziție", achNu]].map(([val, cnt]) => `
-      <label class="check-item">
-        <input type="checkbox" data-val="${val}" ${viziteSel.achizitii.has(val) ? "checked" : ""}>
-        <span>${val}</span><em>${cnt}</em>
-      </label>
-    `).join("");
-    achContainer.querySelectorAll("input").forEach(cb => {
-      cb.onchange = () => { cb.checked ? viziteSel.achizitii.add(cb.dataset.val) : viziteSel.achizitii.delete(cb.dataset.val); };
-    });
-  }
+  const achDa = allClients.filter(c => c.lat && c.lon && purchaseMap[c.code]).length;
+  const achNu = allClients.filter(c => c.lat && c.lon).length - achDa;
+  renderFilterChecklist("viziteAchizitiiFilter", [["Da - Achiziție luna", achDa], ["Nu - Fără achiziție", achNu]], viziteSel.achizitii);
 }
 
 function applyViziteFilters() {
@@ -2176,6 +2134,10 @@ function applyViziteFilters() {
   // Apply filters
   if (viziteSel.agent.size) list = list.filter(c => viziteSel.agent.has(c.agent));
   if (viziteSel.city.size) list = list.filter(c => viziteSel.city.has(c.oras));
+  if (viziteSel.canal.size) list = list.filter(c => viziteSel.canal.has(c.canal || "NECUNOSCUT"));
+  if (viziteSel.format.size) list = list.filter(c => viziteSel.format.has(c.format || "NECUNOSCUT"));
+  if (viziteSel.munic.size) list = list.filter(c => viziteSel.munic.has(c.municipality || "NECUNOSCUT"));
+  if (viziteSel.stare.size) list = list.filter(c => viziteSel.stare.has(c.stare_poc || "NECUNOSCUT"));
   if (viziteSel.achizitii.size) {
     list = list.filter(c => {
       const label = purchaseMap[c.code] ? "Da - Achiziție luna" : "Nu - Fără achiziție";
@@ -2208,6 +2170,11 @@ function applyViziteFilters() {
 function resetViziteFilters() {
   viziteSel.agent.clear();
   viziteSel.city.clear();
+  viziteSel.canal.clear();
+  viziteSel.format.clear();
+  viziteSel.munic.clear();
+  viziteSel.stare.clear();
+  viziteSel.achizitii.clear();
   viziteStatusFilter = "all";
   document.getElementById("viziteSearch").value = "";
   document.querySelectorAll(".vizite-status-filters .status-chip").forEach(s => s.classList.remove("active"));
@@ -2245,7 +2212,7 @@ function renderViziteList() {
     const purchBadge = purch
       ? `<span class="chip ok" style="font-size:.7rem">🛒 ${purch.valoare.toLocaleString("ro-RO",{minimumFractionDigits:0,maximumFractionDigits:0})} lei · ${purch.cantHL} HL</span>`
       : `<span class="chip bad" style="font-size:.7rem">Fără achiziție</span>`;
-    const checkinBtn = (currentRole === "agent" && !visited)
+    const checkinBtn = (!visited)
       ? `<button class="chip-btn" onclick="openCheckinDialog(${c.id})" style="background:var(--success);color:#fff;border-color:var(--success)">📸 Check-in</button>`
       : "";
     const histBtn = `<button class="chip-btn" onclick="showVisitHistory(${c.id})">📋 Istoric</button>`;
@@ -2280,7 +2247,7 @@ function renderViziteMap() {
       const purchTag = purch
         ? `<span class="chip ok">🛒 ${purch.valoare.toLocaleString("ro-RO",{minimumFractionDigits:0,maximumFractionDigits:0})} lei · ${purch.cantHL} HL</span>`
         : `<span class="chip bad">Fără achiziție</span>`;
-      const checkinBtn = (currentRole === "agent" && !visited)
+      const checkinBtn = (!visited)
         ? `<button class="chip-btn" onclick="openCheckinDialog(${c.id})" style="background:var(--success);color:#fff">📸 Check-in</button>`
         : "";
       const popup = `
@@ -2604,7 +2571,7 @@ function showRuteOnMap() {
       const purchTag = purch
         ? `<span class="chip ok">🛒 ${purch.valoare.toLocaleString("ro-RO",{minimumFractionDigits:0,maximumFractionDigits:0})} lei</span>`
         : `<span class="chip bad">Fără achiziție</span>`;
-      const checkinBtn = (currentRole === "agent" && !visited)
+      const checkinBtn = (!visited)
         ? `<button class="chip-btn" onclick="openCheckinDialog(${client.id})" style="background:var(--success);color:#fff">📸 Check-in</button>`
         : "";
       m.bindPopup(`
