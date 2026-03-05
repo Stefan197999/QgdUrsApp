@@ -6856,39 +6856,100 @@ function buildCuFilters() {
     ["76-100%", allCensusUrsus.filter(c => { const v = parseInt(c.pct_volum_ub)||0; return v >= 76 && v <= 100; }).length]
   ];
   renderFilterChecklist("cuPondereFilter", pondereRanges, cuSel.pondere);
-  // Cartier filter (Iași + Pașcani)
-  renderFilterChecklist("cuCartierFilter", groupBy(allCensusUrsus.filter(c => c.cartier), "cartier"), cuSel.cartier, "cuCartierSearch");
+  // Cartierele apar cascadat sub UAT Iasi/Pascani (in renderCuUatFilter)
 }
 
 /* ── UAT ↔ LOCALITATE cascading filters ── */
 function renderCuUatFilter() {
   const items = groupBy(allCensusUrsus, "uat");
   const container = document.getElementById("cuUatFilter");
-  container.innerHTML = items.map(([val, cnt]) => `
-    <label class="check-item">
-      <input type="checkbox" data-val="${esc(val)}" ${cuSel.uat.has(val) ? "checked" : ""}>
-      <span>${esc(val)}</span>
-      <em>${cnt}</em>
-    </label>
-  `).join("");
-  container.querySelectorAll("input").forEach(cb => {
+  container.innerHTML = "";
+  for (const [val, cnt] of items) {
+    const wrapper = document.createElement("div");
+    wrapper.className = "cu-uat-item";
+    const lbl = document.createElement("label");
+    lbl.className = "check-item";
+    const cb = document.createElement("input");
+    cb.type = "checkbox";
+    cb.dataset.val = val;
+    if (cuSel.uat.has(val)) cb.checked = true;
     cb.addEventListener("change", () => {
-      if (cb.checked) cuSel.uat.add(cb.dataset.val);
-      else cuSel.uat.delete(cb.dataset.val);
-      // Cascade: refresh LOCALITATE to show only localities within selected UATs
+      if (cb.checked) cuSel.uat.add(val);
+      else {
+        cuSel.uat.delete(val);
+        const cartCbs = wrapper.querySelectorAll(".cu-cartier-list input[type='checkbox']");
+        cartCbs.forEach(cc => { cc.checked = false; cuSel.cartier.delete(cc.dataset.cartier); });
+      }
+      toggleCuCartierList(wrapper, cb.checked, val);
       renderCuLocalitateFilter();
     });
-  });
+    lbl.appendChild(cb);
+    const sp = document.createElement("span");
+    sp.textContent = val;
+    lbl.appendChild(sp);
+    const em = document.createElement("em");
+    em.textContent = cnt;
+    lbl.appendChild(em);
+    wrapper.appendChild(lbl);
+    container.appendChild(wrapper);
+    if (cuSel.uat.has(val)) toggleCuCartierList(wrapper, true, val);
+  }
   const searchEl = document.getElementById("cuUatSearch");
   if (searchEl && !searchEl.dataset.bound) {
     searchEl.dataset.bound = "1";
     searchEl.addEventListener("input", e => {
       const q = e.target.value.toLowerCase();
-      container.querySelectorAll(".check-item").forEach(el => {
+      container.querySelectorAll(".cu-uat-item").forEach(el => {
         el.style.display = el.textContent.toLowerCase().includes(q) ? "" : "none";
       });
     });
   }
+}
+
+function toggleCuCartierList(wrapper, show, uat) {
+  let cartList = wrapper.querySelector(".cu-cartier-list");
+  if (!show) { if (cartList) cartList.remove(); return; }
+  if (cartList) return;
+  const uatLower = uat.toLowerCase();
+  const isIasi = uatLower.includes("iasi") || uatLower.includes("iași");
+  const isPascani = uatLower.includes("pascani") || uatLower.includes("pașcani");
+  if (!isIasi && !isPascani) return;
+  const cartierCounts = {};
+  for (const c of allCensusUrsus) {
+    if (!c.cartier || c.uat !== uat) continue;
+    cartierCounts[c.cartier] = (cartierCounts[c.cartier] || 0) + 1;
+  }
+  if (Object.keys(cartierCounts).length === 0) return;
+  cartList = document.createElement("div");
+  cartList.className = "cu-cartier-list";
+  cartList.style.cssText = "margin-left:18px;border-left:2px solid #e17055;padding-left:6px;margin-top:2px";
+  const title = document.createElement("div");
+  title.style.cssText = "font-size:10px;font-weight:700;color:#e17055;margin-bottom:2px;text-transform:uppercase";
+  title.textContent = "Cartiere";
+  cartList.appendChild(title);
+  const sorted = Object.entries(cartierCounts).sort((a,b) => a[0].localeCompare(b[0]));
+  for (const [cart, cnt] of sorted) {
+    const lbl = document.createElement("label");
+    lbl.className = "check-item";
+    lbl.style.cssText = "font-size:11px;padding:1px 0";
+    const ccb = document.createElement("input");
+    ccb.type = "checkbox";
+    ccb.dataset.cartier = cart;
+    if (cuSel.cartier.has(cart)) ccb.checked = true;
+    ccb.addEventListener("change", () => {
+      if (ccb.checked) cuSel.cartier.add(cart);
+      else cuSel.cartier.delete(cart);
+    });
+    lbl.appendChild(ccb);
+    const sp = document.createElement("span");
+    sp.textContent = cart;
+    lbl.appendChild(sp);
+    const em = document.createElement("em");
+    em.textContent = cnt;
+    lbl.appendChild(em);
+    cartList.appendChild(lbl);
+  }
+  wrapper.appendChild(cartList);
 }
 
 function renderCuLocalitateFilter() {
