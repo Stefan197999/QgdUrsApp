@@ -1122,7 +1122,7 @@ db.exec(`
 `);
 
 /* ───────── Auto-seed Census Ursus from gz file ───────── */
-const CENSUS_SEED_VERSION = 11; // bump this to force re-seed on deploy
+const CENSUS_SEED_VERSION = 12; // bump this to force re-seed on deploy
 const censusCount = db.prepare("SELECT COUNT(*) as c FROM census_ursus").get().c;
 const censusMeta = (() => { try { return db.prepare("SELECT value FROM app_settings WHERE key='census_seed_version'").get(); } catch(e) { return null; } })();
 const currentSeedVer = censusMeta ? parseInt(censusMeta.value) : 0;
