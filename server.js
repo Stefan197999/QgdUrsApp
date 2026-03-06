@@ -1068,6 +1068,7 @@ try { db.exec("ALTER TABLE scadentar ADD COLUMN limita_creditare REAL DEFAULT 0"
 try { db.exec("ALTER TABLE scadentar ADD COLUMN cod_intern TEXT DEFAULT ''"); } catch(e) {}
 try { db.exec("ALTER TABLE scadentar ADD COLUMN is_ambalaj INTEGER DEFAULT 0"); } catch(e) {}
 try { db.exec("ALTER TABLE sales_all ADD COLUMN codintern_part TEXT DEFAULT ''"); } catch(e) {}
+try { db.exec("ALTER TABLE sales_all ADD COLUMN divizie TEXT DEFAULT ''"); } catch(e) {}
 
 /* ───────── Seed agent_divisions if empty ───────── */
 const agentDivCount = db.prepare("SELECT COUNT(*) as c FROM agent_divisions").get().c;
@@ -7033,6 +7034,58 @@ app.get("/api/top-clienti", auth, (req, res) => {
   res.json({ clients: scored, stats });
   } catch(ex) {
     console.error("[top-clienti]", ex.message);
+    res.status(500).json({ error: ex.message });
+  }
+});
+
+/* GET /api/facturi-ambalaj — Packaging invoices from scadentar */
+app.get("/api/facturi-ambalaj", auth, (req, res) => {
+  try {
+    const latestImport = db.prepare("SELECT MAX(id) as id FROM scadentar_imports").get();
+    if (!latestImport || !latestImport.id) {
+      return res.json({ facturi: [], stats: { total: 0, total_rest: 0, nr_clienti: 0, avg_depasire: 0, facturi_peste_30: 0, facturi_peste_60: 0 } });
+    }
+
+    const hasAmbalaj = db.prepare("PRAGMA table_info(scadentar)").all().some(c => c.name === 'is_ambalaj');
+    if (!hasAmbalaj) {
+      return res.json({ facturi: [], stats: { total: 0, total_rest: 0, nr_clienti: 0, avg_depasire: 0, facturi_peste_30: 0, facturi_peste_60: 0 } });
+    }
+
+    const reqDiv = req.query.divizie || '';
+    let sql = `
+      SELECT partener, document, valoare, rest, depasire_termen, agent,
+             COALESCE(divizie, 'URSUS') as divizie, serie_document, cod_fiscal,
+             COALESCE(NULLIF(TRIM(cod_intern),''), COALESCE(NULLIF(TRIM(cod_fiscal),''), partener)) as key_id
+      FROM scadentar
+      WHERE import_id=? AND is_ambalaj=1`;
+    const params = [latestImport.id];
+    if (reqDiv) { sql += ` AND (COALESCE(divizie, 'URSUS') = ?)`; params.push(reqDiv); }
+
+    // Agent filtering
+    if (req.role === "agent") {
+      const username = req.username;
+      const match = username.match(/^(.+?)_urs\d+$/i);
+      if (match) {
+        sql += ` AND agent LIKE ?`;
+        params.push('%' + match[1].toUpperCase() + '%');
+      }
+    }
+
+    sql += ` ORDER BY rest DESC`;
+    const facturi = db.prepare(sql).all(...params);
+
+    const stats = {
+      total: facturi.length,
+      total_rest: facturi.reduce((s, f) => s + (f.rest || 0), 0),
+      nr_clienti: new Set(facturi.map(f => f.key_id)).size,
+      avg_depasire: facturi.length > 0 ? Math.round(facturi.reduce((s, f) => s + (f.depasire_termen || 0), 0) / facturi.length) : 0,
+      facturi_peste_30: facturi.filter(f => f.depasire_termen > 30).length,
+      facturi_peste_60: facturi.filter(f => f.depasire_termen > 60).length
+    };
+
+    res.json({ facturi, stats });
+  } catch(ex) {
+    console.error("[facturi-ambalaj]", ex.message);
     res.status(500).json({ error: ex.message });
   }
 });

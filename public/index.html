@@ -72,6 +72,7 @@
           <button id="tabSolduri" class="tab-menu-item" onclick="selectTab('solduri','SCADENȚAR')">Scadențar</button>
           <button id="tabRiscFinanciar" class="tab-menu-item" onclick="selectTab('riscFinanciar','RISC FINANCIAR')">Risc Financiar</button>
           <button id="tabTopClienti" class="tab-menu-item" onclick="selectTab('topClienti','TOP VÂNZĂRI')">Top Vânzări</button>
+          <button id="tabFacturiAmbalaj" class="tab-menu-item" onclick="selectTab('facturiAmbalaj','FACTURI AMBALAJ')">Ambalaj</button>
           <button id="tabCuiVerify" class="tab-menu-item" onclick="selectTab('cuiVerify','VERIFICARE CUI')">Verificare CUI</button>
           <button id="tabCompetitie" class="tab-menu-item" onclick="selectTab('competitie','COMPETIȚIE')">Competiție</button>
           <button id="tabFrigider" class="tab-menu-item" onclick="selectTab('frigider','FRIGIDER')">Frigider</button>
@@ -248,6 +249,10 @@
       <div class="grid-icon-card" onclick="showTab('topClienti')" style="--icon-bg:linear-gradient(135deg,#fbbf24,#f59e0b)">
         <div class="grid-icon-circle">⭐</div>
         <div class="card-title">Top Vânzări</div>
+      </div>
+      <div class="grid-icon-card" onclick="openFromGrid('facturiAmbalaj','FACTURI AMBALAJ')" style="--icon-bg:linear-gradient(135deg,#a78bfa,#7c3aed)">
+        <div class="grid-icon">📦</div>
+        <span>Ambalaj</span>
       </div>
       <div class="grid-icon-card" onclick="openFromGrid('cuiVerify','VERIFICARE CUI')" style="--icon-bg:linear-gradient(135deg,#9fa8da,#283593)">
         <div class="grid-icon-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div>
@@ -1304,6 +1309,26 @@
       <div id="topClientiSummary" style="padding:.5rem 1rem;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.5rem;margin-bottom:.5rem"></div>
       <div id="topClientiExplainer" style="display:none;padding:.5rem 1rem;background:var(--info-bg);border-left:3px solid var(--info);border-radius:4px;font-size:.8rem;margin-bottom:.5rem"></div>
       <div id="topClientiList" style="padding:.5rem 1rem"></div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════
+         TAB: FACTURI AMBALAJ
+         ═══════════════════════════════════════════ -->
+    <div id="panelFacturiAmbalaj" class="tab-panel" style="display:none">
+      <details class="panel" open>
+        <summary>📦 FACTURI AMBALAJ</summary>
+        <div class="panel-inner">
+          <div class="btn-row">
+            <select id="ambalajFiltDiv" onchange="loadFacturiAmbalaj()" style="padding:.3rem;border:1px solid var(--border);border-radius:4px;font-size:.85rem">
+              <option value="">Toate diviziile</option>
+              <option value="URSUS">URSUS</option>
+            </select>
+            <button class="btn ghost small" onclick="loadFacturiAmbalaj()">🔄 Reîncarcă</button>
+          </div>
+        </div>
+      </details>
+      <div id="ambalajSummary" style="padding:.5rem 1rem"></div>
+      <div id="ambalajList" style="padding:.5rem 1rem"></div>
     </div>
 
     <!-- ═══════════════════════════════════════════

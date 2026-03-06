@@ -93,7 +93,7 @@ function openFromGrid(tab, label) {
 }
 
 /* ── Tab dropdown menu ── */
-const tabLabels = { census: "CENSUS", censusUrsus: "CENSUS URSUS", audit: "AUDIT", obiective: "OBIECTIVE", incasari: "ÎNCASĂRI", vizite: "VIZITE", reports: "RAPOARTE", comunicare: "COMUNICARE", taskuri: "TASKURI", gps: "GPS TRACKING", competitie: "COMPETIȚIE", frigider: "FRIGIDER", promotii: "PROMOȚII", calendar: "CALENDAR", expirari: "EXPIRĂRI", solduri: "SCADENȚAR", escaladari: "ESCALADĂRI SPV", alertaClient: "ALERTĂ CLIENT", riscFinanciar: "RISC FINANCIAR", cuiVerify: "VERIFICARE CUI", perfTargete: "PERFORMANȚĂ TARGETE", ranking: "RANKING AGENȚI", discounturi: "CONTROL DISCOUNTURI", contracte: "CONTRACTE B2B", contracteB2C: "CONTRACTE B2C", smartTargets: "OBIECTIVE LUNARE", promoBudgets: "BUGETE PROMO", dashboardAll: "DASHBOARD VÂNZĂRI", uploadRapoarte: "ÎNCĂRCARE RAPOARTE", bugetGt: "BUGET GT" };
+const tabLabels = { census: "CENSUS", censusUrsus: "CENSUS URSUS", audit: "AUDIT", obiective: "OBIECTIVE", incasari: "ÎNCASĂRI", vizite: "VIZITE", reports: "RAPOARTE", comunicare: "COMUNICARE", taskuri: "TASKURI", gps: "GPS TRACKING", competitie: "COMPETIȚIE", frigider: "FRIGIDER", promotii: "PROMOȚII", calendar: "CALENDAR", expirari: "EXPIRĂRI", solduri: "SCADENȚAR", escaladari: "ESCALADĂRI SPV", alertaClient: "ALERTĂ CLIENT", riscFinanciar: "RISC FINANCIAR", topClienti: "TOP VÂNZĂRI", facturiAmbalaj: "FACTURI AMBALAJ", cuiVerify: "VERIFICARE CUI", perfTargete: "PERFORMANȚĂ TARGETE", ranking: "RANKING AGENȚI", discounturi: "CONTROL DISCOUNTURI", contracte: "CONTRACTE B2B", contracteB2C: "CONTRACTE B2C", smartTargets: "OBIECTIVE LUNARE", promoBudgets: "BUGETE PROMO", dashboardAll: "DASHBOARD VÂNZĂRI", uploadRapoarte: "ÎNCĂRCARE RAPOARTE", bugetGt: "BUGET GT" };
 
 function toggleTabMenu() {
   const menu = document.getElementById("tabDropdownMenu");
@@ -156,6 +156,7 @@ function switchTab(tab) {
   else if (tab === "alertaClient") loadClientAlerts();
   else if (tab === "riscFinanciar") loadFinancialRisk();
   else if (tab === "topClienti") loadTopClienti();
+  else if (tab === "facturiAmbalaj") loadFacturiAmbalaj();
   else if (tab === "cuiVerify") loadCuiVerifications();
   else if (tab === "perfTargete") loadPerfTargete();
   else if (tab === "ranking") loadRankings();
@@ -7652,39 +7653,43 @@ async function loadRiscFinanciar() {
     }
   }
 
-  const div = document.getElementById('riscFiltDiv')?.value || '';
-  const data = await mApi(`/api/risc-financiar?divizie=${encodeURIComponent(div)}`);
-  if (!data || !data.clients) { el.innerHTML = '<div class="empty-state">Eroare la încărcare.</div>'; return; }
+  try {
+    const div = document.getElementById('riscFiltDiv')?.value || '';
+    const data = await mApi(`/api/risc-financiar?divizie=${encodeURIComponent(div)}`);
+    if (!data || !data.clients) { el.innerHTML = '<div class="empty-state">Eroare la încărcare.</div>'; return; }
 
-  _riscClientsAll = data.clients;
-  const s = data.stats;
+    _riscClientsAll = data.clients;
+    const s = data.stats;
 
-  summaryEl.innerHTML = `
-  <div style="display:flex;gap:10px;flex-wrap:wrap;margin:8px 0">
-    <div onclick="riscQuickFilter('CRITIC')" style="cursor:pointer;background:#dc262622;border:1px solid #dc262666;border-radius:10px;padding:10px 16px;min-width:140px;transition:transform .15s" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform=''">
-      <div style="font-size:11px;color:#fca5a5">🔴 CRITIC</div>
-      <div style="font-size:22px;font-weight:800;color:#f87171">${s.critici}</div>
-    </div>
-    <div onclick="riscQuickFilter('RIDICAT')" style="cursor:pointer;background:#ea580c22;border:1px solid #ea580c66;border-radius:10px;padding:10px 16px;min-width:140px;transition:transform .15s" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform=''">
-      <div style="font-size:11px;color:#fdba74">🟠 RIDICAT</div>
-      <div style="font-size:22px;font-weight:800;color:#fb923c">${s.ridicat}</div>
-    </div>
-    <div onclick="riscQuickFilter('MEDIU')" style="cursor:pointer;background:#ca8a0422;border:1px solid #ca8a0466;border-radius:10px;padding:10px 16px;min-width:140px;transition:transform .15s" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform=''">
-      <div style="font-size:11px;color:#fde047">🟡 MEDIU</div>
-      <div style="font-size:22px;font-weight:800;color:#facc15">${s.mediu}</div>
-    </div>
-    <div onclick="riscQuickFilter('')" style="cursor:pointer;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:10px 16px;min-width:180px;transition:transform .15s" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform=''">
-      <div style="font-size:11px;color:var(--text2)">💰 TOTAL REST RISC</div>
-      <div style="font-size:18px;font-weight:800;color:#ef4444">${fmtMoney(s.total_rest_risc)} RON</div>
-    </div>
-    <div onclick="riscQuickFilter('')" style="cursor:pointer;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:10px 16px;min-width:120px;transition:transform .15s" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform=''">
-      <div style="font-size:11px;color:var(--text2)">📊 TOTAL CLIENȚI</div>
-      <div style="font-size:18px;font-weight:800;color:var(--text)">${s.total_clients}</div>
-    </div>
-    ${!s.hasIncasariData ? '<div style="background:#ca8a0422;border:1px solid #ca8a0466;border-radius:10px;padding:10px 16px;font-size:12px;color:#fbbf24">⚠️ Scoring parțial — importă fișierul de încasări pentru analiza completă pe 12 luni</div>' : ''}
-  </div>`;
+    summaryEl.innerHTML = `
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin:8px 0">
+      <div onclick="riscQuickFilter('CRITIC')" style="cursor:pointer;background:#dc262622;border:1px solid #dc262666;border-radius:10px;padding:10px 16px;min-width:140px;transition:transform .15s" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform=''">
+        <div style="font-size:11px;color:#fca5a5">🔴 CRITIC</div>
+        <div style="font-size:22px;font-weight:800;color:#f87171">${s.critici}</div>
+      </div>
+      <div onclick="riscQuickFilter('RIDICAT')" style="cursor:pointer;background:#ea580c22;border:1px solid #ea580c66;border-radius:10px;padding:10px 16px;min-width:140px;transition:transform .15s" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform=''">
+        <div style="font-size:11px;color:#fdba74">🟠 RIDICAT</div>
+        <div style="font-size:22px;font-weight:800;color:#fb923c">${s.ridicat}</div>
+      </div>
+      <div onclick="riscQuickFilter('MEDIU')" style="cursor:pointer;background:#ca8a0422;border:1px solid #ca8a0466;border-radius:10px;padding:10px 16px;min-width:140px;transition:transform .15s" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform=''">
+        <div style="font-size:11px;color:#fde047">🟡 MEDIU</div>
+        <div style="font-size:22px;font-weight:800;color:#facc15">${s.mediu}</div>
+      </div>
+      <div onclick="riscQuickFilter('')" style="cursor:pointer;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:10px 16px;min-width:180px;transition:transform .15s" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform=''">
+        <div style="font-size:11px;color:var(--text2)">💰 TOTAL REST RISC</div>
+        <div style="font-size:18px;font-weight:800;color:#ef4444">${fmtMoney(s.total_rest_risc)} RON</div>
+      </div>
+      <div onclick="riscQuickFilter('')" style="cursor:pointer;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:10px 16px;min-width:120px;transition:transform .15s" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform=''">
+        <div style="font-size:11px;color:var(--text2)">📊 TOTAL CLIENȚI</div>
+        <div style="font-size:18px;font-weight:800;color:var(--text)">${s.total_clients}</div>
+      </div>
+      ${!s.hasIncasariData ? '<div style="background:#ca8a0422;border:1px solid #ca8a0466;border-radius:10px;padding:10px 16px;font-size:12px;color:#fbbf24">⚠️ Scoring parțial — importă fișierul de încasări pentru analiza completă pe 12 luni</div>' : ''}
+    </div>`;
 
-  filterRiscClients();
+    filterRiscClients();
+  } catch(ex) {
+    el.innerHTML = '<div class="empty-state">Nu sunt date disponibile.</div>';
+  }
 }
 
 let _riscSortCol = '', _riscSortDir = 'desc';
@@ -7902,48 +7907,52 @@ async function loadTopClienti() {
     summaryEl.parentElement.insertBefore(banner, summaryEl);
   }
 
-  const div = document.getElementById('topFiltDiv')?.value || '';
-  const data = await mApi(`/api/top-clienti?divizie=${encodeURIComponent(div)}`);
-  if (!data || !data.clients) { el.innerHTML = '<div class="empty-state">Eroare la încărcare.</div>'; return; }
-  if (!data.clients.length) {
-    el.innerHTML = `<div class="empty-state">${data.stats?.message || 'Niciun client găsit.'}</div>`;
-    summaryEl.innerHTML = '';
-    return;
+  try {
+    const div = document.getElementById('topFiltDiv')?.value || '';
+    const data = await mApi(`/api/top-clienti?divizie=${encodeURIComponent(div)}`);
+    if (!data || !data.clients) { el.innerHTML = '<div class="empty-state">Eroare la încărcare.</div>'; return; }
+    if (!data.clients.length) {
+      el.innerHTML = `<div class="empty-state">${data.stats?.message || 'Niciun client găsit.'}</div>`;
+      summaryEl.innerHTML = '';
+      return;
+    }
+
+    _topClientsAll = data.clients;
+    const s = data.stats;
+
+    summaryEl.innerHTML = `
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin:8px 0">
+      <div class="top-cat-card" data-cat="GOLD" onclick="topQuickFilter('GOLD')" style="background:#f59e0b22;border:1px solid #f59e0b66;border-radius:10px;padding:10px 16px;min-width:120px;cursor:pointer;transition:all .2s">
+        <div style="font-size:11px;color:#fbbf24">🥇 GOLD</div>
+        <div style="font-size:22px;font-weight:800;color:#f59e0b">${s.gold}</div>
+      </div>
+      <div class="top-cat-card" data-cat="SILVER" onclick="topQuickFilter('SILVER')" style="background:#94a3b822;border:1px solid #94a3b866;border-radius:10px;padding:10px 16px;min-width:120px;cursor:pointer;transition:all .2s">
+        <div style="font-size:11px;color:#cbd5e1">🥈 SILVER</div>
+        <div style="font-size:22px;font-weight:800;color:#94a3b8">${s.silver}</div>
+      </div>
+      <div class="top-cat-card" data-cat="BRONZE" onclick="topQuickFilter('BRONZE')" style="background:#b4530922;border:1px solid #b4530966;border-radius:10px;padding:10px 16px;min-width:120px;cursor:pointer;transition:all .2s">
+        <div style="font-size:11px;color:#d97706">🥉 BRONZE</div>
+        <div style="font-size:22px;font-weight:800;color:#b45309">${s.bronze}</div>
+      </div>
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:10px 16px;min-width:180px">
+        <div style="font-size:11px;color:var(--text2)">💰 VALOARE TOTALĂ</div>
+        <div style="font-size:18px;font-weight:800;color:#10b981">${fmtMoney(s.total_valoare)} RON</div>
+      </div>
+      <div class="top-cat-card" data-cat="" onclick="topQuickFilter(_topQuickCat)" style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:10px 16px;min-width:120px;cursor:pointer;transition:all .2s">
+        <div style="font-size:11px;color:var(--text2)">📊 TOTAL CLIENȚI</div>
+        <div style="font-size:18px;font-weight:800;color:var(--text)">${s.total}</div>
+      </div>
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:10px 16px;min-width:100px">
+        <div style="font-size:11px;color:var(--text2)">📅 LUNI ANALIZATE</div>
+        <div style="font-size:18px;font-weight:800;color:var(--text)">${s.nr_months}</div>
+      </div>
+      ${!s.hasIncasariData ? '<div style="background:#ca8a0422;border:1px solid #ca8a0466;border-radius:10px;padding:10px 16px;font-size:12px;color:#fbbf24">⚠️ Scoring parțial — importă fișierul de încasări pentru analiza completă</div>' : ''}
+    </div>`;
+
+    filterTopClienti();
+  } catch(ex) {
+    el.innerHTML = '<div class="empty-state">Nu sunt date disponibile.</div>';
   }
-
-  _topClientsAll = data.clients;
-  const s = data.stats;
-
-  summaryEl.innerHTML = `
-  <div style="display:flex;gap:10px;flex-wrap:wrap;margin:8px 0">
-    <div class="top-cat-card" data-cat="GOLD" onclick="topQuickFilter('GOLD')" style="background:#f59e0b22;border:1px solid #f59e0b66;border-radius:10px;padding:10px 16px;min-width:120px;cursor:pointer;transition:all .2s">
-      <div style="font-size:11px;color:#fbbf24">🥇 GOLD</div>
-      <div style="font-size:22px;font-weight:800;color:#f59e0b">${s.gold}</div>
-    </div>
-    <div class="top-cat-card" data-cat="SILVER" onclick="topQuickFilter('SILVER')" style="background:#94a3b822;border:1px solid #94a3b866;border-radius:10px;padding:10px 16px;min-width:120px;cursor:pointer;transition:all .2s">
-      <div style="font-size:11px;color:#cbd5e1">🥈 SILVER</div>
-      <div style="font-size:22px;font-weight:800;color:#94a3b8">${s.silver}</div>
-    </div>
-    <div class="top-cat-card" data-cat="BRONZE" onclick="topQuickFilter('BRONZE')" style="background:#b4530922;border:1px solid #b4530966;border-radius:10px;padding:10px 16px;min-width:120px;cursor:pointer;transition:all .2s">
-      <div style="font-size:11px;color:#d97706">🥉 BRONZE</div>
-      <div style="font-size:22px;font-weight:800;color:#b45309">${s.bronze}</div>
-    </div>
-    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:10px 16px;min-width:180px">
-      <div style="font-size:11px;color:var(--text2)">💰 VALOARE TOTALĂ</div>
-      <div style="font-size:18px;font-weight:800;color:#10b981">${fmtMoney(s.total_valoare)} RON</div>
-    </div>
-    <div class="top-cat-card" data-cat="" onclick="topQuickFilter(_topQuickCat)" style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:10px 16px;min-width:120px;cursor:pointer;transition:all .2s">
-      <div style="font-size:11px;color:var(--text2)">📊 TOTAL CLIENȚI</div>
-      <div style="font-size:18px;font-weight:800;color:var(--text)">${s.total}</div>
-    </div>
-    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:10px 16px;min-width:100px">
-      <div style="font-size:11px;color:var(--text2)">📅 LUNI ANALIZATE</div>
-      <div style="font-size:18px;font-weight:800;color:var(--text)">${s.nr_months}</div>
-    </div>
-    ${!s.hasIncasariData ? '<div style="background:#ca8a0422;border:1px solid #ca8a0466;border-radius:10px;padding:10px 16px;font-size:12px;color:#fbbf24">⚠️ Scoring parțial — importă fișierul de încasări pentru analiza completă</div>' : ''}
-  </div>`;
-
-  filterTopClienti();
 }
 
 let _topSortCol = '', _topSortDir = 'desc';
@@ -8127,4 +8136,136 @@ function toggleTopExplainer() {
     body.style.display = 'none';
     arrow.style.transform = '';
   }
+}
+
+// ═══ FACTURI AMBALAJ ════════
+let _ambalajAll = [];
+let _ambalajSortCol = 'rest', _ambalajSortDir = 'desc';
+
+async function loadFacturiAmbalaj() {
+  const el = document.getElementById('ambalajList');
+  const summaryEl = document.getElementById('ambalajSummary');
+  el.innerHTML = '<div class="empty-state">Se încarcă facturile de ambalaj...</div>';
+
+  try {
+    const div = document.getElementById('ambalajFiltDiv')?.value || '';
+    const data = await mApi(`/api/facturi-ambalaj?divizie=${encodeURIComponent(div)}`);
+    if (!data || !data.facturi) { el.innerHTML = '<div class="empty-state">Eroare la încărcare.</div>'; return; }
+
+    _ambalajAll = data.facturi;
+    const s = data.stats;
+
+    summaryEl.innerHTML = `
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin:8px 0">
+      <div style="background:#8b5cf622;border:1px solid #8b5cf666;border-radius:10px;padding:10px 16px;min-width:160px">
+        <div style="font-size:11px;color:#a78bfa">📦 TOTAL REST AMBALAJ</div>
+        <div style="font-size:22px;font-weight:800;color:#8b5cf6">${fmtMoney(s.total_rest)} RON</div>
+      </div>
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:10px 16px;min-width:120px">
+        <div style="font-size:11px;color:var(--text2)">📋 FACTURI</div>
+        <div style="font-size:22px;font-weight:800;color:var(--text)">${s.total}</div>
+      </div>
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:10px 16px;min-width:120px">
+        <div style="font-size:11px;color:var(--text2)">👥 CLIENȚI</div>
+        <div style="font-size:22px;font-weight:800;color:var(--text)">${s.nr_clienti}</div>
+      </div>
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:10px 16px;min-width:120px">
+        <div style="font-size:11px;color:var(--text2)">📅 MEDIE DEPĂȘIRE</div>
+        <div style="font-size:22px;font-weight:800;color:${s.avg_depasire > 30 ? '#ef4444' : '#10b981'}">${s.avg_depasire}z</div>
+      </div>
+      ${s.facturi_peste_30 > 0 ? `<div style="background:#ef444422;border:1px solid #ef444466;border-radius:10px;padding:10px 16px;min-width:120px">
+        <div style="font-size:11px;color:#fca5a5">⚠️ >30 ZILE</div>
+        <div style="font-size:22px;font-weight:800;color:#ef4444">${s.facturi_peste_30}</div>
+      </div>` : ''}
+    </div>`;
+
+    filterAmbalaj();
+  } catch(ex) {
+    el.innerHTML = `<div class="empty-state" style="color:#e74c3c">Eroare: ${escH(ex.message)}</div>`;
+  }
+}
+
+function filterAmbalaj() {
+  const filtAgent = document.getElementById('ambalajHdrAgent')?.value || '';
+  const filtDiv = document.getElementById('ambalajHdrDiv')?.value || '';
+  const filtDep = document.getElementById('ambalajHdrDep')?.value || '';
+  let facturi = _ambalajAll;
+  if (filtAgent) facturi = facturi.filter(f => f.agent === filtAgent);
+  if (filtDiv) facturi = facturi.filter(f => f.divizie === filtDiv);
+  if (filtDep === '>90') facturi = facturi.filter(f => f.depasire_termen > 90);
+  else if (filtDep === '>60') facturi = facturi.filter(f => f.depasire_termen > 60);
+  else if (filtDep === '>30') facturi = facturi.filter(f => f.depasire_termen > 30);
+  else if (filtDep === '<=30') facturi = facturi.filter(f => f.depasire_termen <= 30);
+
+  if (_ambalajSortCol) {
+    const dir = _ambalajSortDir === 'asc' ? 1 : -1;
+    facturi = [...facturi].sort((a, b) => {
+      let va = a[_ambalajSortCol], vb = b[_ambalajSortCol];
+      if (typeof va === 'string') return (va || '').localeCompare(vb || '') * dir;
+      if (va === null || va === undefined) va = -999;
+      if (vb === null || vb === undefined) vb = -999;
+      return (va > vb ? 1 : va < vb ? -1 : 0) * dir;
+    });
+  }
+  renderAmbalajList(facturi);
+}
+
+function ambalajSort(col) {
+  if (_ambalajSortCol === col) _ambalajSortDir = _ambalajSortDir === 'desc' ? 'asc' : 'desc';
+  else { _ambalajSortCol = col; _ambalajSortDir = 'desc'; }
+  filterAmbalaj();
+}
+
+function renderAmbalajList(facturi) {
+  const el = document.getElementById('ambalajList');
+  if (!facturi.length) { el.innerHTML = '<div class="empty-state">Nicio factură de ambalaj găsită.</div>'; return; }
+
+  const _prevAgent = document.getElementById('ambalajHdrAgent')?.value || '';
+  const _prevDiv = document.getElementById('ambalajHdrDiv')?.value || '';
+  const _prevDep = document.getElementById('ambalajHdrDep')?.value || '';
+
+  const sA = col => _ambalajSortCol === col ? (_ambalajSortDir === 'desc' ? ' ▼' : ' ▲') : '';
+  const thS = 'padding:6px;cursor:pointer;user-select:none';
+
+  el.innerHTML = `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px">
+  <thead>
+  <tr style="background:var(--bg2);position:sticky;top:0;z-index:3">
+    <th style="${thS};text-align:left" onclick="ambalajSort('partener')">Client${sA('partener')}</th>
+    <th style="${thS};text-align:left" onclick="ambalajSort('document')">Document${sA('document')}</th>
+    <th style="${thS};text-align:right" onclick="ambalajSort('valoare')">Valoare${sA('valoare')}</th>
+    <th style="${thS};text-align:right" onclick="ambalajSort('rest')">Rest${sA('rest')}</th>
+    <th style="${thS};text-align:center" onclick="ambalajSort('depasire_termen')">Zile Dep.${sA('depasire_termen')}</th>
+    <th style="${thS};text-align:left" onclick="ambalajSort('agent')">Agent${sA('agent')}</th>
+    <th style="padding:6px;text-align:center">Div</th>
+  </tr>
+  <tr style="background:var(--bg2);position:sticky;top:28px;z-index:2">
+    <th colspan="4"></th>
+    <th style="padding:2px 4px"><select id="ambalajHdrDep" onchange="filterAmbalaj()" style="width:100%;font-size:11px;padding:2px;border-radius:4px;border:1px solid var(--border);background:var(--bg1);color:var(--text)">
+      <option value="">Toate</option><option value=">90">>90z</option><option value=">60">>60z</option><option value=">30">>30z</option><option value="<=30">≤30z</option>
+    </select></th>
+    <th style="padding:2px 4px"><select id="ambalajHdrAgent" onchange="filterAmbalaj()" style="width:100%;font-size:11px;padding:2px;border-radius:4px;border:1px solid var(--border);background:var(--bg1);color:var(--text)">
+      <option value="">Toți</option>${[...new Set((_ambalajAll||facturi).map(f=>f.agent).filter(Boolean))].sort().map(a=>`<option value="${escH(a)}">${escH(a)}</option>`).join('')}
+    </select></th>
+    <th style="padding:2px 4px"><select id="ambalajHdrDiv" onchange="filterAmbalaj()" style="width:100%;font-size:11px;padding:2px;border-radius:4px;border:1px solid var(--border);background:var(--bg1);color:var(--text)">
+      <option value="">Toate</option>${[...new Set((_ambalajAll||facturi).map(f=>f.divizie).filter(Boolean))].sort().map(d=>`<option value="${escH(d)}">${escH(d)}</option>`).join('')}
+    </select></th>
+  </tr>
+  </thead>
+  <tbody>${facturi.map(f => {
+    const depColor = f.depasire_termen > 90 ? '#dc2626' : f.depasire_termen > 60 ? '#ea580c' : f.depasire_termen > 30 ? '#f97316' : '#10b981';
+    const rowBg = f.depasire_termen > 60 ? '#dc262610' : '';
+    return `<tr style="border-bottom:1px solid var(--border);background:${rowBg}" onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background='${rowBg}'">
+      <td style="padding:5px;font-weight:600">${escH(f.partener)}</td>
+      <td style="padding:5px;font-size:12px;color:var(--text2)">${escH(f.document || '')}${f.serie_document ? ' <span style="font-size:10px;color:var(--muted)">('+escH(f.serie_document)+')</span>' : ''}</td>
+      <td style="padding:5px;text-align:right">${fmtMoney(f.valoare)}</td>
+      <td style="padding:5px;text-align:right;font-weight:700;color:#8b5cf6">${fmtMoney(f.rest)}</td>
+      <td style="padding:5px;text-align:center"><span style="color:${depColor};font-weight:700">${f.depasire_termen}</span></td>
+      <td style="padding:5px;font-size:12px">${escH(f.agent)}</td>
+      <td style="padding:5px;text-align:center"><span style="background:${_divColor(f.divizie)}22;color:${_divColor(f.divizie)};padding:2px 6px;border-radius:8px;font-size:11px;font-weight:600">${escH(f.divizie||'')}</span></td>
+    </tr>`;
+  }).join('')}</tbody></table></div>`;
+
+  if (_prevAgent) { const s = document.getElementById('ambalajHdrAgent'); if (s) s.value = _prevAgent; }
+  if (_prevDiv) { const s = document.getElementById('ambalajHdrDiv'); if (s) s.value = _prevDiv; }
+  if (_prevDep) { const s = document.getElementById('ambalajHdrDep'); if (s) s.value = _prevDep; }
 }
