@@ -4015,8 +4015,8 @@ async function loadScadentar() {
             const limitText = c.cifra_afaceri > 0 ? Number(c.cifra_afaceri).toLocaleString("ro-RO",{maximumFractionDigits:0}) : '—';
             const limitBadge = c.cifra_afaceri > 0 ? (overLimit ? ' <span style="font-size:.6rem;color:#fff;background:#e74c3c;padding:0 4px;border-radius:3px">' + limitPct + '%</span>' : ' <span style="font-size:.6rem;color:#27ae60">' + limitPct + '%</span>') : '';
             return `
-            <tr class="scad-client-row" style="border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s${overLimit ? ';background:#fef2f2' : ''}" onclick="toggleScadClient(${idx})" onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background='${overLimit ? '#fef2f2' : ''}'">
-              <td style="padding:4px 6px;font-weight:600" title="${esc(c.partener)}${c.cod_fiscal ? ' ('+c.cod_fiscal+')' : ''}">${warn}${esc(c.partener)}</td>
+            <tr class="scad-client-row" style="border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s${overLimit ? ';background:#e74c3c18' : ''}" onclick="toggleScadClient(${idx})" onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background='${overLimit ? '#e74c3c18' : ''}'">
+              <td style="padding:4px 6px;font-weight:600;color:var(--fg)" title="${esc(c.partener)}${c.cod_fiscal ? ' ('+c.cod_fiscal+')' : ''}">${warn}${esc(c.partener)}</td>
               <td style="padding:4px 6px;text-align:right;font-weight:700;color:#e74c3c">${Number(c.total_rest).toLocaleString("ro-RO",{minimumFractionDigits:2})}</td>
               <td style="padding:4px 6px;text-align:right;color:${limitColor}">${limitText}${limitBadge}</td>
               <td style="padding:4px 6px;text-align:center">${c.invoices.length}</td>
