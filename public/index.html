@@ -1268,6 +1268,14 @@
             </div>
             <div id="cofaceUploadStatus" style="font-size:.8rem;margin-top:.3rem"></div>
           </div>
+          <div id="incasariUploadForm" style="display:none;margin-bottom:.5rem;padding:.5rem;border:1px solid var(--border);border-radius:8px;background:var(--bg2)">
+            <p style="font-size:.75rem;color:var(--muted);margin-bottom:.4rem">UPLOAD ÎNCASĂRI PE TERMENE (Excel)</p>
+            <div class="btn-row">
+              <input type="file" id="incasariFile" accept=".xlsx,.xls" style="font-size:.8rem;max-width:200px">
+              <button class="btn success small" onclick="uploadIncasariTermene(document.getElementById('incasariFile'))">📤 Import</button>
+            </div>
+            <div id="incasariUploadStatus" style="font-size:.8rem;margin-top:.3rem"></div>
+          </div>
           <div class="btn-row">
             <select id="riscFiltNivel" onchange="filterRiscClients()" style="padding:.3rem;border:1px solid var(--border);border-radius:4px;font-size:.85rem">
               <option value="">Toate categoriile</option>

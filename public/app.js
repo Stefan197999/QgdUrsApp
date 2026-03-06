@@ -7601,6 +7601,36 @@ let riscFiltered = [];
 
 let _riscClientsAll = [];
 
+async function uploadIncasariTermene(input) {
+  if (!input || !input.files[0]) return;
+  const fd = new FormData();
+  fd.append('file', input.files[0]);
+  showToast('Se importă încasări pe termene... (fișier mare, poate dura)','info');
+  try {
+    const r = await fetch('/api/incasari-termene/upload', {
+      method: 'POST',
+      body: fd,
+      headers: { 'X-CSRF-Token': _csrfToken }
+    });
+    const data = await r.json();
+    if (r.ok && data.ok) {
+      showToast(`Importat ${data.imported} tranzacții! Perioada: ${data.period}`,'success');
+      loadRiscFinanciar();
+      const status = document.getElementById('incasariUploadStatus');
+      if (status) status.innerHTML = `✓ Importate ${data.imported} rânduri, perioda ${data.period}`;
+    } else {
+      showToast(data.error||'Eroare import','error');
+      const status = document.getElementById('incasariUploadStatus');
+      if (status) status.innerHTML = `✗ Eroare: ${data.error||'Necunoscut'}`;
+    }
+  } catch(e) {
+    showToast('Eroare la upload: ' + e.message, 'error');
+    const status = document.getElementById('incasariUploadStatus');
+    if (status) status.innerHTML = `✗ Eroare: ${e.message}`;
+  }
+  input.value = '';
+}
+
 async function loadRiscFinanciar() {
   const el = document.getElementById('riscList');
   const summaryEl = document.getElementById('riscSummary');
@@ -7637,6 +7667,12 @@ async function loadRiscFinanciar() {
       </div>`;
     if (infoEl) infoEl.parentElement.insertBefore(banner, infoEl);
     else summaryEl.parentElement.insertBefore(banner, summaryEl);
+  }
+
+  // Show upload form for admin/SPV
+  if (currentRole === 'admin' || currentRole === 'spv') {
+    const uploadForm = document.getElementById('incasariUploadForm');
+    if (uploadForm) uploadForm.style.display = '';
   }
 
   // Load încasări info (URS may not have this endpoint)

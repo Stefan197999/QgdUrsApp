@@ -1061,6 +1061,45 @@ db.exec(`
     agent_name TEXT PRIMARY KEY,
     division TEXT NOT NULL
   );
+
+  CREATE TABLE IF NOT EXISTS incasari_imports (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    filename TEXT,
+    rows_imported INTEGER DEFAULT 0,
+    period_from TEXT,
+    period_to TEXT,
+    uploaded_by TEXT,
+    uploaded_at TEXT DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS incasari_termene (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    import_id INTEGER,
+    nr_crt INTEGER,
+    doc_factura TEXT,
+    data_factura TEXT,
+    valoare_initiala REAL DEFAULT 0,
+    rest REAL DEFAULT 0,
+    termen TEXT,
+    doc_stingator TEXT,
+    valoare_plata REAL DEFAULT 0,
+    data_decontare TEXT,
+    sold_dupa_plata REAL DEFAULT 0,
+    zile_incasare INTEGER DEFAULT 0,
+    zile_depasire INTEGER DEFAULT 0,
+    agent TEXT DEFAULT '',
+    incasari_1_2_zile REAL DEFAULT 0,
+    incasari_2_30_zile REAL DEFAULT 0,
+    tip_document TEXT DEFAULT '',
+    partener TEXT DEFAULT '',
+    cod_intern TEXT DEFAULT '',
+    cifra_afaceri REAL DEFAULT 0,
+    FOREIGN KEY (import_id) REFERENCES incasari_imports(id) ON DELETE CASCADE
+  );
+  CREATE INDEX IF NOT EXISTS idx_incasari_partener ON incasari_termene(partener);
+  CREATE INDEX IF NOT EXISTS idx_incasari_agent ON incasari_termene(agent);
+  CREATE INDEX IF NOT EXISTS idx_incasari_import ON incasari_termene(import_id);
+  CREATE INDEX IF NOT EXISTS idx_incasari_codint ON incasari_termene(cod_intern);
 `);
 
 /* ═══════════ ALTER TABLE — Add missing columns ═══════════ */
@@ -6372,6 +6411,7 @@ app.get("/api/solduri/all", auth, (req, res) => {
 /* ══════ SCADENȚAR QUATRO (Import Mentor) ══════ */
 
 const scadentarUpload = multer({ dest: "uploads/", limits: { fileSize: 30 * 1024 * 1024 } });
+const incasariUpload = multer({ dest: "uploads/", limits: { fileSize: 50 * 1024 * 1024 } });
 
 /* Helper: lookup division for agent name (fuzzy match) */
 function lookupDivision(agentName) {
@@ -6817,6 +6857,121 @@ app.get("/api/financial-risk", auth, (req, res) => {
   res.json({ upload_date: latest.d, data: rows });
 });
 
+/* POST /api/incasari-termene/upload — Upload Excel cu încasări pe termene */
+app.post('/api/incasari-termene/upload', auth, incasariUpload.single('file'), (req, res) => {
+  try {
+    // Only admin and SPV can upload
+    if (req.role !== 'admin' && req.role !== 'spv') {
+      return res.status(403).json({ error: 'Doar admin/SPV pot încărca date' });
+    }
+    if (!req.file) return res.status(400).json({ error: 'Fișier lipsă' });
+    const XLSX = require('xlsx');
+    const wb = XLSX.readFile(req.file.path);
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const data = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+
+    const headerRow = data[0] || [];
+    const numCols = headerRow.length;
+    const hasCodeIntern = numCols >= 18;
+    const hasCifraAfaceri = numCols >= 17;
+
+    const imp = db.prepare(`INSERT INTO incasari_imports (filename, uploaded_by) VALUES (?, ?)`).run(
+      req.file.originalname, req.username || 'unknown'
+    );
+    const importId = imp.lastInsertRowid;
+
+    // Delete previous imports (keep only latest)
+    const prevImports = db.prepare("SELECT id FROM incasari_imports WHERE id != ? ORDER BY id DESC").all(importId);
+    if (prevImports.length > 0) {
+      const delTx = db.transaction(() => {
+        for (const pi of prevImports) {
+          db.prepare("DELETE FROM incasari_termene WHERE import_id = ?").run(pi.id);
+          db.prepare("DELETE FROM incasari_imports WHERE id = ?").run(pi.id);
+        }
+      });
+      delTx();
+    }
+
+    const ins = db.prepare(`INSERT INTO incasari_termene
+      (import_id, nr_crt, doc_factura, data_factura, valoare_initiala, rest, termen, doc_stingator,
+       valoare_plata, data_decontare, sold_dupa_plata, zile_incasare, zile_depasire, agent,
+       incasari_1_2_zile, incasari_2_30_zile, tip_document, partener, cod_intern, cifra_afaceri)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`);
+
+    let inserted = 0, skipped = 0;
+    let minDate = null, maxDate = null;
+
+    const insertTx = db.transaction(() => {
+      for (let i = 3; i < data.length; i++) {
+        const r = data[i];
+        const nrCrt = r[0];
+        if (typeof nrCrt === 'string' && (nrCrt.startsWith('Total') || nrCrt.startsWith('TOTAL'))) { skipped++; continue; }
+        if (!nrCrt && nrCrt !== 0) { skipped++; continue; }
+
+        const docFactura = String(r[1] || '').trim();
+        const docDateMatch = docFactura.match(/(\d{2}\.\d{2}\.\d{4})/);
+        const dataFactura = docDateMatch ? docDateMatch[1] : '';
+
+        const valoareInit = parseFloat(r[2]) || 0;
+        const rest = parseFloat(r[3]) || 0;
+        const termen = String(r[4] || '').trim();
+        const docStingator = String(r[5] || '').trim();
+        const valoarePlata = parseFloat(r[6]) || 0;
+        const dataDecontare = String(r[7] || '').trim();
+        const soldDupaPlata = parseFloat(r[8]) || 0;
+        const zileIncasare = parseInt(r[9]) || 0;
+        const zileDepasire = parseInt(r[10]) || 0;
+        const agent = String(r[11] || '').trim();
+        const inc12 = parseFloat(r[12]) || 0;
+        const inc230 = parseFloat(r[13]) || 0;
+        const tipDoc = String(r[14] || '').trim();
+        const partener = String(r[15] || '').trim();
+        const cifraAfaceri = hasCifraAfaceri ? (parseFloat(r[16]) || 0) : 0;
+        const codIntern = hasCodeIntern ? String(r[17] || '').trim() : '';
+
+        if (!partener) { skipped++; continue; }
+
+        if (dataDecontare && dataDecontare.includes('.')) {
+          if (!minDate || dataDecontare < minDate) minDate = dataDecontare;
+          if (!maxDate || dataDecontare > maxDate) maxDate = dataDecontare;
+        }
+
+        ins.run(importId, parseInt(nrCrt)||0, docFactura, dataFactura, valoareInit, rest, termen,
+                docStingator, valoarePlata, dataDecontare, soldDupaPlata, zileIncasare, zileDepasire,
+                agent, inc12, inc230, tipDoc, partener, codIntern, cifraAfaceri);
+        inserted++;
+      }
+    });
+    insertTx();
+
+    db.prepare("UPDATE incasari_imports SET rows_imported=?, period_from=?, period_to=? WHERE id=?").run(
+      inserted, minDate || '', maxDate || '', importId
+    );
+
+    try { db.prepare('CREATE INDEX IF NOT EXISTS idx_incasari_cod_intern ON incasari_termene(cod_intern)').run(); } catch(e) {}
+
+    // Cleanup upload
+    try { require('fs').unlinkSync(req.file.path); } catch {}
+
+    res.json({ ok: true, imported: inserted, skipped, importId, period: `${minDate || '?'} — ${maxDate || '?'}`, hasCodeIntern });
+  } catch(e) {
+    console.error('Incasari upload error:', e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+/* GET /api/incasari-termene/info */
+app.get('/api/incasari-termene/info', auth, (req, res) => {
+  try {
+    const info = db.prepare("SELECT * FROM incasari_imports ORDER BY id DESC LIMIT 1").get();
+    if (!info) return res.json({ hasData: false });
+    const count = db.prepare("SELECT COUNT(*) as cnt, COUNT(DISTINCT partener) as partners, COUNT(DISTINCT agent) as agents FROM incasari_termene WHERE import_id=?").get(info.id);
+    res.json({ hasData: true, ...info, ...count });
+  } catch(e) {
+    res.json({ hasData: false });
+  }
+});
+
 /* ══════ NEW: /api/risc-financiar — Enhanced risk scoring ══════ */
 /* GET /api/risc-financiar — Enhanced financial risk with scoring */
 app.get("/api/risc-financiar", auth, (req, res) => {
@@ -6863,6 +7018,29 @@ app.get("/api/risc-financiar", auth, (req, res) => {
 
   const rows = db.prepare(sql).all(...params);
 
+  // Load încasări data if available
+  const incInfo = db.prepare("SELECT id FROM incasari_imports ORDER BY id DESC LIMIT 1").get();
+  let incMap = {};
+  if (incInfo) {
+    try {
+      const incRows = db.prepare(`SELECT
+        COALESCE(NULLIF(cod_intern,''), partener) as client_key,
+        partener, cod_intern,
+        COUNT(*) as nr_tranzactii,
+        AVG(zile_incasare) as avg_zile_incasare,
+        SUM(CASE WHEN zile_depasire > 0 THEN 1 ELSE 0 END) as nr_cu_depasire,
+        SUM(valoare_plata) as total_incasat,
+        AVG(zile_depasire) as avg_zile_depasire,
+        MAX(zile_depasire) as max_zile_depasire_istoric
+      FROM incasari_termene WHERE import_id = ?
+      GROUP BY client_key`).all(incInfo.id);
+      for (const ir of incRows) {
+        incMap[ir.client_key] = ir;
+        if (ir.partener) incMap[ir.partener] = ir;
+      }
+    } catch(e) { console.error('Incasari lookup error:', e); }
+  }
+
   const clients = rows.map(r => {
     let score = 0;
     if (r.max_depasire >= 90) score += 25;
@@ -6891,6 +7069,28 @@ app.get("/api/risc-financiar", auth, (req, res) => {
     else if (r.total_rest > 50000) score += 3;
     else if (r.total_rest > 20000) score += 1;
 
+    // Merge încasări data
+    const inc = incMap[r.key_id] || incMap[r.partener];
+    let zile_medii_incasare = null;
+    let pct_depasire = 0;
+    if (inc) {
+      zile_medii_incasare = Math.round(inc.avg_zile_incasare * 10) / 10;
+      pct_depasire = inc.nr_tranzactii > 0 ? Math.round(inc.nr_cu_depasire / inc.nr_tranzactii * 100) : 0;
+    }
+
+    // E) Comportament istoric încasări (0-20 pts)
+    if (zile_medii_incasare !== null) {
+      if (zile_medii_incasare > 45) score += 10;
+      else if (zile_medii_incasare > 30) score += 7;
+      else if (zile_medii_incasare > 20) score += 4;
+      else if (zile_medii_incasare > 14) score += 2;
+
+      if (pct_depasire > 50) score += 10;
+      else if (pct_depasire > 30) score += 7;
+      else if (pct_depasire > 15) score += 4;
+      else if (pct_depasire > 5) score += 2;
+    }
+
     const nivel_risc = score >= 60 ? 'CRITIC' : (score >= 40 ? 'RIDICAT' : (score >= 20 ? 'MEDIU' : 'SCĂZUT'));
 
     return {
@@ -6902,8 +7102,8 @@ app.get("/api/risc-financiar", auth, (req, res) => {
       facturi_peste_30: r.facturi_peste_30, facturi_peste_60: r.facturi_peste_60 || 0, facturi_peste_90: r.facturi_peste_90 || 0,
       limita_credit: r.limita_credit || 0,
       cifra_afaceri_curent: r.cifra_afaceri_curent || 0, cifra_afaceri_prec: r.cifra_afaceri_prec || 0,
-      zile_medii_incasare: null, pct_depasire: null,
-      total_incasat_12luni: null, nr_tranzactii_12luni: null,
+      zile_medii_incasare, pct_depasire,
+      total_incasat_12luni: inc ? inc.total_incasat : null, nr_tranzactii_12luni: inc ? inc.nr_tranzactii : null,
       blocat: r.blocat === 1
     };
   }).filter(c => !isHiddenClient(c.partener, { username: req.username, role: req.role }))
@@ -6915,7 +7115,7 @@ app.get("/api/risc-financiar", auth, (req, res) => {
     ridicat: clients.filter(c => c.nivel_risc === 'RIDICAT').length,
     mediu: clients.filter(c => c.nivel_risc === 'MEDIU').length,
     total_rest_risc: clients.reduce((sum, c) => sum + c.total_rest, 0),
-    hasIncasariData: false
+    hasIncasariData: !!incInfo
   };
 
   res.json({ clients, stats });
