@@ -1254,48 +1254,28 @@
     </div>
 
     <!-- ═══════════════════════════════════════════
-         TAB: RISC FINANCIAR (Coface)
+         TAB: RISC FINANCIAR — Scoring Clienți
          ═══════════════════════════════════════════ -->
     <div id="panelRiscFinanciar" class="tab-panel" style="display:none">
-      <details class="panel" open>
-        <summary>📊 RISC FINANCIAR <button class="help-btn" onclick="event.stopPropagation();showHelp('riscFinanciar')">?</button></summary>
-        <div class="panel-inner">
-          <div id="riscUploadForm" style="display:none;margin-bottom:.5rem;padding:.5rem;border:1px solid var(--border);border-radius:8px;background:var(--bg2)">
-            <p style="font-size:.75rem;color:var(--muted);margin-bottom:.4rem">UPLOAD RAPORT COFACE (Excel)</p>
-            <div class="btn-row">
-              <input type="file" id="cofaceFile" accept=".xlsx,.xls" style="font-size:.8rem;max-width:200px">
-              <button class="btn success small" onclick="uploadCoface()">📤 Import</button>
-            </div>
-            <div id="cofaceUploadStatus" style="font-size:.8rem;margin-top:.3rem"></div>
-          </div>
-          <div id="incasariUploadForm" style="display:none;margin-bottom:.5rem;padding:.5rem;border:1px solid var(--border);border-radius:8px;background:var(--bg2)">
-            <p style="font-size:.75rem;color:var(--muted);margin-bottom:.4rem">UPLOAD ÎNCASĂRI PE TERMENE (Excel)</p>
-            <div class="btn-row">
-              <input type="file" id="incasariFile" accept=".xlsx,.xls" style="font-size:.8rem;max-width:200px">
-              <button class="btn success small" onclick="uploadIncasariTermene(document.getElementById('incasariFile'))">📤 Import</button>
-            </div>
-            <div id="incasariUploadStatus" style="font-size:.8rem;margin-top:.3rem"></div>
-          </div>
-          <div class="btn-row">
-            <select id="riscFiltNivel" onchange="filterRiscClients()" style="padding:.3rem;border:1px solid var(--border);border-radius:4px;font-size:.85rem">
-              <option value="">Toate categoriile</option>
-              <option value="CRITIC">CRITIC</option>
-              <option value="RIDICAT">RIDICAT</option>
-              <option value="MEDIU">MEDIU</option>
-              <option value="SCAZUT">SCAZUT</option>
-            </select>
-            <select id="riscFiltDiv" onchange="loadRiscFinanciar()" style="padding:.3rem;border:1px solid var(--border);border-radius:4px;font-size:.85rem">
-              <option value="">Toate diviziile</option>
-              <option value="URSUS">URSUS</option>
-            </select>
-            <button class="btn ghost small" onclick="loadRiscFinanciar()">🔄 Reîncarcă</button>
-          </div>
+      <div class="panel-header">
+        <h3>⚠️ Risc Financiar — Scoring Clienți</h3>
+        <div class="panel-header-actions">
+          <button class="btn-help" onclick="showHelp('riscFinanciar')" title="Ajutor">❓</button>
+          <label class="btn btn-sm" id="btnUploadIncasari" style="display:none;background:#6366f1;color:#fff">📤 Upload Încasări<input type="file" accept=".xlsx,.xls" onchange="uploadIncasariTermene(this)" hidden></label>
         </div>
-      </details>
-      <div id="riscIncasariInfo" style="padding:.3rem 1rem;font-size:.78rem;color:var(--muted)"></div>
-      <div id="riscSummary" style="padding:.5rem 1rem"></div>
-      <div id="riscInfo" style="padding:.3rem 1rem;font-size:.78rem;color:var(--muted)"></div>
-      <div id="riscList" style="padding:.5rem 1rem"></div>
+      </div>
+      <div id="riscFilters" style="display:flex;flex-wrap:wrap;gap:8px;padding:8px 12px;align-items:center">
+        <select id="riscFiltNivel" onchange="filterRiscClients()" style="padding:6px;border-radius:6px;border:1px solid var(--border);font-size:13px">
+          <option value="">Toate nivelurile</option>
+          <option value="CRITIC">🔴 Critic</option>
+          <option value="RIDICAT">🟠 Ridicat</option>
+          <option value="MEDIU">🟡 Mediu</option>
+        </select>
+        <button class="btn btn-sm" onclick="loadRiscFinanciar()" style="font-size:13px;background:#6366f1;color:#fff">🔄 Recalculează</button>
+      </div>
+      <div id="riscIncasariInfo" style="font-size:12px;color:var(--text2);padding:4px 12px"></div>
+      <div id="riscSummary" style="padding:4px 12px"></div>
+      <div id="riscList" class="card-list"></div>
     </div>
 
     <!-- ═══════════════════════════════════════════
@@ -1621,15 +1601,13 @@
             <div id="uploadRapSolduriStatus" style="font-size:.8rem;margin-top:.3rem"></div>
           </div>
 
-          <!-- Upload Coface -->
+          <!-- Upload Încasări Termene (înlocuiește fostul Coface) -->
           <div style="background:var(--bg2);border-radius:8px;padding:12px;border:1px solid var(--border)">
-            <p style="font-weight:600;margin:0 0 6px;font-size:.85rem">📊 Risc Financiar (Coface)</p>
-            <p style="font-size:.75rem;color:var(--muted);margin:0 0 8px">Upload scoring Coface</p>
+            <p style="font-weight:600;margin:0 0 6px;font-size:.85rem">📊 Risc Financiar — Încasări</p>
+            <p style="font-size:.75rem;color:var(--muted);margin:0 0 8px">Upload fișier încasări pe termene (se poate face și din meniul Risc Financiar)</p>
             <div class="btn-row">
-              <input type="file" id="uploadRapCofaceFile" accept=".xlsx,.xls" style="font-size:.8rem;max-width:220px">
-              <button class="btn success small" onclick="doUploadRapCoface()">📤 Import</button>
+              <input type="file" accept=".xlsx,.xls" onchange="uploadIncasariTermene(this)" style="font-size:.8rem;max-width:220px">
             </div>
-            <div id="uploadRapCofaceStatus" style="font-size:.8rem;margin-top:.3rem"></div>
           </div>
 
           <!-- Upload Targete -->
