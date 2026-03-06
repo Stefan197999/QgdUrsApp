@@ -79,6 +79,16 @@ function validateMonthFormat(month) {
 
 const ALLOWED_ROLES = ["admin", "spv", "agent", "upload"];
 
+/* ── Hidden/Admin-only clients ── */
+const ADMIN_ONLY_CLIENTS = ['VIDAFAN SRL'];
+function isHiddenClient(name, userObj) {
+  if (!name || !userObj) return false;
+  if (userObj.role === 'admin') return false;
+  const upper = name.toUpperCase().trim();
+  return ADMIN_ONLY_CLIENTS.some(h => upper.includes(h));
+}
+
+
 /* ───────── HTTPS redirect (self-hosted) ───────── */
 const SELF_HOSTED = process.env.SELF_HOSTED === "true";
 const SSL_CERT = process.env.SSL_CERT_PATH || "";
@@ -1046,6 +1056,12 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_scadentar_partener ON scadentar(partener);
   CREATE INDEX IF NOT EXISTS idx_scadentar_divizie ON scadentar(divizie);
   CREATE INDEX IF NOT EXISTS idx_scadentar_depasire ON scadentar(depasire_termen);
+  /* ═══════════ ALTER TABLE — Add missing columns ═══════════ */
+  try { db.exec("ALTER TABLE scadentar ADD COLUMN limita_creditare REAL DEFAULT 0"); } catch(e) {}
+  try { db.exec("ALTER TABLE scadentar ADD COLUMN cod_intern TEXT DEFAULT ''"); } catch(e) {}
+  try { db.exec("ALTER TABLE scadentar ADD COLUMN is_ambalaj INTEGER DEFAULT 0"); } catch(e) {}
+  try { db.exec("ALTER TABLE sales_all ADD COLUMN codintern_part TEXT DEFAULT ''"); } catch(e) {}
+
 
   CREATE TABLE IF NOT EXISTS agent_divisions (
     agent_name TEXT PRIMARY KEY,
@@ -6397,7 +6413,7 @@ app.post("/api/scadentar/upload", auth, scadentarUpload.single("file"), (req, re
       db.prepare("DELETE FROM scadentar_imports WHERE id=?").run(oldImport.id);
     }
 
-    const ins = db.prepare(`INSERT INTO scadentar (import_id, nr_crt, partener, valoare, rest, document, depasire_termen, agent, serie_document, cifra_afaceri_curent, cifra_afaceri_prec, cod_fiscal, blocat, divizie) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`);
+    const ins = db.prepare(`INSERT INTO scadentar (import_id, nr_crt, partener, valoare, rest, document, depasire_termen, agent, serie_document, cifra_afaceri_curent, cifra_afaceri_prec, cod_fiscal, blocat, divizie, limita_creditare, cod_intern, is_ambalaj) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`);
 
     let imported = 0;
     let totalRest = 0;
@@ -6429,7 +6445,12 @@ app.post("/api/scadentar/upload", auth, scadentarUpload.single("file"), (req, re
 
       const div = lookupDivision(agent);
       totalRest += rest;
-      dataRows.push([nrCrt, partener, valoare, rest, document_str, depasire, agent, serie, cifraC, cifraP, codFiscal, blocat, div]);
+      // Parse new columns
+      const limitaCredit = numCols >= 13 ? (parseFloat(r[12]) || 0) : 0;
+      const codIntern = numCols >= 14 ? String(r[13] || '').trim() : '';
+      const isAmbalaj = serie.toUpperCase().includes('AMB') ? 1 : 0;
+
+      dataRows.push([nrCrt, partener, valoare, rest, document_str, depasire, agent, serie, cifraC, cifraP, codFiscal, blocat, div, limitaCredit, codIntern, isAmbalaj]);
     }
 
     // Create import record
@@ -6794,6 +6815,269 @@ app.get("/api/financial-risk", auth, (req, res) => {
   const rows = db.prepare("SELECT * FROM financial_risks WHERE upload_date=? ORDER BY risk_score DESC, client_name ASC").all(latest.d);
   res.json({ upload_date: latest.d, data: rows });
 });
+
+/* ══════ NEW: /api/risc-financiar — Enhanced risk scoring ══════ */
+app.get("/api/risc-financiar", auth, (req, res) => {
+  try {
+    const latestImport = db.prepare("SELECT * FROM scadentar_imports ORDER BY id DESC LIMIT 1").get();
+    if (!latestImport) return res.json({ clients: [], stats: {} });
+
+    const { divizie } = req.query;
+    let sql = `SELECT 
+      COALESCE(NULLIF(TRIM(cod_intern), ''), COALESCE(NULLIF(TRIM(cod_fiscal), ''), partener)) as client_key,
+      partener as client_name,
+      cod_fiscal,
+      cod_intern,
+      MAX(depasire_termen) as max_depasire,
+      COUNT(DISTINCT CASE WHEN depasire_termen > 0 THEN document END) as facturi_depasire,
+      SUM(rest) as sold_total,
+      MAX(limita_creditare) as limita_creditare,
+      AVG(depasire_termen) as avg_depasire,
+      MAX(blocat) as blocat,
+      COUNT(DISTINCT agent) as num_agenti,
+      GROUP_CONCAT(DISTINCT agent, ';') as agenti
+    FROM scadentar
+    WHERE import_id = ? AND is_ambalaj = 0 AND rest > 10
+    `;
+    const params = [latestImport.id];
+
+    // Agent filtering by pattern (todica_urs1 -> extract TODICA CONSTANTIN)
+    if (req.role === "agent") {
+      const username = req.username; // e.g., "todica_urs1"
+      const match = username.match(/^(.+?)_urs\d+$/i);
+      if (match) {
+        const agentPattern = match[1].toUpperCase();
+        sql += " AND UPPER(agent) LIKE ?";
+        params.push('%' + agentPattern + '%');
+      }
+    }
+
+    if (divizie && divizie !== 'ALL') {
+      sql += " AND divizie = ?";
+      params.push(divizie);
+    }
+
+    sql += " GROUP BY client_key, partener, cod_fiscal, cod_intern ORDER BY sold_total DESC";
+
+    const rawClients = db.prepare(sql).all(...params);
+
+    // Score each client
+    const scoredClients = rawClients.map(c => {
+      let score = 0;
+      const details = [];
+
+      // 1. Max depasire (up to 25 points)
+      const maxDep = Math.min(c.max_depasire || 0, 300);
+      const depScore = Math.min(25, (maxDep / 300) * 25);
+      if (depScore > 0) { score += depScore; details.push(`Depășire max ${c.max_depasire} zile: ${depScore.toFixed(0)}p`); }
+
+      // 2. Number of overdue invoices (up to 15 points)
+      const facScore = Math.min(15, ((c.facturi_depasire || 0) / 20) * 15);
+      if (facScore > 0) { score += facScore; details.push(`${c.facturi_depasire} facturi depășite: ${facScore.toFixed(0)}p`); }
+
+      // 3. Sold vs credit limit (up to 20 points)
+      if ((c.limita_creditare || 0) > 0) {
+        const ratio = (c.sold_total || 0) / c.limita_creditare;
+        let creditScore = 0;
+        if (ratio > 1.2) creditScore = 20;
+        else if (ratio > 1.0) creditScore = 15;
+        else if (ratio > 0.8) creditScore = 8;
+        else creditScore = 0;
+        if (creditScore > 0) { score += creditScore; details.push(`Sold ${(ratio*100).toFixed(0)}% vs limită: ${creditScore}p`); }
+      }
+
+      // 4. Average depasire (up to 10 points)
+      const avgDep = c.avg_depasire || 0;
+      const avgScore = Math.min(10, (avgDep / 100) * 10);
+      if (avgScore > 0) { score += avgScore; details.push(`Medie depășire ${avgDep.toFixed(0)} zile: ${avgScore.toFixed(0)}p`); }
+
+      // 5. Blocked status (5 points)
+      if (c.blocat && c.blocat.trim().toUpperCase() === 'DA') {
+        score += 5;
+        details.push('Status BLOCAT: 5p');
+      }
+
+      // 6. Absolute sold value (5 points if > 50k)
+      if ((c.sold_total || 0) > 50000) {
+        score += 5;
+        details.push(`Sold mare (${(c.sold_total/1000).toFixed(0)}k): 5p`);
+      }
+
+      // Determine category
+      let category = 'SCAZUT';
+      if (score >= 60) category = 'CRITIC';
+      else if (score >= 40) category = 'RIDICAT';
+      else if (score >= 20) category = 'MEDIU';
+
+      return {
+        client_key: c.client_key,
+        client_name: c.client_name,
+        cod_fiscal: c.cod_fiscal,
+        cod_intern: c.cod_intern,
+        score: Math.round(score),
+        category,
+        sold_total: Math.round(c.sold_total || 0),
+        max_depasire: c.max_depasire || 0,
+        facturi_depasire: c.facturi_depasire || 0,
+        limita_creditare: Math.round(c.limita_creditare || 0),
+        blocat: c.blocat || 'NU',
+        num_agenti: c.num_agenti || 0,
+        agenti: c.agenti || '',
+        scoring_details: details.join(' | ')
+      };
+    });
+
+    // Filter by hidden clients
+    const visibleClients = scoredClients.filter(c => !isHiddenClient(c.client_name, req.user || { role: req.role }));
+
+    // Category statistics
+    const stats = {
+      total: visibleClients.length,
+      critic: visibleClients.filter(c => c.category === 'CRITIC').length,
+      ridicat: visibleClients.filter(c => c.category === 'RIDICAT').length,
+      mediu: visibleClients.filter(c => c.category === 'MEDIU').length,
+      scazut: visibleClients.filter(c => c.category === 'SCAZUT').length,
+      total_sold: visibleClients.reduce((s, c) => s + c.sold_total, 0)
+    };
+
+    res.json({ clients: visibleClients, stats });
+  } catch (ex) {
+    console.error("[risc-financiar]", ex.message);
+    res.status(500).json({ error: ex.message });
+  }
+});
+
+/* ══════ NEW: /api/top-clienti — Top clients by volume and quality ══════ */
+app.get("/api/top-clienti", auth, (req, res) => {
+  try {
+    const month = (req.query.month && validateMonthFormat(req.query.month)) ? req.query.month : new Date().toISOString().slice(0, 7);
+
+    // Get all sales for month, group by client
+    let sql = `
+    WITH client_sales AS (
+      SELECT 
+        COALESCE(NULLIF(TRIM(codintern_part), ''), COALESCE(NULLIF(TRIM(codfiscal), ''), client)) as client_key,
+        client,
+        codfiscal,
+        codintern_part,
+        agent_name,
+        SUM(valoare) as volum,
+        COUNT(DISTINCT nrdoc) as num_tranzactii,
+        SUM(CASE WHEN datadoc >= datetime('now', '-30 days') THEN valoare ELSE 0 END) as volum_30zile
+      FROM sales_all
+      WHERE month = ?
+      GROUP BY client_key, client, codfiscal, codintern_part, agent_name
+    ),
+    client_ranked AS (
+      SELECT 
+        client_key, client, codfiscal, codintern_part,
+        agent_name,
+        ROW_NUMBER() OVER (PARTITION BY client_key ORDER BY volum DESC) as rn,
+        volum, num_tranzactii, volum_30zile
+      FROM client_sales
+    )
+    SELECT * FROM client_ranked WHERE rn = 1
+    `;
+    const params = [month];
+
+    // Agent filtering
+    if (req.role === "agent") {
+      const username = req.username;
+      const match = username.match(/^(.+?)_urs\d+$/i);
+      if (match) {
+        const agentPattern = match[1].toUpperCase();
+        sql = sql.replace('WHERE month = ?', `WHERE month = ? AND agent_name LIKE ?`);
+        params.push('%' + agentPattern + '%');
+      }
+    }
+
+    const clients = db.prepare(sql).all(...params);
+
+    // Score each client (simplified without actual incasari data)
+    const scoredClients = clients.map(c => {
+      let score = 0;
+      const details = [];
+
+      // 1. Volume (25 points) - scale to max volume seen
+      const maxVol = Math.max(...clients.map(x => x.volum), 100000);
+      const volScore = Math.min(25, (c.volum / maxVol) * 25);
+      if (volScore > 0) { score += volScore; details.push(`Volum ${(c.volum/1000).toFixed(0)}k: ${volScore.toFixed(0)}p`); }
+
+      // 2. Trend (15 points) - 30-day volume vs total
+      if (c.volum > 0) {
+        const trend = c.volum_30zile / c.volum;
+        const trendScore = trend > 0.5 ? 15 : (trend > 0.3 ? 10 : 5);
+        if (trendScore > 0) { score += trendScore; details.push(`Trend (30z): ${trendScore}p`); }
+      }
+
+      // 3. Payment (20 points) - neutral
+      score += 20;
+      details.push('Plăți la termen: 20p');
+
+      // 4. Discipline (15 points) - use transaction count as proxy
+      const discScore = Math.min(15, (c.num_tranzactii / 50) * 15);
+      if (discScore > 0) { score += discScore; details.push(`${c.num_tranzactii} tranzacții: ${discScore.toFixed(0)}p`); }
+
+      // 5. Diversity (10 points) - simplified
+      score += 10;
+      details.push('Diversitate: 10p');
+
+      // 6. Frequency (10 points)
+      score += 10;
+      details.push('Frecvență: 10p');
+
+      // 7. Bonus (5 points) if > 100k volume
+      if (c.volum > 100000) {
+        score += 5;
+        details.push('Volum mare: 5p');
+      }
+
+      // Category
+      let category = 'STANDARD';
+      if (score >= 75) category = 'GOLD';
+      else if (score >= 55) category = 'SILVER';
+      else if (score >= 35) category = 'BRONZE';
+
+      return {
+        client_key: c.client_key,
+        client_name: c.client,
+        codfiscal: c.codfiscal,
+        codintern_part: c.codintern_part,
+        agent: c.agent_name,
+        score: Math.round(score),
+        category,
+        volum: Math.round(c.volum),
+        num_tranzactii: c.num_tranzactii,
+        volum_30zile: Math.round(c.volum_30zile || 0),
+        scoring_details: details.join(' | ')
+      };
+    });
+
+    // Filter by hidden clients
+    const visibleClients = scoredClients.filter(c => !isHiddenClient(c.client_name, req.user || { role: req.role }));
+
+    // Sort by score descending
+    visibleClients.sort((a, b) => b.score - a.score);
+
+    // Category statistics
+    const stats = {
+      total: visibleClients.length,
+      gold: visibleClients.filter(c => c.category === 'GOLD').length,
+      silver: visibleClients.filter(c => c.category === 'SILVER').length,
+      bronze: visibleClients.filter(c => c.category === 'BRONZE').length,
+      standard: visibleClients.filter(c => c.category === 'STANDARD').length,
+      total_volum: visibleClients.reduce((s, c) => s + c.volum, 0)
+    };
+
+    res.json({ clients: visibleClients, stats, month });
+  } catch (ex) {
+    console.error("[top-clienti]", ex.message);
+    res.status(500).json({ error: ex.message });
+  }
+});
+
+
+
 
 /* ══════ 5. VERIFICARE CUI ══════ */
 
@@ -7224,6 +7508,7 @@ app.post("/api/sales-all/upload", auth, adminOnly, gtUpload.single("file"), (req
       else if (h === "DATADOC") colMap.datadoc = i;
       else if (h === "CODFISCAL") colMap.codfiscal = i;
       else if (h === "PRET_DISC") colMap.pret_disc = i;
+      else if (h === "CODINTERN_PART") colMap.codintern_part = i;
     });
 
     if (colMap.agent === undefined || colMap.gama === undefined) {
@@ -7234,8 +7519,8 @@ app.post("/api/sales-all/upload", auth, adminOnly, gtUpload.single("file"), (req
     db.prepare("DELETE FROM sales_all WHERE month=?").run(month);
 
     // Insert new data in batches
-    const ins = db.prepare(`INSERT INTO sales_all (month, datadoc, agent_name, gama, denumire, dci, cant, canthl, valoare, client, codfiscal, nrdoc, pret_disc)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
+    const ins = db.prepare(`INSERT INTO sales_all (month, datadoc, agent_name, gama, denumire, dci, cant, canthl, valoare, client, codfiscal, nrdoc, pret_disc, codintern_part)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
 
     let count = 0;
     let skipped = 0;
@@ -7291,7 +7576,8 @@ app.post("/api/sales-all/upload", auth, adminOnly, gtUpload.single("file"), (req
         String(r[colMap.client !== undefined ? colMap.client : 0] || "").trim().slice(0, 100),
         String(r[colMap.codfiscal !== undefined ? colMap.codfiscal : 0] || "").trim(),
         String(r[colMap.nrdoc !== undefined ? colMap.nrdoc : 0] || "").trim(),
-        Number(r[colMap.pret_disc !== undefined ? colMap.pret_disc : 0]) || 0
+        Number(r[colMap.pret_disc !== undefined ? colMap.pret_disc : 0]) || 0,
+        String(r[colMap.codintern_part !== undefined ? colMap.codintern_part : 0] || "").trim()
       ]);
       count++;
 
