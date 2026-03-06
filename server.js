@@ -1056,18 +1056,18 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_scadentar_partener ON scadentar(partener);
   CREATE INDEX IF NOT EXISTS idx_scadentar_divizie ON scadentar(divizie);
   CREATE INDEX IF NOT EXISTS idx_scadentar_depasire ON scadentar(depasire_termen);
-  /* ═══════════ ALTER TABLE — Add missing columns ═══════════ */
-  try { db.exec("ALTER TABLE scadentar ADD COLUMN limita_creditare REAL DEFAULT 0"); } catch(e) {}
-  try { db.exec("ALTER TABLE scadentar ADD COLUMN cod_intern TEXT DEFAULT ''"); } catch(e) {}
-  try { db.exec("ALTER TABLE scadentar ADD COLUMN is_ambalaj INTEGER DEFAULT 0"); } catch(e) {}
-  try { db.exec("ALTER TABLE sales_all ADD COLUMN codintern_part TEXT DEFAULT ''"); } catch(e) {}
-
 
   CREATE TABLE IF NOT EXISTS agent_divisions (
     agent_name TEXT PRIMARY KEY,
     division TEXT NOT NULL
   );
 `);
+
+/* ═══════════ ALTER TABLE — Add missing columns ═══════════ */
+try { db.exec("ALTER TABLE scadentar ADD COLUMN limita_creditare REAL DEFAULT 0"); } catch(e) {}
+try { db.exec("ALTER TABLE scadentar ADD COLUMN cod_intern TEXT DEFAULT ''"); } catch(e) {}
+try { db.exec("ALTER TABLE scadentar ADD COLUMN is_ambalaj INTEGER DEFAULT 0"); } catch(e) {}
+try { db.exec("ALTER TABLE sales_all ADD COLUMN codintern_part TEXT DEFAULT ''"); } catch(e) {}
 
 /* ───────── Seed agent_divisions if empty ───────── */
 const agentDivCount = db.prepare("SELECT COUNT(*) as c FROM agent_divisions").get().c;
