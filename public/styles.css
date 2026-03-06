@@ -566,3 +566,6 @@ table td{color:var(--text)}
 .cn-form-grid .cn-field input{padding:.4rem .6rem;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--fg);font-size:.85rem}
 .cn-form-grid .cn-field input:focus{border-color:var(--primary);outline:none}
 .cn-form-grid hr{margin:.3rem 0}
+
+/* ── Empty State ── */
+.empty-state{text-align:center;padding:2rem 1rem;color:var(--muted);font-size:.9rem;background:var(--bg2);border-radius:8px;margin:1rem}

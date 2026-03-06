@@ -4867,6 +4867,24 @@ function fmtNum(n) {
   return Number(n).toLocaleString("ro-RO", { maximumFractionDigits: 2 });
 }
 
+function fmtMoney(n) {
+  if (n == null || isNaN(n)) return "0 RON";
+  return Number(n).toLocaleString("ro-RO", { maximumFractionDigits: 0 }) + " RON";
+}
+
+function escH(str) {
+  if (!str) return "";
+  const d = document.createElement("div");
+  d.textContent = str;
+  return d.innerHTML;
+}
+
+async function mApi(url) {
+  const r = await fetch(url);
+  if (!r.ok) throw new Error(`HTTP ${r.status}: ${r.statusText}`);
+  return await r.json();
+}
+
 /* ═══════════════════════════════════════════════════════════════
    NOTIFICATIONS SYSTEM (bell + panel + polling)
    ═══════════════════════════════════════════════════════════════ */
@@ -7566,242 +7584,547 @@ function clearCuNearbyMarkers() {
   if (cuNearbyMarkerGroup) { map.removeLayer(cuNearbyMarkerGroup); cuNearbyMarkerGroup = null; }
 }
 
-/* ══════ RISC FINANCIAR — Enhanced scoring ══════ */
+/* ══════ RISC FINANCIAR — Enhanced Version ══════ */
+
+let riscFinanciarData = { clients: [], stats: {} };
+let riscFiltered = [];
+
+/* ═══════════════════════════════════════════════════════════════
+   HELPER FUNCTIONS for Risc & Top Clienti (already exist in URS)
+   ═══════════════════════════════════════════════════════════════ */
+// fmtMoney, escH, mApi, _divColor already defined earlier in this file
+
+/* ═══════════════════════════════════════════
+   3.1b RISC FINANCIAR — SCORING CLIENȚI
+   ═══════════════════════════════════════════ */
+
+let _riscClientsAll = [];
+
 async function loadRiscFinanciar() {
-  const listEl = document.getElementById("riscList");
-  const summaryEl = document.getElementById("riscFinanciarSummary");
-  if (!summaryEl) {
-    // Fallback for older HTML without summary element
-    listEl.innerHTML = '<div style="text-align:center;padding:1rem"><span class="spinner"></span></div>';
-  } else {
-    summaryEl.innerHTML = '<div style="text-align:center;padding:1rem"><span class="spinner"></span></div>';
+  const el = document.getElementById('riscList');
+  const summaryEl = document.getElementById('riscSummary');
+  const infoEl = document.getElementById('riscIncasariInfo');
+  el.innerHTML = '<div class="empty-state">Se calculează scoring...</div>';
+
+  // Show scoring explainer banner (collapsible)
+  if (!document.getElementById('riscExplainerBanner')) {
+    const banner = document.createElement('div');
+    banner.id = 'riscExplainerBanner';
+    banner.style.cssText = 'margin:8px 12px;background:linear-gradient(135deg,#6366f108,#6366f115);border:1px solid #6366f144;border-radius:10px;overflow:hidden';
+    banner.innerHTML = `
+      <div onclick="toggleRiscExplainer()" style="padding:10px 14px;cursor:pointer;display:flex;justify-content:space-between;align-items:center">
+        <span style="font-weight:700;font-size:13px;color:#6366f1">📐 Cum se calculează scorul de risc?</span>
+        <span id="riscExplainerArrow" style="font-size:16px;transition:transform .2s;color:#6366f1">▼</span>
+      </div>
+      <div id="riscExplainerBody" style="display:none;padding:0 14px 12px;font-size:12px;line-height:1.6">
+        <p style="margin:0 0 8px;color:var(--text2)">Fiecare client primește un <strong>scor de la 0 la 100</strong> bazat pe criterii. Cu cât scorul e mai mare, cu atât clientul prezintă risc mai mare de neplată.</p>
+        <table style="width:100%;border-collapse:collapse;font-size:11px">
+          <tr style="background:#6366f111"><td style="padding:3px 6px;font-weight:700;width:35%">A) Depășire max curentă</td><td style="padding:3px 6px;text-align:center;width:10%;font-weight:700;color:#dc2626">25p</td><td style="padding:3px 6px">Cea mai veche factură neplătită: >90z=25p, >60z=20p, >45z=15p, >30z=10p</td></tr>
+          <tr><td style="padding:3px 6px;font-weight:700">B) Nr facturi depășite</td><td style="padding:3px 6px;text-align:center;font-weight:700;color:#ea580c">15p</td><td style="padding:3px 6px">Câte facturi au >30 zile: ≥3 peste 60z=15p, ≥5 peste 30z=12p</td></tr>
+          <tr style="background:#6366f111"><td style="padding:3px 6px;font-weight:700">C) Sold vs Limită credit</td><td style="padding:3px 6px;text-align:center;font-weight:700;color:#dc2626">20p</td><td style="padding:3px 6px">Depășire limită: >150%=20p, >120%=16p, >100%=12p, >80%=6p</td></tr>
+          <tr><td style="padding:3px 6px;font-weight:700">D) Depășire medie</td><td style="padding:3px 6px;text-align:center;font-weight:700;color:#f97316">10p</td><td style="padding:3px 6px">Media depășirii pe toate facturile: >60z=10p, >30z=6p</td></tr>
+          <tr style="background:#6366f111"><td style="padding:3px 6px;font-weight:700">E) Istoric încasări 12 luni</td><td style="padding:3px 6px;text-align:center;font-weight:700;color:#6366f1">20p</td><td style="padding:3px 6px">Zile medii încasare (10p) + % plăți cu depășire (10p). <em>Necesită upload fișier încasări.</em></td></tr>
+          <tr><td style="padding:3px 6px;font-weight:700">F) Client blocat</td><td style="padding:3px 6px;text-align:center;font-weight:700;color:#991b1b">5p</td><td style="padding:3px 6px">Clientul e blocat în WinMentor = +5p</td></tr>
+          <tr style="background:#6366f111"><td style="padding:3px 6px;font-weight:700">G) Sold absolut</td><td style="padding:3px 6px;text-align:center;font-weight:700;color:#ca8a04">5p</td><td style="padding:3px 6px">Rest >100k=5p, >50k=3p, >20k=1p</td></tr>
+        </table>
+        <div style="display:flex;gap:12px;margin-top:8px;flex-wrap:wrap">
+          <span style="background:#dc2626;color:#fff;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700">🔴 CRITIC 60-100</span>
+          <span style="background:#ea580c;color:#fff;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700">🟠 RIDICAT 40-59</span>
+          <span style="background:#ca8a04;color:#fff;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700">🟡 MEDIU 20-39</span>
+          <span style="background:#10b981;color:#fff;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700">🟢 SCĂZUT &lt;20</span>
+        </div>
+      </div>`;
+    if (infoEl) infoEl.parentElement.insertBefore(banner, infoEl);
+    else summaryEl.parentElement.insertBefore(banner, summaryEl);
   }
-  try {
-    const r = await fetch("/api/risc-financiar");
-    const d = await r.json();
-    if (!d.clients || d.clients.length === 0) {
-      if (summaryEl) summaryEl.innerHTML = '<p style="text-align:center;color:var(--muted);padding:1rem">Niciun scadențar importat</p>';
-      listEl.innerHTML = '<p style="text-align:center;color:var(--muted);padding:1rem">Niciun client cu risc</p>';
-      return;
+
+  // Load încasări info (URS may not have this endpoint)
+  if (infoEl) {
+    try {
+      const incInfo = await mApi('/api/incasari-termene/info');
+      if (incInfo && incInfo.hasData) {
+        infoEl.innerHTML = `📁 Încasări importate: <strong>${incInfo.filename}</strong> | ${(incInfo.cnt||0).toLocaleString('ro-RO')} tranzacții | ${(incInfo.partners||0).toLocaleString('ro-RO')} parteneri | Perioada: ${incInfo.period_from || '?'} — ${incInfo.period_to || '?'}`;
+      } else {
+        infoEl.innerHTML = `<span style="color:#f59e0b">⚠️ Nu sunt date de încasări importate. Scoringul se calculează doar din scadențar.</span>`;
+      }
+    } catch(e) {
+      infoEl.innerHTML = `<span style="color:#f59e0b">⚠️ Scoringul se calculează doar din scadențar.</span>`;
     }
-    // Summary cards
-    if (summaryEl) {
-      summaryEl.innerHTML = `
-        <div class="summary-card" style="background:var(--bg2);padding:.8rem;border-radius:8px;text-align:center;border-left:3px solid #e74c3c">
-          <div style="font-size:.75rem;color:var(--muted)">CRITIC</div>
-          <div style="font-size:1.4rem;font-weight:700;color:#e74c3c">${d.stats.critic || 0}</div>
-        </div>
-        <div class="summary-card" style="background:var(--bg2);padding:.8rem;border-radius:8px;text-align:center;border-left:3px solid #f59e0b">
-          <div style="font-size:.75rem;color:var(--muted)">RIDICAT</div>
-          <div style="font-size:1.4rem;font-weight:700;color:#f59e0b">${d.stats.ridicat || 0}</div>
-        </div>
-        <div class="summary-card" style="background:var(--bg2);padding:.8rem;border-radius:8px;text-align:center;border-left:3px solid #3b82f6">
-          <div style="font-size:.75rem;color:var(--muted)">MEDIU</div>
-          <div style="font-size:1.4rem;font-weight:700;color:#3b82f6">${d.stats.mediu || 0}</div>
-        </div>
-        <div class="summary-card" style="background:var(--bg2);padding:.8rem;border-radius:8px;text-align:center;border-left:3px solid #6b7280">
-          <div style="font-size:.75rem;color:var(--muted)">TOTAL SOLD</div>
-          <div style="font-size:1.4rem;font-weight:700;color:#6b7280">${fmtNum(d.stats.total_sold)}</div>
-        </div>
-      `;
-    }
-    renderRiscList(d.clients);
-  } catch (ex) {
-    if (summaryEl) summaryEl.innerHTML = `<p style="color:#e74c3c;padding:1rem">Eroare: ${esc(ex.message)}</p>`;
-    listEl.innerHTML = `<p style="color:#e74c3c;padding:1rem">Eroare: ${esc(ex.message)}</p>`;
   }
+
+  const div = document.getElementById('riscFiltDiv')?.value || '';
+  const data = await mApi(`/api/risc-financiar?divizie=${encodeURIComponent(div)}`);
+  if (!data || !data.clients) { el.innerHTML = '<div class="empty-state">Eroare la încărcare.</div>'; return; }
+
+  _riscClientsAll = data.clients;
+  const s = data.stats;
+
+  summaryEl.innerHTML = `
+  <div style="display:flex;gap:10px;flex-wrap:wrap;margin:8px 0">
+    <div onclick="riscQuickFilter('CRITIC')" style="cursor:pointer;background:#dc262622;border:1px solid #dc262666;border-radius:10px;padding:10px 16px;min-width:140px;transition:transform .15s" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform=''">
+      <div style="font-size:11px;color:#fca5a5">🔴 CRITIC</div>
+      <div style="font-size:22px;font-weight:800;color:#f87171">${s.critici}</div>
+    </div>
+    <div onclick="riscQuickFilter('RIDICAT')" style="cursor:pointer;background:#ea580c22;border:1px solid #ea580c66;border-radius:10px;padding:10px 16px;min-width:140px;transition:transform .15s" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform=''">
+      <div style="font-size:11px;color:#fdba74">🟠 RIDICAT</div>
+      <div style="font-size:22px;font-weight:800;color:#fb923c">${s.ridicat}</div>
+    </div>
+    <div onclick="riscQuickFilter('MEDIU')" style="cursor:pointer;background:#ca8a0422;border:1px solid #ca8a0466;border-radius:10px;padding:10px 16px;min-width:140px;transition:transform .15s" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform=''">
+      <div style="font-size:11px;color:#fde047">🟡 MEDIU</div>
+      <div style="font-size:22px;font-weight:800;color:#facc15">${s.mediu}</div>
+    </div>
+    <div onclick="riscQuickFilter('')" style="cursor:pointer;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:10px 16px;min-width:180px;transition:transform .15s" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform=''">
+      <div style="font-size:11px;color:var(--text2)">💰 TOTAL REST RISC</div>
+      <div style="font-size:18px;font-weight:800;color:#ef4444">${fmtMoney(s.total_rest_risc)} RON</div>
+    </div>
+    <div onclick="riscQuickFilter('')" style="cursor:pointer;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:10px 16px;min-width:120px;transition:transform .15s" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform=''">
+      <div style="font-size:11px;color:var(--text2)">📊 TOTAL CLIENȚI</div>
+      <div style="font-size:18px;font-weight:800;color:var(--text)">${s.total_clients}</div>
+    </div>
+    ${!s.hasIncasariData ? '<div style="background:#ca8a0422;border:1px solid #ca8a0466;border-radius:10px;padding:10px 16px;font-size:12px;color:#fbbf24">⚠️ Scoring parțial — importă fișierul de încasări pentru analiza completă pe 12 luni</div>' : ''}
+  </div>`;
+
+  filterRiscClients();
 }
 
-function renderRiscList(clients) {
-  const listEl = document.getElementById("riscList");
-  listEl.innerHTML = `
-    <div style="display:flex;gap:.5rem;margin-bottom:.5rem;flex-wrap:wrap;font-size:.8rem">
-      <input type="text" id="riscQuickSearch" placeholder="Caută client..." style="padding:.3rem;border:1px solid var(--border);border-radius:4px;flex:1;min-width:150px" oninput="filterRiscClients()">
-      <select id="riscCategoryFilter" onchange="filterRiscClients()" style="padding:.3rem;border:1px solid var(--border);border-radius:4px">
-        <option value="">Toate categoriile</option>
-        <option value="CRITIC">CRITIC</option>
-        <option value="RIDICAT">RIDICAT</option>
-        <option value="MEDIU">MEDIU</option>
-        <option value="SCAZUT">SCAZUT</option>
-      </select>
-      <button class="btn ghost small" onclick="toggleRiscExplainer()">💡 Scoring</button>
-    </div>
-    <div id="riscExplainer" style="display:none;padding:.5rem;background:var(--info-bg);border-left:3px solid var(--info);border-radius:4px;font-size:.8rem;margin-bottom:.5rem">
-      <strong>Scoring Risc Financiar:</strong><br>
-      • Depășire max: până 25p (300 zile = 25p)<br>
-      • Facturi depășite: până 15p (20 facturi = 15p)<br>
-      • Sold vs limită credit: până 20p (>120% = 20p)<br>
-      • Medie depășire: până 10p (100 zile = 10p)<br>
-      • Status BLOCAT: 5p<br>
-      • Sold mare (>50k): 5p<br>
-      <strong>Categorii:</strong> CRITIC ≥60p | RIDICAT ≥40p | MEDIU ≥20p | SCAZUT <20p
-    </div>
-    <div id="riscClientsList"></div>
-  `;
-  riscSort(clients, 'score');
+let _riscSortCol = '', _riscSortDir = 'desc';
+
+function riscQuickFilter(nivel) {
+  const sel = document.getElementById('riscFiltNivel');
+  if (sel) sel.value = nivel;
+  filterRiscClients();
 }
 
 function filterRiscClients() {
-  const search = (document.getElementById("riscQuickSearch")?.value || "").toUpperCase();
-  const cat = document.getElementById("riscCategoryFilter")?.value || "";
-  const clients = window.riscClientsData || [];
-  const filtered = clients.filter(c => {
-    const nameMatch = c.client_name.toUpperCase().includes(search) || c.client_key.toUpperCase().includes(search);
-    const catMatch = !cat || c.category === cat;
-    return nameMatch && catMatch;
-  });
-  riscSort(filtered, 'score');
+  const nivel = document.getElementById('riscFiltNivel')?.value || '';
+  const filtDiv = document.getElementById('riscHdrDiv')?.value || '';
+  const filtRest = document.getElementById('riscHdrRest')?.value || '';
+  const filtPctDep = document.getElementById('riscHdrPctDep')?.value || '';
+  const filtAgent = document.getElementById('riscHdrAgent')?.value || '';
+  let clients = _riscClientsAll;
+  if (nivel) clients = clients.filter(c => c.nivel_risc === nivel);
+  if (filtDiv) clients = clients.filter(c => c.divizie === filtDiv);
+  if (filtAgent) clients = clients.filter(c => c.agent === filtAgent);
+  if (filtRest === '>50k') clients = clients.filter(c => c.total_rest > 50000);
+  else if (filtRest === '>20k') clients = clients.filter(c => c.total_rest > 20000);
+  else if (filtRest === '>10k') clients = clients.filter(c => c.total_rest > 10000);
+  else if (filtRest === '<10k') clients = clients.filter(c => c.total_rest <= 10000);
+  if (filtPctDep === '>50') clients = clients.filter(c => c.pct_depasire !== null && c.pct_depasire > 50);
+  else if (filtPctDep === '>30') clients = clients.filter(c => c.pct_depasire !== null && c.pct_depasire > 30);
+  else if (filtPctDep === '<30') clients = clients.filter(c => c.pct_depasire !== null && c.pct_depasire <= 30);
+  if (_riscSortCol) {
+    const dir = _riscSortDir === 'asc' ? 1 : -1;
+    clients = [...clients].sort((a, b) => {
+      let va = a[_riscSortCol], vb = b[_riscSortCol];
+      if (va === null || va === undefined) va = -999;
+      if (vb === null || vb === undefined) vb = -999;
+      return (va > vb ? 1 : va < vb ? -1 : 0) * dir;
+    });
+  }
+  renderRiscList(clients);
 }
 
-function riscSort(clients, field) {
-  window.riscClientsData = clients;
-  const listEl = document.getElementById("riscClientsList");
-  if (!clients || clients.length === 0) {
-    listEl.innerHTML = '<p style="text-align:center;color:var(--muted);padding:1rem">Niciun client găsit</p>';
-    return;
-  }
-  listEl.innerHTML = clients.map((c, i) => `
-    <div class="module-card" style="border-left:${c.category === 'CRITIC' ? '4px solid #e74c3c' : c.category === 'RIDICAT' ? '4px solid #f59e0b' : c.category === 'MEDIU' ? '4px solid #3b82f6' : '4px solid #6b7280'};margin-bottom:.5rem">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.3rem">
-        <strong style="font-size:.9rem">${esc(c.client_name)}</strong>
-        <span class="chip ${c.category === 'CRITIC' ? 'bad' : c.category === 'RIDICAT' ? 'warning' : c.category === 'MEDIU' ? 'info' : 'neutral'}" style="font-weight:700">${c.score}p ${c.category}</span>
-      </div>
-      <p style="font-size:.8rem;color:var(--muted);margin:.2rem 0">CUI: ${esc(c.cod_fiscal || '-')} | Cod intern: ${esc(c.cod_intern || '-')}</p>
-      <p style="font-size:.8rem;margin:.2rem 0"><strong>Sold:</strong> ${fmtNum(c.sold_total)} lei | <strong>Limită:</strong> ${fmtNum(c.limita_creditare)} lei | <strong>Blocat:</strong> ${c.blocat}</p>
-      <p style="font-size:.75rem;color:var(--muted);padding:.3rem;background:var(--bg);border-radius:4px;margin:.2rem 0">${esc(c.scoring_details)}</p>
-      <div style="font-size:.75rem;color:var(--muted)">Agenți (${c.num_agenti}): ${esc((c.agenti || '').split(';').join(', '))}</div>
-    </div>
-  `).join("");
+function riscSort(col) {
+  if (_riscSortCol === col) _riscSortDir = _riscSortDir === 'desc' ? 'asc' : 'desc';
+  else { _riscSortCol = col; _riscSortDir = 'desc'; }
+  filterRiscClients();
+}
+
+function renderRiscList(clients) {
+  const el = document.getElementById('riscList');
+  if (!clients.length) { el.innerHTML = '<div class="empty-state">Niciun client cu risc detectat.</div>'; return; }
+  const _prevRest = document.getElementById('riscHdrRest')?.value || '';
+  const _prevPctDep = document.getElementById('riscHdrPctDep')?.value || '';
+  const _prevAgent = document.getElementById('riscHdrAgent')?.value || '';
+  const _prevDiv = document.getElementById('riscHdrDiv')?.value || '';
+
+  const sArr = col => _riscSortCol === col ? (_riscSortDir === 'desc' ? ' ▼' : ' ▲') : '';
+  el.innerHTML = `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px">
+  <thead>
+  <tr style="background:var(--bg2);position:sticky;top:0;z-index:3">
+    <th style="padding:6px;text-align:center;width:60px;cursor:pointer" onclick="riscSort('scor_risc')">Scor${sArr('scor_risc')}</th>
+    <th style="padding:6px;text-align:center;width:70px">Nivel</th>
+    <th style="padding:6px;text-align:left;cursor:pointer" onclick="riscSort('partener')">Client${sArr('partener')}</th>
+    <th style="padding:6px;text-align:right;cursor:pointer" onclick="riscSort('total_rest')">Rest Curent${sArr('total_rest')}</th>
+    <th style="padding:6px;text-align:center;cursor:pointer" onclick="riscSort('max_depasire')">Max Dep.${sArr('max_depasire')}</th>
+    <th style="padding:6px;text-align:center;cursor:pointer" onclick="riscSort('facturi_peste_30')">Fact.>30z${sArr('facturi_peste_30')}</th>
+    <th style="padding:6px;text-align:right;cursor:pointer" onclick="riscSort('limita_credit')">Limită Credit${sArr('limita_credit')}</th>
+    <th style="padding:6px;text-align:center;cursor:pointer" onclick="riscSort('zile_medii_incasare')">Zile Med.${sArr('zile_medii_incasare')}</th>
+    <th style="padding:6px;text-align:center;cursor:pointer" onclick="riscSort('pct_depasire')">% Dep. Ist.${sArr('pct_depasire')}</th>
+    <th style="padding:6px;text-align:left;cursor:pointer" onclick="riscSort('agent')">Agent${sArr('agent')}</th>
+    <th style="padding:6px;text-align:center">Div</th>
+  </tr>
+  <tr style="background:var(--bg2);position:sticky;top:28px;z-index:2">
+    <th colspan="3"></th>
+    <th style="padding:2px 4px"><select id="riscHdrRest" onchange="filterRiscClients()" style="width:100%;font-size:11px;padding:2px;border-radius:4px;border:1px solid var(--border);background:var(--bg1);color:var(--text)">
+      <option value="">Toate</option><option value=">50k">>50k</option><option value=">20k">>20k</option><option value=">10k">>10k</option><option value="<10k">≤10k</option>
+    </select></th>
+    <th colspan="4"></th>
+    <th style="padding:2px 4px"><select id="riscHdrPctDep" onchange="filterRiscClients()" style="width:100%;font-size:11px;padding:2px;border-radius:4px;border:1px solid var(--border);background:var(--bg1);color:var(--text)">
+      <option value="">Toate</option><option value=">50">>50%</option><option value=">30">>30%</option><option value="<30">≤30%</option>
+    </select></th>
+    <th style="padding:2px 4px"><select id="riscHdrAgent" onchange="filterRiscClients()" style="width:100%;font-size:11px;padding:2px;border-radius:4px;border:1px solid var(--border);background:var(--bg1);color:var(--text)">
+      <option value="">Toți</option>${[...new Set((_riscClientsAll||clients).map(c=>c.agent).filter(Boolean))].sort().map(a=>`<option value="${escH(a)}">${escH(a)}</option>`).join('')}
+    </select></th>
+    <th style="padding:2px 4px"><select id="riscHdrDiv" onchange="filterRiscClients()" style="width:100%;font-size:11px;padding:2px;border-radius:4px;border:1px solid var(--border);background:var(--bg1);color:var(--text)">
+      <option value="">Toate</option><option value="URSUS">URSUS</option>
+    </select></th>
+  </tr>
+  </thead>
+  <tbody>${clients.map((c, idx) => {
+    const scorBg = c.nivel_risc === 'CRITIC' ? '#dc2626' : c.nivel_risc === 'RIDICAT' ? '#ea580c' : c.nivel_risc === 'MEDIU' ? '#ca8a04' : '#10b981';
+    const nivelEmoji = c.nivel_risc === 'CRITIC' ? '🔴' : c.nivel_risc === 'RIDICAT' ? '🟠' : c.nivel_risc === 'MEDIU' ? '🟡' : '🟢';
+    const rowBg = c.nivel_risc === 'CRITIC' ? '#dc262615' : c.nivel_risc === 'RIDICAT' ? '#ea580c15' : '';
+    const overLimit = c.limita_credit > 0 && c.total_rest > c.limita_credit;
+    const limitPct = c.limita_credit > 0 ? Math.round(c.total_rest / c.limita_credit * 100) : 0;
+    return `
+    <tr style="border-bottom:1px solid var(--border);cursor:pointer;background:${rowBg}" onclick="toggleRiscDetail(${idx})" onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background='${rowBg}'">
+      <td style="padding:5px;text-align:center"><span style="display:inline-block;width:38px;background:${scorBg};color:#fff;padding:3px 0;border-radius:6px;font-weight:800;font-size:14px">${c.scor_risc}</span></td>
+      <td style="padding:5px;text-align:center;font-size:11px;font-weight:700">${nivelEmoji} ${c.nivel_risc}</td>
+      <td style="padding:5px;font-weight:600" title="${escH(c.partener)}">${c.blocat ? '🔒 ' : ''}${escH(c.partener)}</td>
+      <td style="padding:5px;text-align:right;font-weight:700;color:#ef4444">${fmtMoney(c.total_rest)}</td>
+      <td style="padding:5px;text-align:center"><span style="color:${c.max_depasire>60?'#ef4444':c.max_depasire>30?'#f97316':'#10b981'};font-weight:700">${c.max_depasire}</span></td>
+      <td style="padding:5px;text-align:center;font-weight:600;color:${c.facturi_peste_30>0?'#ef4444':'var(--text2)'}">${c.facturi_peste_30}</td>
+      <td style="padding:5px;text-align:right">${c.limita_credit > 0 ? fmtMoney(c.limita_credit) : '—'}${overLimit ? ' <span style="font-size:10px;color:#fff;background:#ef4444;padding:0 4px;border-radius:3px">'+limitPct+'%</span>' : (c.limita_credit > 0 ? ' <span style="font-size:10px;color:#10b981">'+limitPct+'%</span>' : '')}</td>
+      <td style="padding:5px;text-align:center;font-weight:600;color:${c.zile_medii_incasare!==null?(c.zile_medii_incasare>30?'#ef4444':c.zile_medii_incasare>15?'#f97316':'#10b981'):'var(--text2)'}">${c.zile_medii_incasare !== null ? c.zile_medii_incasare + 'z' : '—'}</td>
+      <td style="padding:5px;text-align:center;font-weight:600;color:${c.pct_depasire!==null?(c.pct_depasire>30?'#ef4444':c.pct_depasire>15?'#f97316':'#10b981'):'var(--text2)'}">${c.pct_depasire !== null ? c.pct_depasire + '%' : '—'}</td>
+      <td style="padding:5px;font-size:12px">${escH(c.agent)}</td>
+      <td style="padding:5px;text-align:center"><span style="background:${_divColor(c.divizie)}22;color:${_divColor(c.divizie)};padding:2px 6px;border-radius:8px;font-size:11px;font-weight:600">${escH(c.divizie||'')}</span></td>
+    </tr>
+    <tr id="riscDetail_${idx}" style="display:none">
+      <td colspan="11" style="padding:8px 20px;background:var(--bg2);font-size:12px">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px">
+          <div style="background:var(--bg1);padding:8px 12px;border-radius:8px;border:1px solid var(--border)">
+            <div style="font-size:10px;color:var(--text2);text-transform:uppercase">Scadențar Curent</div>
+            <div style="margin-top:4px">
+              <strong>${c.nr_facturi}</strong> facturi | Rest: <strong style="color:#ef4444">${fmtMoney(c.total_rest)}</strong><br>
+              Fact. >30z: <strong>${c.facturi_peste_30}</strong> | >60z: <strong>${c.facturi_peste_60||0}</strong> | >90z: <strong style="color:#ef4444">${c.facturi_peste_90||0}</strong><br>
+              Max depășire: <strong>${c.max_depasire}</strong> zile
+              ${c.blocat ? '<br>🔒 <strong style="color:#ef4444">CLIENT BLOCAT</strong>' : ''}
+            </div>
+          </div>
+          <div style="background:var(--bg1);padding:8px 12px;border-radius:8px;border:1px solid var(--border)">
+            <div style="font-size:10px;color:var(--text2);text-transform:uppercase">Limită Creditare</div>
+            <div style="margin-top:4px">
+              ${c.limita_credit > 0 ? `Limită: <strong>${fmtMoney(c.limita_credit)}</strong><br>Utilizare: <strong style="color:${overLimit?'#ef4444':'#10b981'}">${limitPct}%</strong>${overLimit ? ' <span style="color:#ef4444">⚠️ DEPĂȘITĂ</span>' : ''}` : '<span style="color:var(--text2)">Fără limită setată</span>'}
+              <br>CA curent: <strong>${c.cifra_afaceri_curent > 0 ? fmtMoney(c.cifra_afaceri_curent) : '—'}</strong>
+              <br>CA prec.: ${c.cifra_afaceri_prec > 0 ? fmtMoney(c.cifra_afaceri_prec) : '—'}
+            </div>
+          </div>
+          <div style="background:var(--bg1);padding:8px 12px;border-radius:8px;border:1px solid ${c.zile_medii_incasare !== null ? 'var(--border)' : '#fde68a'}">
+            <div style="font-size:10px;color:var(--text2);text-transform:uppercase">Istoric Încasări (12 luni)</div>
+            <div style="margin-top:4px">
+              ${c.zile_medii_incasare !== null ? `
+                Zile medii încasare: <strong style="color:${c.zile_medii_incasare>30?'#ef4444':c.zile_medii_incasare>15?'#f97316':'#10b981'}">${c.zile_medii_incasare}</strong><br>
+                % plăți cu depășire: <strong style="color:${c.pct_depasire>30?'#ef4444':'#10b981'}">${c.pct_depasire}%</strong><br>
+                Total încasat: <strong>${fmtMoney(c.total_incasat_12luni||0)}</strong> (${c.nr_tranzactii_12luni||0} tranz.)
+              ` : '<span style="color:#fbbf24">⚠️ Fără date încasări. Importă fișierul de încasări.</span>'}
+            </div>
+          </div>
+          <div style="background:var(--bg1);padding:8px 12px;border-radius:8px;border:1px solid var(--border)">
+            <div style="font-size:10px;color:var(--text2);text-transform:uppercase">Scoring Detaliat</div>
+            <div style="margin-top:4px">
+              <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+                <div style="width:100%;height:12px;background:#1f2937;border-radius:6px;overflow:hidden">
+                  <div style="height:100%;width:${c.scor_risc}%;background:${scorBg};border-radius:6px;transition:width .3s"></div>
+                </div>
+                <strong style="color:${scorBg}">${c.scor_risc}/100</strong>
+              </div>
+            </div>
+          </div>
+        </div>
+      </td>
+    </tr>`;
+  }).join('')}</tbody></table></div>`;
+
+  if (_prevRest) { const s = document.getElementById('riscHdrRest'); if (s) s.value = _prevRest; }
+  if (_prevPctDep) { const s = document.getElementById('riscHdrPctDep'); if (s) s.value = _prevPctDep; }
+  if (_prevAgent) { const s = document.getElementById('riscHdrAgent'); if (s) s.value = _prevAgent; }
+  if (_prevDiv) { const s = document.getElementById('riscHdrDiv'); if (s) s.value = _prevDiv; }
+  window._riscClientsRendered = clients;
+}
+
+function toggleRiscDetail(idx) {
+  const row = document.getElementById('riscDetail_' + idx);
+  if (row) row.style.display = row.style.display === 'none' ? '' : 'none';
 }
 
 function toggleRiscExplainer() {
-  const el = document.getElementById("riscExplainer");
-  if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
+  const body = document.getElementById('riscExplainerBody');
+  const arrow = document.getElementById('riscExplainerArrow');
+  if (body.style.display === 'none') {
+    body.style.display = '';
+    arrow.style.transform = 'rotate(180deg)';
+  } else {
+    body.style.display = 'none';
+    arrow.style.transform = '';
+  }
 }
 
-/* ══════ TOP CLIENTI — Client quality & volume scoring ══════ */
+/* ═══════════════════════════════════════════
+   3.1c TOP CLIENȚI PERFORMANȚI
+   ═════════════════════════════════════════ */
+
+let _topClientsAll = [];
+
 async function loadTopClienti() {
-  const summaryEl = document.getElementById("topClientiSummary");
-  const listEl = document.getElementById("topClientiList");
-  
-  const monthInput = document.getElementById("topClientiMonth");
-  if (monthInput && !monthInput.value) {
-    const today = new Date();
-    monthInput.value = today.toISOString().slice(0, 7);
+  const el = document.getElementById('topClientiList');
+  const summaryEl = document.getElementById('topClientiSummary');
+  el.innerHTML = '<div class="empty-state">Se calculează scoring...</div>';
+
+  if (!document.getElementById('topExplainerBanner')) {
+    const banner = document.createElement('div');
+    banner.id = 'topExplainerBanner';
+    banner.style.cssText = 'margin:8px 12px;background:linear-gradient(135deg,#10b98108,#10b98115);border:1px solid #10b98144;border-radius:10px;overflow:hidden';
+    banner.innerHTML = `
+      <div onclick="toggleTopExplainer()" style="padding:10px 14px;cursor:pointer;display:flex;justify-content:space-between;align-items:center">
+        <span style="font-weight:700;font-size:13px;color:#10b981">📐 Cum se calculează scorul de performanță?</span>
+        <span id="topExplainerArrow" style="font-size:16px;transition:transform .2s;color:#10b981">▼</span>
+      </div>
+      <div id="topExplainerBody" style="display:none;padding:0 14px 12px;font-size:12px;line-height:1.6">
+        <p style="margin:0 0 8px;color:var(--text2)">Fiecare client primește un <strong>scor de la 0 la 100</strong> bazat pe criterii. Cu cât scorul e mai mare, cu atât clientul e mai performant.</p>
+        <table style="width:100%;border-collapse:collapse;font-size:11px">
+          <tr style="background:#10b98111"><td style="padding:3px 6px;font-weight:700;width:35%">A) Volum vânzări 12 luni</td><td style="padding:3px 6px;text-align:center;width:10%;font-weight:700;color:#10b981">25p</td><td style="padding:3px 6px">Percentil relativ — top vânzători primesc punctaj maxim</td></tr>
+          <tr><td style="padding:3px 6px;font-weight:700">B) Trend crescător</td><td style="padding:3px 6px;text-align:center;font-weight:700;color:#059669">15p</td><td style="padding:3px 6px">Creștere ultimele 3 luni vs anterioarele 3 luni: >30%=15p, >15%=12p, >5%=9p</td></tr>
+          <tr style="background:#10b98111"><td style="padding:3px 6px;font-weight:700">C) Regularitate plăți</td><td style="padding:3px 6px;text-align:center;font-weight:700;color:#6366f1">20p</td><td style="padding:3px 6px">% plăți la timp (12p) + zile medii încasare (8p). <em>Necesită date încasări.</em></td></tr>
+          <tr><td style="padding:3px 6px;font-weight:700">D) Disciplina curentă</td><td style="padding:3px 6px;text-align:center;font-weight:700;color:#0ea5e9">15p</td><td style="padding:3px 6px">Fără facturi depășite = 15p. Scade cu depășirea: >90z=-15p, >60z=-12p</td></tr>
+          <tr style="background:#10b98111"><td style="padding:3px 6px;font-weight:700">E) Diversitate produse</td><td style="padding:3px 6px;text-align:center;font-weight:700;color:#f59e0b">10p</td><td style="padding:3px 6px">Câte SKU-uri distincte cumpără — percentil relativ</td></tr>
+          <tr><td style="padding:3px 6px;font-weight:700">F) Frecvență comenzi</td><td style="padding:3px 6px;text-align:center;font-weight:700;color:#ec4899">10p</td><td style="padding:3px 6px">Câte livrări distincte — percentil relativ</td></tr>
+          <tr style="background:#10b98111"><td style="padding:3px 6px;font-weight:700">G) Bonus neblocat</td><td style="padding:3px 6px;text-align:center;font-weight:700;color:#8b5cf6">5p</td><td style="padding:3px 6px">Neblocat (3p) + în limita de credit (2p)</td></tr>
+        </table>
+        <div style="display:flex;gap:12px;margin-top:8px;flex-wrap:wrap">
+          <span style="background:#f59e0b;color:#000;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700">🥇 GOLD 75-100</span>
+          <span style="background:#94a3b8;color:#000;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700">🥈 SILVER 55-74</span>
+          <span style="background:#b45309;color:#fff;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700">🥉 BRONZE 35-54</span>
+          <span style="background:var(--bg2);color:var(--text2);padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700">STANDARD &lt;35</span>
+        </div>
+      </div>`;
+    summaryEl.parentElement.insertBefore(banner, summaryEl);
   }
-  
-  const month = monthInput?.value || new Date().toISOString().slice(0, 7);
-  
-  summaryEl.innerHTML = '<div style="text-align:center;padding:1rem"><span class="spinner"></span></div>';
-  
-  try {
-    const r = await fetch(`/api/top-clienti?month=${encodeURIComponent(month)}`);
-    const d = await r.json();
-    if (!d.clients || d.clients.length === 0) {
-      summaryEl.innerHTML = '<p style="text-align:center;color:var(--muted);padding:1rem">Niciun vânzări pentru luna selectată</p>';
-      listEl.innerHTML = '';
-      return;
-    }
-    // Summary cards with category counts
-    const goldCount = d.stats.gold || 0;
-    const silverCount = d.stats.silver || 0;
-    const bronzeCount = d.stats.bronze || 0;
-    summaryEl.innerHTML = `
-      <div class="summary-card" style="background:var(--bg2);padding:.8rem;border-radius:8px;text-align:center;cursor:pointer;border-left:3px solid #fbbf24" onclick="topQuickFilter('GOLD')">
-        <div style="font-size:.75rem;color:var(--muted)">GOLD</div>
-        <div style="font-size:1.4rem;font-weight:700;color:#fbbf24">${goldCount}</div>
-      </div>
-      <div class="summary-card" style="background:var(--bg2);padding:.8rem;border-radius:8px;text-align:center;cursor:pointer;border-left:3px solid #c0c0c0" onclick="topQuickFilter('SILVER')">
-        <div style="font-size:.75rem;color:var(--muted)">SILVER</div>
-        <div style="font-size:1.4rem;font-weight:700;color:#c0c0c0">${silverCount}</div>
-      </div>
-      <div class="summary-card" style="background:var(--bg2);padding:.8rem;border-radius:8px;text-align:center;cursor:pointer;border-left:3px solid #cd7f32" onclick="topQuickFilter('BRONZE')">
-        <div style="font-size:.75rem;color:var(--muted)">BRONZE</div>
-        <div style="font-size:1.4rem;font-weight:700;color:#cd7f32">${bronzeCount}</div>
-      </div>
-      <div class="summary-card" style="background:var(--bg2);padding:.8rem;border-radius:8px;text-align:center;border-left:3px solid #10b981">
-        <div style="font-size:.75rem;color:var(--muted)">TOTAL VOLUM</div>
-        <div style="font-size:1.4rem;font-weight:700;color:#10b981">${fmtNum(d.stats.total_volum)}</div>
-      </div>
-    `;
-    renderTopList(d.clients);
-  } catch (ex) {
-    summaryEl.innerHTML = `<p style="color:#e74c3c;padding:1rem">Eroare: ${esc(ex.message)}</p>`;
-    listEl.innerHTML = '';
+
+  const div = document.getElementById('topFiltDiv')?.value || '';
+  const data = await mApi(`/api/top-clienti?divizie=${encodeURIComponent(div)}`);
+  if (!data || !data.clients) { el.innerHTML = '<div class="empty-state">Eroare la încărcare.</div>'; return; }
+  if (!data.clients.length) {
+    el.innerHTML = `<div class="empty-state">${data.stats?.message || 'Niciun client găsit.'}</div>`;
+    summaryEl.innerHTML = '';
+    return;
   }
+
+  _topClientsAll = data.clients;
+  const s = data.stats;
+
+  summaryEl.innerHTML = `
+  <div style="display:flex;gap:10px;flex-wrap:wrap;margin:8px 0">
+    <div class="top-cat-card" data-cat="GOLD" onclick="topQuickFilter('GOLD')" style="background:#f59e0b22;border:1px solid #f59e0b66;border-radius:10px;padding:10px 16px;min-width:120px;cursor:pointer;transition:all .2s">
+      <div style="font-size:11px;color:#fbbf24">🥇 GOLD</div>
+      <div style="font-size:22px;font-weight:800;color:#f59e0b">${s.gold}</div>
+    </div>
+    <div class="top-cat-card" data-cat="SILVER" onclick="topQuickFilter('SILVER')" style="background:#94a3b822;border:1px solid #94a3b866;border-radius:10px;padding:10px 16px;min-width:120px;cursor:pointer;transition:all .2s">
+      <div style="font-size:11px;color:#cbd5e1">🥈 SILVER</div>
+      <div style="font-size:22px;font-weight:800;color:#94a3b8">${s.silver}</div>
+    </div>
+    <div class="top-cat-card" data-cat="BRONZE" onclick="topQuickFilter('BRONZE')" style="background:#b4530922;border:1px solid #b4530966;border-radius:10px;padding:10px 16px;min-width:120px;cursor:pointer;transition:all .2s">
+      <div style="font-size:11px;color:#d97706">🥉 BRONZE</div>
+      <div style="font-size:22px;font-weight:800;color:#b45309">${s.bronze}</div>
+    </div>
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:10px 16px;min-width:180px">
+      <div style="font-size:11px;color:var(--text2)">💰 VALOARE TOTALĂ</div>
+      <div style="font-size:18px;font-weight:800;color:#10b981">${fmtMoney(s.total_valoare)} RON</div>
+    </div>
+    <div class="top-cat-card" data-cat="" onclick="topQuickFilter(_topQuickCat)" style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:10px 16px;min-width:120px;cursor:pointer;transition:all .2s">
+      <div style="font-size:11px;color:var(--text2)">📊 TOTAL CLIENȚI</div>
+      <div style="font-size:18px;font-weight:800;color:var(--text)">${s.total}</div>
+    </div>
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:10px 16px;min-width:100px">
+      <div style="font-size:11px;color:var(--text2)">📅 LUNI ANALIZATE</div>
+      <div style="font-size:18px;font-weight:800;color:var(--text)">${s.nr_months}</div>
+    </div>
+    ${!s.hasIncasariData ? '<div style="background:#ca8a0422;border:1px solid #ca8a0466;border-radius:10px;padding:10px 16px;font-size:12px;color:#fbbf24">⚠️ Scoring parțial — importă fișierul de încasări pentru analiza completă</div>' : ''}
+  </div>`;
+
+  filterTopClienti();
 }
 
-function renderTopList(clients) {
-  const listEl = document.getElementById("topClientiList");
-  listEl.innerHTML = `
-    <div style="display:flex;gap:.5rem;margin-bottom:.5rem;flex-wrap:wrap;font-size:.8rem">
-      <input type="text" id="topQuickSearch" placeholder="Caută client..." style="padding:.3rem;border:1px solid var(--border);border-radius:4px;flex:1;min-width:150px" oninput="filterTopClienti()">
-      <select id="topCategoryFilter" onchange="filterTopClienti()" style="padding:.3rem;border:1px solid var(--border);border-radius:4px">
-        <option value="">Toate categoriile</option>
-        <option value="GOLD">GOLD</option>
-        <option value="SILVER">SILVER</option>
-        <option value="BRONZE">BRONZE</option>
-        <option value="STANDARD">STANDARD</option>
-      </select>
-      <button class="btn ghost small" onclick="toggleTopExplainer()">💡 Scoring</button>
-    </div>
-    <div id="topExplainer" style="display:none;padding:.5rem;background:var(--info-bg);border-left:3px solid var(--info);border-radius:4px;font-size:.8rem;margin-bottom:.5rem">
-      <strong>Scoring Top Clienti:</strong><br>
-      • Volum: până 25p (scalat la max)<br>
-      • Trend (30 zile): până 15p (>50% recent = 15p)<br>
-      • Plăți: 20p (neutral)<br>
-      • Disciplină: până 15p (50 tranzacții = 15p)<br>
-      • Diversitate: 10p<br>
-      • Frecvență: 10p<br>
-      • Bonus (volum >100k): 5p<br>
-      <strong>Categorii:</strong> GOLD ≥75p | SILVER ≥55p | BRONZE ≥35p | STANDARD
-    </div>
-    <div id="topClientsList"></div>
-  `;
-  topSort(clients, 'score');
+let _topSortCol = '', _topSortDir = 'desc';
+let _topQuickCat = '';
+
+function topQuickFilter(cat) {
+  _topQuickCat = (_topQuickCat === cat) ? '' : cat;
+  document.querySelectorAll('.top-cat-card').forEach(el => {
+    el.style.opacity = (!_topQuickCat || el.dataset.cat === _topQuickCat) ? '1' : '0.4';
+    el.style.transform = el.dataset.cat === _topQuickCat ? 'scale(1.05)' : '';
+  });
+  filterTopClienti();
 }
 
 function filterTopClienti() {
-  const search = (document.getElementById("topQuickSearch")?.value || "").toUpperCase();
-  const cat = document.getElementById("topCategoryFilter")?.value || "";
-  const clients = window.topClientsData || [];
-  const filtered = clients.filter(c => {
-    const nameMatch = c.client_name.toUpperCase().includes(search) || c.client_key.toUpperCase().includes(search);
-    const catMatch = !cat || c.category === cat;
-    return nameMatch && catMatch;
-  });
-  topSort(filtered, 'score');
+  const cat = _topQuickCat || '';
+  const filtAgent = document.getElementById('topHdrAgent')?.value || '';
+  const filtDiv = document.getElementById('topHdrDiv')?.value || '';
+  const filtRest = document.getElementById('topHdrRest')?.value || '';
+  let clients = _topClientsAll;
+  if (cat) clients = clients.filter(c => c.categorie === cat);
+  if (filtAgent) clients = clients.filter(c => c.agent === filtAgent);
+  if (filtDiv) clients = clients.filter(c => c.divizie === filtDiv);
+  if (filtRest === '>50k') clients = clients.filter(c => c.total_rest > 50000);
+  else if (filtRest === '>10k') clients = clients.filter(c => c.total_rest > 10000);
+  else if (filtRest === '0') clients = clients.filter(c => c.total_rest === 0);
+  if (_topSortCol) {
+    const dir = _topSortDir === 'asc' ? 1 : -1;
+    clients = [...clients].sort((a, b) => {
+      let va = a[_topSortCol], vb = b[_topSortCol];
+      if (typeof va === 'string') return va.localeCompare(vb) * dir;
+      if (va === null || va === undefined) va = -999;
+      if (vb === null || vb === undefined) vb = -999;
+      return (va > vb ? 1 : va < vb ? -1 : 0) * dir;
+    });
+  }
+  renderTopList(clients);
 }
 
-function topSort(clients, field) {
-  window.topClientsData = clients;
-  const listEl = document.getElementById("topClientsList");
-  if (!clients || clients.length === 0) {
-    listEl.innerHTML = '<p style="text-align:center;color:var(--muted);padding:1rem">Niciun client găsit</p>';
-    return;
-  }
-  listEl.innerHTML = clients.map((c, i) => `
-    <div class="module-card" style="border-left:${c.category === 'GOLD' ? '4px solid #fbbf24' : c.category === 'SILVER' ? '4px solid #c0c0c0' : c.category === 'BRONZE' ? '4px solid #cd7f32' : '4px solid #6b7280'};margin-bottom:.5rem">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.3rem">
-        <strong style="font-size:.9rem">${esc(c.client_name)}</strong>
-        <span class="chip ${c.category === 'GOLD' ? 'success' : c.category === 'SILVER' ? 'info' : c.category === 'BRONZE' ? 'warning' : 'neutral'}" style="font-weight:700">${c.score}p ${c.category}</span>
-      </div>
-      <p style="font-size:.8rem;color:var(--muted);margin:.2rem 0">Agent: ${esc(c.agent || '-')} | CUI: ${esc(c.codfiscal || '-')}</p>
-      <p style="font-size:.8rem;margin:.2rem 0"><strong>Volum:</strong> ${fmtNum(c.volum)} lei | <strong>30 zile:</strong> ${fmtNum(c.volum_30zile)} lei | <strong>Tranzacții:</strong> ${c.num_tranzactii}</p>
-      <p style="font-size:.75rem;color:var(--muted);padding:.3rem;background:var(--bg);border-radius:4px;margin:.2rem 0">${esc(c.scoring_details)}</p>
-    </div>
-  `).join("");
+function topSort(col) {
+  if (_topSortCol === col) _topSortDir = _topSortDir === 'desc' ? 'asc' : 'desc';
+  else { _topSortCol = col; _topSortDir = 'desc'; }
+  filterTopClienti();
 }
 
-function topQuickFilter(category) {
-  const filterEl = document.getElementById("topCategoryFilter");
-  if (filterEl) {
-    filterEl.value = category;
-    filterTopClienti();
-  }
+function renderTopList(clients) {
+  const el = document.getElementById('topClientiList');
+  if (!clients.length) { el.innerHTML = '<div class="empty-state">Niciun client găsit.</div>'; return; }
+
+  const _prevAgent = document.getElementById('topHdrAgent')?.value || '';
+  const _prevDiv = document.getElementById('topHdrDiv')?.value || '';
+  const _prevRest = document.getElementById('topHdrRest')?.value || '';
+
+  const catBg = c => c === 'GOLD' ? '#f59e0b' : c === 'SILVER' ? '#94a3b8' : c === 'BRONZE' ? '#b45309' : '#4b5563';
+  const catEmoji = c => c === 'GOLD' ? '🥇' : c === 'SILVER' ? '🥈' : c === 'BRONZE' ? '🥉' : '⬜';
+  const catTxt = c => c === 'GOLD' ? '#000' : c === 'SILVER' ? '#000' : '#fff';
+  const sA = col => _topSortCol === col ? (_topSortDir === 'desc' ? ' ▼' : ' ▲') : '';
+  const thS = 'padding:6px;cursor:pointer;user-select:none';
+
+  el.innerHTML = `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px">
+  <thead>
+  <tr style="background:var(--bg2);position:sticky;top:0;z-index:3">
+    <th style="${thS};text-align:center;width:55px" onclick="topSort('scor')">Scor${sA('scor')}</th>
+    <th style="padding:6px;text-align:center;width:70px">Nivel</th>
+    <th style="${thS};text-align:left" onclick="topSort('partener')">Client${sA('partener')}</th>
+    <th style="${thS};text-align:right" onclick="topSort('total_valoare')">Vânzări 12L${sA('total_valoare')}</th>
+    <th style="${thS};text-align:center" onclick="topSort('growth_pct')">Trend${sA('growth_pct')}</th>
+    <th style="${thS};text-align:center" onclick="topSort('nr_sku')">SKU${sA('nr_sku')}</th>
+    <th style="${thS};text-align:center" onclick="topSort('nr_livrari')">Livrări${sA('nr_livrari')}</th>
+    <th style="${thS};text-align:center" onclick="topSort('pct_la_timp')">Plăți la timp${sA('pct_la_timp')}</th>
+    <th style="${thS};text-align:center" onclick="topSort('avg_zile_incasare')">Zile Med.${sA('avg_zile_incasare')}</th>
+    <th style="${thS};text-align:right" onclick="topSort('total_rest')">Rest${sA('total_rest')}</th>
+    <th style="${thS};text-align:left" onclick="topSort('agent')">Agent${sA('agent')}</th>
+    <th style="padding:6px;text-align:center">Div</th>
+  </tr>
+  <tr style="background:var(--bg2);position:sticky;top:28px;z-index:2">
+    <th colspan="3"></th>
+    <th colspan="6"></th>
+    <th style="padding:2px 4px"><select id="topHdrRest" onchange="filterTopClienti()" style="width:100%;font-size:11px;padding:2px;border-radius:4px;border:1px solid var(--border);background:var(--bg1);color:var(--text)">
+      <option value="">Toate</option><option value=">50k">>50k</option><option value=">10k">>10k</option><option value="0">0</option>
+    </select></th>
+    <th style="padding:2px 4px"><select id="topHdrAgent" onchange="filterTopClienti()" style="width:100%;font-size:11px;padding:2px;border-radius:4px;border:1px solid var(--border);background:var(--bg1);color:var(--text)">
+      <option value="">Toți</option>${[...new Set((_topClientsAll||clients).map(c=>c.agent).filter(Boolean))].sort().map(a=>`<option value="${escH(a)}">${escH(a)}</option>`).join('')}
+    </select></th>
+    <th style="padding:2px 4px"><select id="topHdrDiv" onchange="filterTopClienti()" style="width:100%;font-size:11px;padding:2px;border-radius:4px;border:1px solid var(--border);background:var(--bg1);color:var(--text)">
+      <option value="">Toate</option>${[...new Set((_topClientsAll||clients).map(c=>c.divizie).filter(Boolean))].sort().map(d=>`<option value="${escH(d)}">${escH(d)}</option>`).join('')}
+    </select></th>
+  </tr>
+  </thead>
+  <tbody>${clients.map((c, idx) => {
+    const rowBg = c.categorie === 'GOLD' ? '#f59e0b10' : '';
+    const trendIcon = c.growth_pct === null ? '🆕' : c.growth_pct > 5 ? '📈' : c.growth_pct < -5 ? '📉' : '➡️';
+    const trendColor = c.growth_pct === null ? '#60a5fa' : c.growth_pct > 5 ? '#10b981' : c.growth_pct < -5 ? '#ef4444' : 'var(--text2)';
+    return `
+    <tr style="border-bottom:1px solid var(--border);cursor:pointer;background:${rowBg}" onclick="toggleTopDetail(${idx})" onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background='${rowBg}'">
+      <td style="padding:5px;text-align:center"><span style="display:inline-block;width:38px;background:${catBg(c.categorie)};color:${catTxt(c.categorie)};padding:3px 0;border-radius:6px;font-weight:800;font-size:14px">${c.scor}</span></td>
+      <td style="padding:5px;text-align:center;font-size:11px;font-weight:700">${catEmoji(c.categorie)} ${c.categorie}</td>
+      <td style="padding:5px;font-weight:600" title="${escH(c.partener)}">${c.blocat ? '🔒 ' : ''}${escH(c.partener)}</td>
+      <td style="padding:5px;text-align:right;font-weight:700;color:#10b981">${fmtMoney(c.total_valoare)}</td>
+      <td style="padding:5px;text-align:center"><span style="color:${trendColor};font-weight:700">${trendIcon} ${c.growth_pct !== null ? (c.growth_pct > 0 ? '+' : '') + c.growth_pct + '%' : 'nou'}</span></td>
+      <td style="padding:5px;text-align:center;font-weight:600">${c.nr_sku}</td>
+      <td style="padding:5px;text-align:center;font-weight:600">${c.nr_livrari}</td>
+      <td style="padding:5px;text-align:center"><span style="color:${c.pct_la_timp !== null ? (c.pct_la_timp >= 75 ? '#10b981' : c.pct_la_timp >= 50 ? '#f59e0b' : '#ef4444') : 'var(--text2)'};font-weight:700">${c.pct_la_timp !== null ? c.pct_la_timp + '%' : '—'}</span></td>
+      <td style="padding:5px;text-align:center;font-weight:600;color:${c.avg_zile_incasare !== null ? (c.avg_zile_incasare <= 14 ? '#10b981' : c.avg_zile_incasare <= 30 ? '#f59e0b' : '#ef4444') : 'var(--text2)'}">${c.avg_zile_incasare !== null ? c.avg_zile_incasare + 'z' : '—'}</td>
+      <td style="padding:5px;text-align:right;color:${c.total_rest > 0 ? '#ef4444' : '#10b981'};font-weight:600">${c.total_rest > 0 ? fmtMoney(c.total_rest) : '0'}</td>
+      <td style="padding:5px;font-size:12px">${escH(c.agent)}</td>
+      <td style="padding:5px;text-align:center"><span style="background:${_divColor(c.divizie)}22;color:${_divColor(c.divizie)};padding:2px 6px;border-radius:8px;font-size:11px;font-weight:600">${escH(c.divizie||'')}</span></td>
+    </tr>
+    <tr id="topDetail_${idx}" style="display:none">
+      <td colspan="12" style="padding:8px 20px;background:var(--bg2);font-size:12px">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px">
+          <div style="background:var(--bg1);padding:8px 12px;border-radius:8px;border:1px solid var(--border)">
+            <div style="font-size:10px;color:var(--text2);text-transform:uppercase">Vânzări</div>
+            <div style="margin-top:4px">
+              Total: <strong style="color:#10b981">${fmtMoney(c.total_valoare)}</strong><br>
+              Cantitate: <strong>${(c.total_cant||0).toLocaleString('ro-RO')}</strong> buc<br>
+              ${c.nr_luni_active} luni active din ${c.nr_livrari} livrări<br>
+              SKU-uri: <strong>${c.nr_sku}</strong>
+            </div>
+          </div>
+          <div style="background:var(--bg1);padding:8px 12px;border-radius:8px;border:1px solid var(--border)">
+            <div style="font-size:10px;color:var(--text2);text-transform:uppercase">Trend</div>
+            <div style="margin-top:4px">
+              Ultimele 3 luni: <strong style="color:#10b981">${fmtMoney(c.val_recent)}</strong><br>
+              Anterioarele 3 luni: <strong>${fmtMoney(c.val_prev)}</strong><br>
+              ${c.growth_pct !== null ? `Variație: <strong style="color:${c.growth_pct > 0 ? '#10b981' : c.growth_pct < 0 ? '#ef4444' : 'var(--text2)'}">${c.growth_pct > 0 ? '+' : ''}${c.growth_pct}%</strong>` : '<span style="color:#60a5fa">Client nou</span>'}
+            </div>
+          </div>
+          <div style="background:var(--bg1);padding:8px 12px;border-radius:8px;border:1px solid ${c.hasIncasariData ? 'var(--border)' : '#fbbf2466'}">
+            <div style="font-size:10px;color:var(--text2);text-transform:uppercase">Comportament Plată</div>
+            <div style="margin-top:4px">
+              ${c.hasIncasariData ? `
+                Plăți la timp: <strong style="color:${c.pct_la_timp >= 75 ? '#10b981' : '#f59e0b'}">${c.pct_la_timp}%</strong><br>
+                Zile medii: <strong style="color:${c.avg_zile_incasare <= 14 ? '#10b981' : '#f59e0b'}">${c.avg_zile_incasare}</strong><br>
+                Total încasat: <strong>${fmtMoney(c.total_incasat||0)}</strong> (${c.nr_tranzactii||0} tranz.)
+              ` : '<span style="color:#fbbf24">⚠️ Fără date încasări</span>'}
+            </div>
+          </div>
+          <div style="background:var(--bg1);padding:8px 12px;border-radius:8px;border:1px solid var(--border)">
+            <div style="font-size:10px;color:var(--text2);text-transform:uppercase">Scoring Detaliat</div>
+            <div style="margin-top:4px">
+              <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+                <div style="width:100%;height:12px;background:#1f2937;border-radius:6px;overflow:hidden">
+                  <div style="height:100%;width:${c.scor}%;background:${catBg(c.categorie)};border-radius:6px;transition:width .3s"></div>
+                </div>
+                <strong style="color:${catBg(c.categorie)}">${c.scor}/100</strong>
+              </div>
+              <span style="font-size:11px;color:var(--text2)">
+                Volum: ${c.scoring?.volum||0}/25 |
+                Trend: ${c.scoring?.trend||0}/15 |
+                Plăți: ${c.scoring?.plati||0}/20 |
+                Discipl.: ${c.scoring?.disciplina||0}/15 |
+                Divers.: ${c.scoring?.diversitate||0}/10 |
+                Frecv.: ${c.scoring?.frecventa||0}/10 |
+                Bonus: ${c.scoring?.bonus||0}/5
+              </span>
+            </div>
+          </div>
+        </div>
+      </td>
+    </tr>`;
+  }).join('')}</tbody></table></div>`;
+
+  if (_prevAgent) { const s = document.getElementById('topHdrAgent'); if (s) s.value = _prevAgent; }
+  if (_prevDiv) { const s = document.getElementById('topHdrDiv'); if (s) s.value = _prevDiv; }
+  if (_prevRest) { const s = document.getElementById('topHdrRest'); if (s) s.value = _prevRest; }
+}
+
+function toggleTopDetail(idx) {
+  const row = document.getElementById('topDetail_' + idx);
+  if (row) row.style.display = row.style.display === 'none' ? '' : 'none';
 }
 
 function toggleTopExplainer() {
-  const el = document.getElementById("topExplainer");
-  if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
+  const body = document.getElementById('topExplainerBody');
+  const arrow = document.getElementById('topExplainerArrow');
+  if (body.style.display === 'none') {
+    body.style.display = '';
+    arrow.style.transform = 'rotate(180deg)';
+  } else {
+    body.style.display = 'none';
+    arrow.style.transform = '';
+  }
 }

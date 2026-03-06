@@ -245,6 +245,10 @@
         <div class="grid-icon-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
         <span>Risc Financiar</span>
       </div>
+      <div class="grid-icon-card" onclick="showTab('topClienti')" style="--icon-bg:linear-gradient(135deg,#fbbf24,#f59e0b)">
+        <div class="grid-icon-circle">⭐</div>
+        <div class="card-title">Top Vânzări</div>
+      </div>
       <div class="grid-icon-card" onclick="openFromGrid('cuiVerify','VERIFICARE CUI')" style="--icon-bg:linear-gradient(135deg,#9fa8da,#283593)">
         <div class="grid-icon-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div>
         <span>Verificare CUI</span>
@@ -1249,7 +1253,7 @@
          ═══════════════════════════════════════════ -->
     <div id="panelRiscFinanciar" class="tab-panel" style="display:none">
       <details class="panel" open>
-        <summary>📊 RISC FINANCIAR (Coface) <button class="help-btn" onclick="event.stopPropagation();showHelp('riscFinanciar')">?</button></summary>
+        <summary>📊 RISC FINANCIAR <button class="help-btn" onclick="event.stopPropagation();showHelp('riscFinanciar')">?</button></summary>
         <div class="panel-inner">
           <div id="riscUploadForm" style="display:none;margin-bottom:.5rem;padding:.5rem;border:1px solid var(--border);border-radius:8px;background:var(--bg2)">
             <p style="font-size:.75rem;color:var(--muted);margin-bottom:.4rem">UPLOAD RAPORT COFACE (Excel)</p>
@@ -1260,10 +1264,23 @@
             <div id="cofaceUploadStatus" style="font-size:.8rem;margin-top:.3rem"></div>
           </div>
           <div class="btn-row">
-            <button class="btn ghost small" onclick="loadFinancialRisk()">🔄 Reîncarcă</button>
+            <select id="riscFiltNivel" onchange="filterRiscClients()" style="padding:.3rem;border:1px solid var(--border);border-radius:4px;font-size:.85rem">
+              <option value="">Toate categoriile</option>
+              <option value="CRITIC">CRITIC</option>
+              <option value="RIDICAT">RIDICAT</option>
+              <option value="MEDIU">MEDIU</option>
+              <option value="SCAZUT">SCAZUT</option>
+            </select>
+            <select id="riscFiltDiv" onchange="loadRiscFinanciar()" style="padding:.3rem;border:1px solid var(--border);border-radius:4px;font-size:.85rem">
+              <option value="">Toate diviziile</option>
+              <option value="URSUS">URSUS</option>
+            </select>
+            <button class="btn ghost small" onclick="loadRiscFinanciar()">🔄 Reîncarcă</button>
           </div>
         </div>
       </details>
+      <div id="riscIncasariInfo" style="padding:.3rem 1rem;font-size:.78rem;color:var(--muted)"></div>
+      <div id="riscSummary" style="padding:.5rem 1rem"></div>
       <div id="riscInfo" style="padding:.3rem 1rem;font-size:.78rem;color:var(--muted)"></div>
       <div id="riscList" style="padding:.5rem 1rem"></div>
     </div>
@@ -1276,9 +1293,11 @@
         <summary>⭐ TOP VÂNZĂRI <button class="help-btn" onclick="event.stopPropagation();showHelp('topClienti')">?</button></summary>
         <div class="panel-inner">
           <div class="btn-row">
-            <input type="month" id="topClientiMonth" style="padding:.3rem;border:1px solid var(--border);border-radius:4px;font-size:.85rem">
+            <select id="topFiltDiv" onchange="loadTopClienti()" style="padding:.3rem;border:1px solid var(--border);border-radius:4px;font-size:.85rem">
+              <option value="">Toate diviziile</option>
+              <option value="URSUS">URSUS</option>
+            </select>
             <button class="btn ghost small" onclick="loadTopClienti()">🔄 Încarcă</button>
-            <button class="btn ghost small" onclick="toggleTopExplainer()">💡 Scoring</button>
           </div>
         </div>
       </details>
