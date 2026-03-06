@@ -154,7 +154,7 @@ function switchTab(tab) {
   else if (tab === "solduri") loadSolduri();
   else if (tab === "escaladari") loadEscalations();
   else if (tab === "alertaClient") loadClientAlerts();
-  else if (tab === "riscFinanciar") loadFinancialRisk();
+  else if (tab === "riscFinanciar") loadRiscFinanciar();
   else if (tab === "topClienti") loadTopClienti();
   else if (tab === "facturiAmbalaj") loadFacturiAmbalaj();
   else if (tab === "cuiVerify") loadCuiVerifications();
@@ -7636,6 +7636,12 @@ async function loadRiscFinanciar() {
   const summaryEl = document.getElementById('riscSummary');
   const infoEl = document.getElementById('riscIncasariInfo');
   el.innerHTML = '<div class="empty-state">Se calculează scoring...</div>';
+
+  // Show upload button for admin/spv
+  if (currentRole === 'admin' || currentRole === 'spv') {
+    const btn = document.getElementById('btnUploadIncasari');
+    if (btn) btn.style.display = '';
+  }
 
   // Show scoring explainer banner (collapsible)
   if (!document.getElementById('riscExplainerBanner')) {
