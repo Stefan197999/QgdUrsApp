@@ -6258,14 +6258,30 @@ async function uploadSalesAllFromRapoarte() {
   const fileEl = document.getElementById("uploadSalesAllFile");
   const statusEl = document.getElementById("uploadSalesAllStatus");
   if (!fileEl || !fileEl.files[0]) return toast("Selectează fișierul Excel", "warning");
-  statusEl.innerHTML = '<span class="spinner" style="width:14px;height:14px;display:inline-block"></span> Se importă... (poate dura 10-30s)';
-  const fd = new FormData();
-  fd.append("file", fileEl.files[0]);
+  statusEl.innerHTML = '<span class="spinner" style="width:14px;height:14px;display:inline-block"></span> Se citește fișierul...';
   try {
+    const file = fileEl.files[0];
+    const fd = new FormData();
+
+    // Convert Excel to CSV client-side (reduces server memory usage dramatically)
+    if (typeof XLSX !== 'undefined' && (file.name.endsWith('.xlsx') || file.name.endsWith('.xls') || file.name.endsWith('.XLSX'))) {
+      statusEl.innerHTML = '<span class="spinner" style="width:14px;height:14px;display:inline-block"></span> Se convertește Excel→CSV... (poate dura câteva secunde)';
+      const data = await file.arrayBuffer();
+      const wb = XLSX.read(data, { type: 'array' });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const csv = XLSX.utils.sheet_to_csv(ws);
+      const blob = new Blob([csv], { type: 'text/csv' });
+      fd.append("file", blob, file.name.replace(/\.(xlsx|xls|XLSX)$/i, '.csv'));
+      statusEl.innerHTML = '<span class="spinner" style="width:14px;height:14px;display:inline-block"></span> Se importă CSV... (poate dura 10-30s)';
+    } else {
+      fd.append("file", file);
+      statusEl.innerHTML = '<span class="spinner" style="width:14px;height:14px;display:inline-block"></span> Se importă... (poate dura 10-30s)';
+    }
+
     const r = await fetch("/api/sales-all/upload", { method: "POST", body: fd, headers: { 'X-CSRF-Token': _csrfToken } });
     const d = await r.json();
     if (d.ok) {
-      statusEl.textContent = `✅ ${(d.count||0).toLocaleString('ro-RO')} rânduri importate (luna ${d.month}). ${d.skipped || 0} filtrate.`;
+      statusEl.textContent = `✅ ${(d.count||0).toLocaleString('ro-RO')} rânduri importate (${d.month}). ${d.skipped || 0} filtrate.`;
       toast(`${(d.count||0).toLocaleString('ro-RO')} rânduri importate`, "success");
     } else {
       statusEl.textContent = `❌ ${d.error}`;

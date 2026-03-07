@@ -7713,40 +7713,160 @@ app.get("/api/producer-targets", auth, (req, res) => {
 app.post("/api/sales-all/upload", auth, adminOnly, gtUpload.single("file"), (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: "Fișier lipsă" });
-    const month = req.body.month || new Date().toISOString().slice(0, 7);
 
-    const wb = XLSX_LIB.readFile(req.file.path);
-    const ws = wb.Sheets[wb.SheetNames[0]];
-    if (!ws) return res.status(400).json({ error: "Fișier Excel gol" });
-    const rows = XLSX_LIB.utils.sheet_to_json(ws, { header: 1, defval: "" });
+    // Support both CSV (from client-side conversion) and Excel
+    let rows;
+    const fname = (req.file.originalname || '').toLowerCase();
+    if (fname.endsWith('.csv') || (req.file.mimetype && req.file.mimetype.includes('csv'))) {
+      // CSV parsing — lightweight, no XLSX overhead
+      const csvContent = require('fs').readFileSync(req.file.path, 'utf8');
+      rows = csvContent.split('\n').map(line => {
+        // Handle CSV with commas in quotes
+        const result = [];
+        let current = '';
+        let inQuotes = false;
+        for (let c = 0; c < line.length; c++) {
+          if (line[c] === '"') { inQuotes = !inQuotes; }
+          else if (line[c] === ',' && !inQuotes) { result.push(current); current = ''; }
+          else { current += line[c]; }
+        }
+        result.push(current);
+        return result;
+      }).filter(r => r.length > 1 || (r.length === 1 && r[0].trim()));
+      console.log(`[sales-all upload] CSV parsed: ${rows.length} rows`);
+    } else {
+      const wb = XLSX_LIB.readFile(req.file.path);
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      if (!ws) return res.status(400).json({ error: "Fișier Excel gol" });
+      rows = XLSX_LIB.utils.sheet_to_json(ws, { header: 1, defval: "" });
+    }
     if (rows.length < 2) return res.status(400).json({ error: "Fișier gol" });
 
-    // Detect columns from header row (flexible matching)
-    const hdr = rows[0].map(h => String(h || "").toUpperCase().trim());
+    // Detect columns from header row (flexible matching for WinMentor exports)
+    const hdr = rows[0].map(h => {
+      let s = String(h || "").toUpperCase().trim();
+      // Normalize: remove extra spaces, replace spaces with nothing for multi-word matching
+      return s;
+    });
+    // Also create a no-space version for matching
+    const hdrNoSpace = hdr.map(h => h.replace(/\s+/g, ''));
+
     const colMap = {};
     hdr.forEach((h, i) => {
-      if (h === "CLIENT" || h === "PARTENER" || h === "CLIENTFINAL") colMap.client = i;
-      else if (h === "DENUMIRE" || h === "DENUMIREPRODUS" || h === "DENUMIRE PRODUS" || h === "PRODUS") colMap.denumire = i;
+      const ns = hdrNoSpace[i]; // no-space version
+      // CLIENT / PARTENER / DENUMIRE CLIENT
+      if (!colMap.client && (h === "CLIENT" || h === "PARTENER" || h === "CLIENTFINAL" || h === "DENUMIRE CLIENT" || ns === "DENUMIRECLIENT")) colMap.client = i;
+      // DENUMIRE produs
+      else if (!colMap.denumire && (h === "DENUMIRE" || ns === "DENUMIREPRODUS" || h === "DENUMIRE PRODUS" || h === "PRODUS")) colMap.denumire = i;
       else if (h === "DCI" || h === "DENCOMINTER") colMap.dci = i;
-      else if (h === "CANT" || h === "CANTITATE" || h === "QTY") colMap.cant = i;
-      else if (h === "CANTHL" || h === "CANT_HL" || h === "VOLUM") colMap.canthl = i;
-      else if (h === "VALOARE" || h === "VAL" || h === "TOTAL" || h === "VALOAREFACTURA") colMap.valoare = i;
-      else if (!colMap.agent && (h === "AGENT" || h === "AGENTVANZARI" || h === "AGENT VANZARI" || h === "AGENTNAME" || h === "AGENT_NAME" || h.startsWith("AGENT"))) colMap.agent = i;
-      else if (!colMap.gama && (h === "GAMA" || h === "GAMAPRODUS" || h === "GAMA PRODUS" || h === "TIP" || h === "CATEGORIE" || h.startsWith("GAMA"))) colMap.gama = i;
-      else if (h === "NRDOC" || h === "NR_DOC" || h === "NUMAR" || h === "NRDOCUMENT") colMap.nrdoc = i;
-      else if (h === "DATADOC" || h === "DATA_DOC" || h === "DATA" || h === "DATADOCUMENT") colMap.datadoc = i;
-      else if (h === "CODFISCAL" || h === "COD_FISCAL" || h === "CUI" || h === "CIF" || h === "CF") colMap.codfiscal = i;
-      else if (h === "PRET_DISC" || h === "PRETDISC" || h === "PRET DISC" || h === "PRETDISCOUNT") colMap.pret_disc = i;
-      else if (h === "CODINTERN_PART" || h === "CODINTERNPART" || h === "COD_INTERN" || h === "CODINTERN") colMap.codintern_part = i;
+      // CANTITATE
+      else if (!colMap.cant && (h === "CANT" || h === "CANTITATE" || h === "QTY")) colMap.cant = i;
+      else if (!colMap.canthl && (h === "CANTHL" || ns === "CANTHL" || h === "CANT_HL" || h === "VOLUM")) colMap.canthl = i;
+      // VALOARE (NOT "VALOARE DISCOUNT")
+      else if (!colMap.valoare && (h === "VALOARE" || h === "VAL" || h === "TOTAL" || ns === "VALOAREFACTURA") && !h.includes("DISCOUNT")) colMap.valoare = i;
+      // VALOARE DISCOUNT → pret_disc
+      else if (!colMap.pret_disc && (h.includes("DISCOUNT") || ns === "PRETDISC" || ns === "PRETDISCOUNT" || h === "PRET_DISC" || h === "PRET DISC" || ns === "VALOAREDISC" || ns === "VALOARDISCOUNT")) colMap.pret_disc = i;
+      // AGENT / NUME AGENT
+      else if (!colMap.agent && (h === "AGENT" || ns === "NUMEAGENT" || h === "NUME AGENT" || ns === "AGENTVANZARI" || h === "AGENT VANZARI" || ns === "AGENTNAME" || h === "AGENT_NAME" || h.startsWith("AGENT"))) colMap.agent = i;
+      // GAMA / DENUMIRE CLASA ARTICOLE / CLASA
+      else if (!colMap.gama && (h === "GAMA" || ns === "GAMAPRODUS" || h === "GAMA PRODUS" || h === "TIP" || h === "CATEGORIE" || ns === "DENUMIRECLASAARTICOLE" || h === "DENUMIRE CLASA ARTICOLE" || h === "CLASA" || ns === "CLASAARTICOLE" || h.startsWith("GAMA"))) colMap.gama = i;
+      // NR DOCUMENTE / NRDOC
+      else if (!colMap.nrdoc && (h === "NRDOC" || h === "NR_DOC" || h === "NUMAR" || ns === "NRDOCUMENT" || ns === "NRDOCUMENTE" || h === "NR DOCUMENTE")) colMap.nrdoc = i;
+      // DATA DOC / ANLUNA
+      else if (!colMap.datadoc && (h === "DATADOC" || h === "DATA_DOC" || h === "DATA" || ns === "DATADOCUMENT" || h === "ANLUNA")) colMap.datadoc = i;
+      // LUNA (numeric month)
+      else if (!colMap.luna && (h === "LUNA" || h === "MONTH")) colMap.luna = i;
+      // COD FISCAL
+      else if (!colMap.codfiscal && (ns === "CODFISCAL" || h === "COD FISCAL" || h === "COD_FISCAL" || h === "CUI" || h === "CIF" || h === "CF")) colMap.codfiscal = i;
+      // COD INTERN PARTENER
+      else if (!colMap.codintern_part && (ns === "CODINTERNPARTENER" || h === "COD INTERN PARTENER" || ns === "CODINTERN_PART" || ns === "CODINTERNPART" || h === "COD_INTERN" || h === "CODINTERN")) colMap.codintern_part = i;
+      // DIVIZIE
       else if (h === "DIVIZIE" || h === "DIV") colMap.divizie = i;
     });
 
+    console.log('[sales-all upload] Detected columns:', JSON.stringify(colMap), 'Headers:', hdr.filter(h=>h).join(', '));
+
     if (colMap.agent === undefined || colMap.gama === undefined) {
-      return res.status(400).json({ error: `Coloanele AGENT și GAMA sunt obligatorii. Coloanele găsite: ${hdr.filter(h=>h).join(', ')}` });
+      return res.status(400).json({ error: `Coloanele AGENT și GAMA sunt obligatorii. Coloanele găsite: ${hdr.filter(h=>h).join(', ')}. Mapping: ${JSON.stringify(colMap)}` });
     }
 
-    // DELETE old data for this month (suprascrie!)
-    db.prepare("DELETE FROM sales_all WHERE month=?").run(month);
+    // Detect month from data: prefer explicit month param, then LUNA column, then ANLUNA parsing
+    let month = req.body.month || '';
+    if (!month && rows.length > 2) {
+      // Try to detect from LUNA column + year from ANLUNA
+      const sampleRow = rows[2] || rows[1]; // skip potential subtotal row
+      if (colMap.luna !== undefined && colMap.datadoc !== undefined) {
+        const lunaVal = Number(sampleRow[colMap.luna]);
+        const anlunaRaw = String(sampleRow[colMap.datadoc] || '');
+        // Parse year from "02 Februarie 2026" format
+        const yearMatch = anlunaRaw.match(/(\d{4})/);
+        if (yearMatch && lunaVal >= 1 && lunaVal <= 12) {
+          month = `${yearMatch[1]}-${String(lunaVal).padStart(2, '0')}`;
+        }
+      }
+      if (!month && colMap.datadoc !== undefined) {
+        const anlunaRaw = String(sampleRow[colMap.datadoc] || '');
+        const yearMatch = anlunaRaw.match(/(\d{4})/);
+        const monthNames = { 'IANUARIE':1,'FEBRUARIE':2,'MARTIE':3,'APRILIE':4,'MAI':5,'IUNIE':6,'IULIE':7,'AUGUST':8,'SEPTEMBRIE':9,'OCTOMBRIE':10,'NOIEMBRIE':11,'DECEMBRIE':12 };
+        for (const [name, num] of Object.entries(monthNames)) {
+          if (anlunaRaw.toUpperCase().includes(name) && yearMatch) {
+            month = `${yearMatch[1]}-${String(num).padStart(2, '0')}`;
+            break;
+          }
+        }
+      }
+    }
+    if (!month) month = new Date().toISOString().slice(0, 7);
+
+    // Check if file has MULTI-MONTH data (LUNA column with different values)
+    const isMultiMonth = colMap.luna !== undefined;
+    let monthsSet = new Set();
+    if (isMultiMonth) {
+      for (let i = 1; i < Math.min(rows.length, 200); i++) {
+        const l = Number(rows[i][colMap.luna]);
+        if (l >= 1 && l <= 12) monthsSet.add(l);
+      }
+    }
+    const hasMultipleMonths = monthsSet.size > 1;
+
+    // For multi-month files, we need per-row month detection
+    // Parse year from ANLUNA column
+    let fileYear = new Date().getFullYear();
+    if (colMap.datadoc !== undefined && rows.length > 2) {
+      for (let i = 2; i < Math.min(rows.length, 20); i++) {
+        const raw = String(rows[i][colMap.datadoc] || '');
+        const ym = raw.match(/(\d{4})/);
+        if (ym) { fileYear = Number(ym[1]); break; }
+      }
+    }
+
+    if (hasMultipleMonths) {
+      // Delete ALL months that appear in the file
+      const monthNames = { 'IANUARIE':'01','FEBRUARIE':'02','MARTIE':'03','APRILIE':'04','MAI':'05','IUNIE':'06','IULIE':'07','AUGUST':'08','SEPTEMBRIE':'09','OCTOMBRIE':'10','NOIEMBRIE':'11','DECEMBRIE':'12' };
+      // Scan all rows to find all year-month combos
+      const allYearMonths = new Set();
+      for (let i = 1; i < rows.length; i++) {
+        const r = rows[i];
+        const lunaVal = Number(r[colMap.luna]);
+        if (lunaVal >= 1 && lunaVal <= 12) {
+          // Try to get year from ANLUNA for this row
+          let yr = fileYear;
+          if (colMap.datadoc !== undefined) {
+            const anl = String(r[colMap.datadoc] || '');
+            const ym2 = anl.match(/(\d{4})/);
+            if (ym2) yr = Number(ym2[1]);
+          }
+          allYearMonths.add(`${yr}-${String(lunaVal).padStart(2, '0')}`);
+        }
+      }
+      console.log('[sales-all upload] Multi-month file detected. Months:', [...allYearMonths].join(', '));
+      for (const ym of allYearMonths) {
+        db.prepare("DELETE FROM sales_all WHERE month=?").run(ym);
+      }
+    } else {
+      // Single month — delete and replace
+      db.prepare("DELETE FROM sales_all WHERE month=?").run(month);
+    }
 
     // Insert new data in batches
     const ins = db.prepare(`INSERT INTO sales_all (month, datadoc, agent_name, gama, denumire, dci, cant, canthl, valoare, client, codfiscal, nrdoc, pret_disc, codintern_part)
@@ -7768,6 +7888,23 @@ app.post("/api/sales-all/upload", auth, adminOnly, gtUpload.single("file"), (req
       const agent = String(r[colMap.agent] || "").trim();
       const gama = String(r[colMap.gama] || "").trim();
       if (!agent || !gama) { skipped++; continue; }
+      // Skip "nedefinit" agents
+      if (agent.includes('nedefinit')) { skipped++; continue; }
+
+      // Determine month for this row
+      let rowMonth = month;
+      if (hasMultipleMonths && colMap.luna !== undefined) {
+        const lunaVal = Number(r[colMap.luna]);
+        if (lunaVal >= 1 && lunaVal <= 12) {
+          let yr = fileYear;
+          if (colMap.datadoc !== undefined) {
+            const anl = String(r[colMap.datadoc] || '');
+            const ym2 = anl.match(/(\d{4})/);
+            if (ym2) yr = Number(ym2[1]);
+          }
+          rowMonth = `${yr}-${String(lunaVal).padStart(2, '0')}`;
+        }
+      }
 
       // Parse date
       let datadoc = "";
@@ -7775,21 +7912,21 @@ app.post("/api/sales-all/upload", auth, adminOnly, gtUpload.single("file"), (req
         const raw = r[colMap.datadoc];
         if (raw) {
           const s = String(raw).trim();
-          // Handle DD.MM.YYYY or Excel serial or ISO
           if (s.includes(".")) {
             const parts = s.split(".");
             if (parts.length === 3) datadoc = `${parts[2]}-${parts[1].padStart(2,"0")}-${parts[0].padStart(2,"0")}`;
           } else if (s.includes("-")) {
             datadoc = s.slice(0, 10);
-          } else if (!isNaN(Number(s))) {
+          } else if (!isNaN(Number(s)) && s.length <= 6) {
             // Excel serial date
             const d = new Date((Number(s) - 25569) * 86400000);
             datadoc = d.toISOString().slice(0, 10);
           }
+          // "02 Februarie 2026" — don't parse as datadoc, just skip
         }
       }
 
-      // Filter out non-sales GAMA (garantie, ambalaje) — DISCOUNT rămâne, diminuează valorile!
+      // Filter out non-sales GAMA (garantie, ambalaje) — DISCOUNT rămâne!
       const gamaUpper = gama.toUpperCase();
       if (gamaUpper.includes("GARANTIE") || gamaUpper.includes("AMBALAJE")) {
         skipped++;
@@ -7797,17 +7934,17 @@ app.post("/api/sales-all/upload", auth, adminOnly, gtUpload.single("file"), (req
       }
 
       batch.push([
-        month, datadoc, agent, gama,
-        String(r[colMap.denumire !== undefined ? colMap.denumire : 0] || "").trim().slice(0, 200),
-        String(r[colMap.dci !== undefined ? colMap.dci : 0] || "").trim(),
-        Number(r[colMap.cant !== undefined ? colMap.cant : 0]) || 0,
-        Number(r[colMap.canthl !== undefined ? colMap.canthl : 0]) || 0,
-        Number(r[colMap.valoare !== undefined ? colMap.valoare : 0]) || 0,
-        String(r[colMap.client !== undefined ? colMap.client : 0] || "").trim().slice(0, 100),
-        String(r[colMap.codfiscal !== undefined ? colMap.codfiscal : 0] || "").trim(),
-        String(r[colMap.nrdoc !== undefined ? colMap.nrdoc : 0] || "").trim(),
-        Number(r[colMap.pret_disc !== undefined ? colMap.pret_disc : 0]) || 0,
-        String(r[colMap.codintern_part !== undefined ? colMap.codintern_part : 0] || "").trim()
+        rowMonth, datadoc, agent, gama,
+        colMap.denumire !== undefined ? String(r[colMap.denumire] || "").trim().slice(0, 200) : "",
+        colMap.dci !== undefined ? String(r[colMap.dci] || "").trim() : "",
+        colMap.cant !== undefined ? (Number(r[colMap.cant]) || 0) : 0,
+        colMap.canthl !== undefined ? (Number(r[colMap.canthl]) || 0) : 0,
+        colMap.valoare !== undefined ? (Number(r[colMap.valoare]) || 0) : 0,
+        colMap.client !== undefined ? String(r[colMap.client] || "").trim().slice(0, 100) : "",
+        colMap.codfiscal !== undefined ? String(r[colMap.codfiscal] || "").trim() : "",
+        colMap.nrdoc !== undefined ? String(r[colMap.nrdoc] || "").trim() : "",
+        colMap.pret_disc !== undefined ? (Number(r[colMap.pret_disc]) || 0) : 0,
+        colMap.codintern_part !== undefined ? String(r[colMap.codintern_part] || "").trim() : ""
       ]);
       count++;
 
@@ -7815,10 +7952,14 @@ app.post("/api/sales-all/upload", auth, adminOnly, gtUpload.single("file"), (req
     }
     if (batch.length) flush();
 
+    // Free memory
+    rows.length = 0;
+
     // Cleanup temp file
     try { require("fs").unlinkSync(req.file.path); } catch(e) {}
 
-    res.json({ ok: true, month, count, skipped, message: `${count} rânduri importate, ${skipped} sărite (garanții/discounturi)` });
+    const monthInfo = hasMultipleMonths ? `luni multiple (${[...monthsSet].sort().join(',')})` : `luna ${month}`;
+    res.json({ ok: true, month, count, skipped, message: `${count} rânduri importate (${monthInfo}), ${skipped} sărite` });
   } catch (ex) {
     console.error("[sales-all upload]", ex.message);
     res.status(500).json({ error: ex.message });
