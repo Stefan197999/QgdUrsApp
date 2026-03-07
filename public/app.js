@@ -7859,7 +7859,7 @@ function renderRiscList(clients) {
   const _prevDiv = document.getElementById('riscHdrDiv')?.value || '';
 
   const sArr = col => _riscSortCol === col ? (_riscSortDir === 'desc' ? ' ▼' : ' ▲') : '';
-  el.innerHTML = `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px">
+  el.innerHTML = `<div style="overflow:auto;max-height:calc(100vh - 280px)"><table style="width:100%;border-collapse:collapse;font-size:13px">
   <thead>
   <tr style="background:var(--bg2);position:sticky;top:0;z-index:3">
     <th style="padding:6px;text-align:center;width:60px;cursor:pointer" onclick="riscSort('scor_risc')">Scor${sArr('scor_risc')}</th>
@@ -8153,7 +8153,7 @@ function renderTopList(clients) {
   const sA = col => _topSortCol === col ? (_topSortDir === 'desc' ? ' ▼' : ' ▲') : '';
   const thS = 'padding:6px;cursor:pointer;user-select:none';
 
-  el.innerHTML = `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px">
+  el.innerHTML = `<div style="overflow:auto;max-height:calc(100vh - 280px)"><table style="width:100%;border-collapse:collapse;font-size:13px">
   <thead>
   <tr style="background:var(--bg2);position:sticky;top:0;z-index:3">
     <th style="${thS};text-align:center;width:55px" onclick="topSort('scor')">Scor${sA('scor')}</th>
