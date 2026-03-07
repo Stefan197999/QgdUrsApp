@@ -6935,7 +6935,9 @@ app.post('/api/incasari-termene/upload', auth, incasariUpload.single('file'), (r
       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`);
 
     let inserted = 0, skipped = 0;
-    let minDate = null, maxDate = null;
+    let minDateISO = null, maxDateISO = null;
+    const ddmmToISO = s => { const p = s.split('.'); return p.length===3 ? `${p[2]}-${p[1]}-${p[0]}` : s; };
+    const isoToDDMM = s => { const p = s.split('-'); return p.length===3 ? `${p[2]}.${p[1]}.${p[0]}` : s; };
 
     const insertTx = db.transaction(() => {
       for (let i = 3; i < data.length; i++) {
@@ -6968,8 +6970,9 @@ app.post('/api/incasari-termene/upload', auth, incasariUpload.single('file'), (r
         if (!partener) { skipped++; continue; }
 
         if (dataDecontare && dataDecontare.includes('.')) {
-          if (!minDate || dataDecontare < minDate) minDate = dataDecontare;
-          if (!maxDate || dataDecontare > maxDate) maxDate = dataDecontare;
+          const iso = ddmmToISO(dataDecontare);
+          if (!minDateISO || iso < minDateISO) minDateISO = iso;
+          if (!maxDateISO || iso > maxDateISO) maxDateISO = iso;
         }
 
         ins.run(importId, parseInt(nrCrt)||0, docFactura, dataFactura, valoareInit, rest, termen,
@@ -6980,8 +6983,10 @@ app.post('/api/incasari-termene/upload', auth, incasariUpload.single('file'), (r
     });
     insertTx();
 
+    const minDate = minDateISO ? isoToDDMM(minDateISO) : '';
+    const maxDate = maxDateISO ? isoToDDMM(maxDateISO) : '';
     db.prepare("UPDATE incasari_imports SET rows_imported=?, period_from=?, period_to=? WHERE id=?").run(
-      inserted, minDate || '', maxDate || '', importId
+      inserted, minDate, maxDate, importId
     );
 
     try { db.prepare('CREATE INDEX IF NOT EXISTS idx_incasari_cod_intern ON incasari_termene(cod_intern)').run(); } catch(e) {}
