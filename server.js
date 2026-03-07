@@ -7155,6 +7155,23 @@ app.get("/api/top-clienti", auth, (req, res) => {
   const allMonths = [...new Set(db.prepare(`SELECT DISTINCT month FROM sales_all WHERE month IS NOT NULL ORDER BY month DESC LIMIT 12`).all().map(r => r.month))];
   const nr_months = allMonths.length;
 
+  // PRE-LOAD: trend data in bulk (1 query instead of 2*N)
+  const trendData = {};
+  try {
+    const allTrend = db.prepare(`SELECT COALESCE(NULLIF(TRIM(codintern_part),''), COALESCE(NULLIF(TRIM(codfiscal),''), client)) as key_id, SUBSTR(month,1,4)||SUBSTR(month,5,2) as ym, SUM(valoare) as val FROM sales_all GROUP BY key_id, ym ORDER BY key_id, ym`).all();
+    for (const r of allTrend) {
+      if (!trendData[r.key_id]) trendData[r.key_id] = [];
+      trendData[r.key_id].push({ ym: r.ym, val: r.val });
+    }
+  } catch(e) { console.error('[top-clienti] trend pre-load error:', e.message); }
+
+  // PRE-LOAD: scadentar data in bulk (1 query instead of 5*N)
+  const scadMap = {};
+  try {
+    const allScad = db.prepare(`SELECT COALESCE(NULLIF(TRIM(cod_intern),''), COALESCE(NULLIF(TRIM(cod_fiscal),''), partener)) as key_id, MAX(depasire_termen) as max_dep, SUM(rest) as total_rest, MAX(limita_creditare) as lim, MAX(CASE WHEN blocat='DA' THEN 1 ELSE 0 END) as is_blocked FROM scadentar GROUP BY key_id`).all();
+    for (const r of allScad) scadMap[r.key_id] = r;
+  } catch(e) { console.error('[top-clienti] scadentar pre-load error:', e.message); }
+
   const scored = clients.map(c => {
     let score = 0;
     let scoring = { volum: 0, trend: 0, plati: 0, disciplina: 0, diversitate: 0, frecventa: 0, bonus: 0 };
@@ -7165,27 +7182,29 @@ app.get("/api/top-clienti", auth, (req, res) => {
     else if (volumPercentile >= 0.25) { score += 10; scoring.volum = 10; }
     else if (c.total_valoare > 0) { score += 5; scoring.volum = 5; }
 
-    // Trend
-    const firstMonth = db.prepare(`SELECT SUBSTR(month,1,4)||SUBSTR(month,5,2) as ym, SUM(valoare) as val FROM sales_all WHERE (client=? OR codfiscal=? OR codintern_part=?) GROUP BY ym ORDER BY ym ASC LIMIT 3`).all(c.partener, c.codfiscal, c.key_id);
-    const lastMonth = db.prepare(`SELECT SUBSTR(month,1,4)||SUBSTR(month,5,2) as ym, SUM(valoare) as val FROM sales_all WHERE (client=? OR codfiscal=? OR codintern_part=?) GROUP BY ym ORDER BY ym DESC LIMIT 3`).all(c.partener, c.codfiscal, c.key_id);
-
+    // Trend from pre-loaded data
+    const months = trendData[c.key_id] || [];
     let growth_pct = null, val_prev = 0, val_recent = 0;
-    if (firstMonth.length > 0) val_prev = firstMonth.reduce((s, r) => s + r.val, 0);
-    if (lastMonth.length > 0) val_recent = lastMonth.reduce((s, r) => s + r.val, 0);
-    if (val_prev > 0 && val_recent > 0) {
-      growth_pct = Math.round(((val_recent - val_prev) / val_prev) * 100);
-      if (growth_pct > 30) { score += 15; scoring.trend = 15; }
-      else if (growth_pct > 15) { score += 12; scoring.trend = 12; }
-      else if (growth_pct > 5) { score += 9; scoring.trend = 9; }
-      else if (growth_pct >= 0) { score += 3; scoring.trend = 3; }
+    if (months.length >= 2) {
+      const first3 = months.slice(0, Math.min(3, months.length));
+      const last3 = months.slice(-Math.min(3, months.length));
+      val_prev = first3.reduce((s, r) => s + r.val, 0);
+      val_recent = last3.reduce((s, r) => s + r.val, 0);
+      if (val_prev > 0 && val_recent > 0) {
+        growth_pct = Math.round(((val_recent - val_prev) / val_prev) * 100);
+        if (growth_pct > 30) { score += 15; scoring.trend = 15; }
+        else if (growth_pct > 15) { score += 12; scoring.trend = 12; }
+        else if (growth_pct > 5) { score += 9; scoring.trend = 9; }
+        else if (growth_pct >= 0) { score += 3; scoring.trend = 3; }
+      }
     }
 
-    // Disciplina from scadentar
-    const scadInfo = db.prepare(`SELECT MAX(depasire_termen) as max_dep FROM scadentar WHERE partener LIKE ? OR cod_fiscal=? OR cod_intern=?`).get('%'+c.partener+'%', c.codfiscal, c.key_id);
-    if (scadInfo && scadInfo.max_dep !== null) {
-      if (scadInfo.max_dep <= 0) { score += 15; scoring.disciplina = 15; }
-      else if (scadInfo.max_dep <= 10) { score += 10; scoring.disciplina = 10; }
-      else if (scadInfo.max_dep <= 30) { score += 5; scoring.disciplina = 5; }
+    // Scadentar from pre-loaded data
+    const scad = scadMap[c.key_id] || scadMap[c.codfiscal] || {};
+    if (scad.max_dep !== undefined && scad.max_dep !== null) {
+      if (scad.max_dep <= 0) { score += 15; scoring.disciplina = 15; }
+      else if (scad.max_dep <= 10) { score += 10; scoring.disciplina = 10; }
+      else if (scad.max_dep <= 30) { score += 5; scoring.disciplina = 5; }
     }
 
     if (c.nr_sku >= 20) { score += 10; scoring.diversitate = 10; }
@@ -7196,14 +7215,10 @@ app.get("/api/top-clienti", auth, (req, res) => {
     else if (c.nr_livrari >= 20) { score += 7; scoring.frecventa = 7; }
     else if (c.nr_livrari >= 5) { score += 4; scoring.frecventa = 4; }
 
-    const blocked = db.prepare(`SELECT 1 FROM scadentar WHERE (partener LIKE ? OR cod_fiscal=? OR cod_intern=?) AND blocat='DA' LIMIT 1`).get('%'+c.partener+'%', c.codfiscal, c.key_id);
-    if (!blocked) { score += 3; scoring.bonus = 3; }
+    if (!scad.is_blocked) { score += 3; scoring.bonus = 3; }
+    const totalRest = scad.total_rest || 0;
+    if (scad.lim > 0 && totalRest <= scad.lim) { score += 2; scoring.bonus += 2; }
 
-    const creditLimit = db.prepare(`SELECT MAX(limita_creditare) as lim FROM scadentar WHERE partener LIKE ? OR cod_fiscal=?`).get('%'+c.partener+'%', c.codfiscal);
-    const restInfo = db.prepare(`SELECT SUM(rest) as r FROM scadentar WHERE partener LIKE ? OR cod_fiscal=?`).get('%'+c.partener+'%', c.codfiscal);
-    if (creditLimit && creditLimit.lim > 0 && restInfo && restInfo.r <= creditLimit.lim) { score += 2; scoring.bonus += 2; }
-
-    const totalRest = (restInfo && restInfo.r) || 0;
     const categorie = score >= 75 ? 'GOLD' : (score >= 55 ? 'SILVER' : (score >= 35 ? 'BRONZE' : 'STANDARD'));
 
     return {
@@ -7213,11 +7228,11 @@ app.get("/api/top-clienti", auth, (req, res) => {
       total_valoare: c.total_valoare, total_cant: c.total_cant,
       nr_sku: c.nr_sku, nr_livrari: c.nr_livrari, nr_luni_active: c.nr_luni_active,
       growth_pct, val_recent, val_prev, total_rest: totalRest,
-      max_depasire: (scadInfo && scadInfo.max_dep) || 0,
-      limita_credit: (creditLimit && creditLimit.lim) || 0,
+      max_depasire: scad.max_dep || 0,
+      limita_credit: scad.lim || 0,
       pct_la_timp: null, avg_zile_incasare: null,
       total_incasat: null, nr_tranzactii: null,
-      scoring, blocat: !!blocked, hasIncasariData: false
+      scoring, blocat: !!scad.is_blocked, hasIncasariData: false
     };
   }).filter(c => !isHiddenClient(c.partener, { username: req.username, role: req.role }))
     .sort((a, b) => b.scor - a.scor);
@@ -7706,27 +7721,28 @@ app.post("/api/sales-all/upload", auth, adminOnly, gtUpload.single("file"), (req
     const rows = XLSX_LIB.utils.sheet_to_json(ws, { header: 1, defval: "" });
     if (rows.length < 2) return res.status(400).json({ error: "Fișier gol" });
 
-    // Detect columns from header row
+    // Detect columns from header row (flexible matching)
     const hdr = rows[0].map(h => String(h || "").toUpperCase().trim());
     const colMap = {};
     hdr.forEach((h, i) => {
-      if (h === "CLIENT") colMap.client = i;
-      else if (h === "DENUMIRE") colMap.denumire = i;
-      else if (h === "DCI") colMap.dci = i;
-      else if (h === "CANT") colMap.cant = i;
-      else if (h === "CANTHL") colMap.canthl = i;
-      else if (h === "VALOARE") colMap.valoare = i;
-      else if (h === "AGENT") colMap.agent = i;
-      else if (h === "GAMA") colMap.gama = i;
-      else if (h === "NRDOC") colMap.nrdoc = i;
-      else if (h === "DATADOC") colMap.datadoc = i;
-      else if (h === "CODFISCAL") colMap.codfiscal = i;
-      else if (h === "PRET_DISC") colMap.pret_disc = i;
-      else if (h === "CODINTERN_PART") colMap.codintern_part = i;
+      if (h === "CLIENT" || h === "PARTENER" || h === "CLIENTFINAL") colMap.client = i;
+      else if (h === "DENUMIRE" || h === "DENUMIREPRODUS" || h === "DENUMIRE PRODUS" || h === "PRODUS") colMap.denumire = i;
+      else if (h === "DCI" || h === "DENCOMINTER") colMap.dci = i;
+      else if (h === "CANT" || h === "CANTITATE" || h === "QTY") colMap.cant = i;
+      else if (h === "CANTHL" || h === "CANT_HL" || h === "VOLUM") colMap.canthl = i;
+      else if (h === "VALOARE" || h === "VAL" || h === "TOTAL" || h === "VALOAREFACTURA") colMap.valoare = i;
+      else if (!colMap.agent && (h === "AGENT" || h === "AGENTVANZARI" || h === "AGENT VANZARI" || h === "AGENTNAME" || h === "AGENT_NAME" || h.startsWith("AGENT"))) colMap.agent = i;
+      else if (!colMap.gama && (h === "GAMA" || h === "GAMAPRODUS" || h === "GAMA PRODUS" || h === "TIP" || h === "CATEGORIE" || h.startsWith("GAMA"))) colMap.gama = i;
+      else if (h === "NRDOC" || h === "NR_DOC" || h === "NUMAR" || h === "NRDOCUMENT") colMap.nrdoc = i;
+      else if (h === "DATADOC" || h === "DATA_DOC" || h === "DATA" || h === "DATADOCUMENT") colMap.datadoc = i;
+      else if (h === "CODFISCAL" || h === "COD_FISCAL" || h === "CUI" || h === "CIF" || h === "CF") colMap.codfiscal = i;
+      else if (h === "PRET_DISC" || h === "PRETDISC" || h === "PRET DISC" || h === "PRETDISCOUNT") colMap.pret_disc = i;
+      else if (h === "CODINTERN_PART" || h === "CODINTERNPART" || h === "COD_INTERN" || h === "CODINTERN") colMap.codintern_part = i;
+      else if (h === "DIVIZIE" || h === "DIV") colMap.divizie = i;
     });
 
     if (colMap.agent === undefined || colMap.gama === undefined) {
-      return res.status(400).json({ error: "Coloanele AGENT și GAMA sunt obligatorii" });
+      return res.status(400).json({ error: `Coloanele AGENT și GAMA sunt obligatorii. Coloanele găsite: ${hdr.filter(h=>h).join(', ')}` });
     }
 
     // DELETE old data for this month (suprascrie!)
