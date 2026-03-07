@@ -8181,12 +8181,12 @@ function renderAlertaList(clients) {
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
           <div style="background:var(--bg1);padding:8px 12px;border-radius:8px;border:1px solid #ef444444">
             <div style="font-size:10px;color:#ef4444;text-transform:uppercase;font-weight:700">Facturi Vechi >60 zile (${c.nr_facturi_vechi})</div>
-            <div style="margin-top:4px;font-size:11px;line-height:1.6">${(c.top_facturi_vechi||[]).map(f => \`📄 \${f}\`).join('<br>') || '—'}${c.nr_facturi_vechi > 5 ? '<br><em>... și alte ' + (c.nr_facturi_vechi - 5) + '</em>' : ''}</div>
+            <div style="margin-top:4px;font-size:11px;line-height:1.6">${(c.top_facturi_vechi||[]).map(f => '📄 ' + f).join('<br>') || '—'}${c.nr_facturi_vechi > 5 ? '<br><em>... și alte ' + (c.nr_facturi_vechi - 5) + '</em>' : ''}</div>
             <div style="margin-top:6px;font-weight:700;color:#ef4444">Total: ${fmtMoney(c.total_rest_vechi)} RON</div>
           </div>
           <div style="background:var(--bg1);padding:8px 12px;border-radius:8px;border:1px solid #f9731644">
             <div style="font-size:10px;color:#f97316;text-transform:uppercase;font-weight:700">Facturi Noi ≤5 zile (${c.nr_facturi_noi})</div>
-            <div style="margin-top:4px;font-size:11px;line-height:1.6">${(c.top_facturi_noi||[]).map(f => \`📄 \${f}\`).join('<br>') || '—'}${c.nr_facturi_noi > 5 ? '<br><em>... și alte ' + (c.nr_facturi_noi - 5) + '</em>' : ''}</div>
+            <div style="margin-top:4px;font-size:11px;line-height:1.6">${(c.top_facturi_noi||[]).map(f => '📄 ' + f).join('<br>') || '—'}${c.nr_facturi_noi > 5 ? '<br><em>... și alte ' + (c.nr_facturi_noi - 5) + '</em>' : ''}</div>
             <div style="margin-top:6px;font-weight:700;color:#f97316">Total: ${fmtMoney(c.total_rest_nou)} RON</div>
           </div>
         </div>
