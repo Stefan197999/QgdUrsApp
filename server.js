@@ -6896,37 +6896,62 @@ app.get("/api/financial-risk", auth, (req, res) => {
   res.json({ upload_date: latest.d, data: rows });
 });
 
-/* POST /api/incasari-termene/upload — Upload Excel cu încasări pe termene */
-app.post('/api/incasari-termene/upload', auth, incasariUpload.single('file'), (req, res) => {
+/* POST /api/incasari-termene/upload — Streaming CSV pt fișiere mari (150K+ rânduri) */
+app.post('/api/incasari-termene/upload', auth, incasariUpload.single('file'), async (req, res) => {
+  function tryGC() { if (global.gc) { try { global.gc(); } catch(e) {} } }
   try {
-    // Only admin and SPV can upload
     if (req.role !== 'admin' && req.role !== 'spv') {
       return res.status(403).json({ error: 'Doar admin/SPV pot încărca date' });
     }
     if (!req.file) return res.status(400).json({ error: 'Fișier lipsă' });
-    const data = parseUploadedFile(req.file.path, req.file.originalname);
 
-    const headerRow = data[0] || [];
-    const numCols = headerRow.length;
-    const hasCodeIntern = numCols >= 18;
-    const hasCifraAfaceri = numCols >= 17;
+    const fname = (req.file.originalname || '').toLowerCase();
+    const isCSV = fname.endsWith('.csv') || fname.endsWith('.txt');
+
+    /* For Excel files, convert to temp CSV first */
+    let csvPath = req.file.path;
+    if (!isCSV) {
+      const XLSX = require('xlsx');
+      const XLSX_OPTS_LEAN = { cellStyles:false, cellHTML:false, cellFormula:false, cellDates:false, sheetStubs:false, bookDeps:false, bookFiles:false, bookProps:false, bookVBA:false };
+      const wb = XLSX.readFile(req.file.path, XLSX_OPTS_LEAN);
+      try { fs.unlinkSync(req.file.path); } catch(e) {}
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      if (!ws) return res.status(400).json({ error: 'Fișier gol' });
+      const csvStr = XLSX.utils.sheet_to_csv(ws);
+      csvPath = req.file.path + '.csv';
+      fs.writeFileSync(csvPath, csvStr);
+      wb.Sheets = {}; wb.SheetNames = [];
+      tryGC();
+    }
+
+    /* Streaming CSV read — line by line, never loads entire file */
+    const readline = require('readline');
+    const rl = readline.createInterface({
+      input: fs.createReadStream(csvPath, { encoding: 'utf8' }),
+      crlfDelay: Infinity
+    });
+
+    let lineNum = 0;
+    let numCols = 0;
+    let hasCodeIntern = false, hasCifraAfaceri = false;
 
     const imp = db.prepare(`INSERT INTO incasari_imports (filename, uploaded_by) VALUES (?, ?)`).run(
       req.file.originalname, req.username || 'unknown'
     );
     const importId = imp.lastInsertRowid;
 
-    // Delete previous imports (keep only latest)
     const prevImports = db.prepare("SELECT id FROM incasari_imports WHERE id != ? ORDER BY id DESC").all(importId);
     if (prevImports.length > 0) {
-      const delTx = db.transaction(() => {
+      db.transaction(() => {
         for (const pi of prevImports) {
           db.prepare("DELETE FROM incasari_termene WHERE import_id = ?").run(pi.id);
           db.prepare("DELETE FROM incasari_imports WHERE id = ?").run(pi.id);
         }
-      });
-      delTx();
+      })();
     }
+
+    try { db.prepare("ALTER TABLE incasari_termene ADD COLUMN cod_intern TEXT DEFAULT ''").run(); } catch(e) {}
+    try { db.prepare("ALTER TABLE incasari_termene ADD COLUMN cifra_afaceri REAL DEFAULT 0").run(); } catch(e) {}
 
     const ins = db.prepare(`INSERT INTO incasari_termene
       (import_id, nr_crt, doc_factura, data_factura, valoare_initiala, rest, termen, doc_stingator,
@@ -6938,61 +6963,95 @@ app.post('/api/incasari-termene/upload', auth, incasariUpload.single('file'), (r
     let minDateISO = null, maxDateISO = null;
     const ddmmToISO = s => { const p = s.split('.'); return p.length===3 ? `${p[2]}-${p[1]}-${p[0]}` : s; };
     const isoToDDMM = s => { const p = s.split('-'); return p.length===3 ? `${p[2]}.${p[1]}.${p[0]}` : s; };
+    let batch = [];
+    const BATCH_SIZE = 1000;
 
-    const insertTx = db.transaction(() => {
-      for (let i = 3; i < data.length; i++) {
-        const r = data[i];
-        const nrCrt = r[0];
-        if (typeof nrCrt === 'string' && (nrCrt.startsWith('Total') || nrCrt.startsWith('TOTAL'))) { skipped++; continue; }
-        if (!nrCrt && nrCrt !== 0) { skipped++; continue; }
-
-        const docFactura = String(r[1] || '').trim();
-        const docDateMatch = docFactura.match(/(\d{2}\.\d{2}\.\d{4})/);
-        const dataFactura = docDateMatch ? docDateMatch[1] : '';
-
-        const valoareInit = parseFloat(r[2]) || 0;
-        const rest = parseFloat(r[3]) || 0;
-        const termen = String(r[4] || '').trim();
-        const docStingator = String(r[5] || '').trim();
-        const valoarePlata = parseFloat(r[6]) || 0;
-        const dataDecontare = String(r[7] || '').trim();
-        const soldDupaPlata = parseFloat(r[8]) || 0;
-        const zileIncasare = parseInt(r[9]) || 0;
-        const zileDepasire = parseInt(r[10]) || 0;
-        const agent = String(r[11] || '').trim();
-        const inc12 = parseFloat(r[12]) || 0;
-        const inc230 = parseFloat(r[13]) || 0;
-        const tipDoc = String(r[14] || '').trim();
-        const partener = String(r[15] || '').trim();
-        const cifraAfaceri = hasCifraAfaceri ? (parseFloat(r[16]) || 0) : 0;
-        const codIntern = hasCodeIntern ? String(r[17] || '').trim() : '';
-
-        if (!partener) { skipped++; continue; }
-
-        if (dataDecontare && dataDecontare.includes('.')) {
-          const iso = ddmmToISO(dataDecontare);
-          if (!minDateISO || iso < minDateISO) minDateISO = iso;
-          if (!maxDateISO || iso > maxDateISO) maxDateISO = iso;
-        }
-
-        ins.run(importId, parseInt(nrCrt)||0, docFactura, dataFactura, valoareInit, rest, termen,
-                docStingator, valoarePlata, dataDecontare, soldDupaPlata, zileIncasare, zileDepasire,
-                agent, inc12, inc230, tipDoc, partener, codIntern, cifraAfaceri);
-        inserted++;
+    function parseCsvLine(line) {
+      const result = []; let current = ''; let inQ = false;
+      for (let c = 0; c < line.length; c++) {
+        if (line[c] === '"') inQ = !inQ;
+        else if (line[c] === ',' && !inQ) { result.push(current); current = ''; }
+        else current += line[c];
       }
-    });
-    insertTx();
+      result.push(current);
+      return result;
+    }
+
+    function flushBatch() {
+      if (batch.length === 0) return;
+      const rows = batch;
+      batch = [];
+      db.transaction(() => {
+        for (const r of rows) {
+          const nrCrt = r[0];
+          const nrStr = String(nrCrt || '').trim();
+          if (/^Total/i.test(nrStr)) { skipped++; continue; }
+          if (!nrStr && nrStr !== '0') { skipped++; continue; }
+
+          const docFactura = String(r[1] || '').trim();
+          const docDateMatch = docFactura.match(/(\d{2}\.\d{2}\.\d{4})/);
+          const dataFactura = docDateMatch ? docDateMatch[1] : '';
+          const valoareInit = parseFloat(r[2]) || 0;
+          const rest = parseFloat(r[3]) || 0;
+          const termen = String(r[4] || '').trim();
+          const docStingator = String(r[5] || '').trim();
+          const valoarePlata = parseFloat(r[6]) || 0;
+          const dataDecontare = String(r[7] || '').trim();
+          const soldDupaPlata = parseFloat(r[8]) || 0;
+          const zileIncasare = parseInt(r[9]) || 0;
+          const zileDepasire = parseInt(r[10]) || 0;
+          const agent = String(r[11] || '').trim();
+          const inc12 = parseFloat(r[12]) || 0;
+          const inc230 = parseFloat(r[13]) || 0;
+          const tipDoc = String(r[14] || '').trim();
+          const partener = String(r[15] || '').trim();
+          const cifraAfaceri = hasCifraAfaceri ? (parseFloat(r[16]) || 0) : 0;
+          const codIntern = hasCodeIntern ? String(r[17] || '').trim() : '';
+
+          if (!partener) { skipped++; continue; }
+
+          if (dataDecontare && dataDecontare.includes('.')) {
+            const iso = ddmmToISO(dataDecontare);
+            if (!minDateISO || iso < minDateISO) minDateISO = iso;
+            if (!maxDateISO || iso > maxDateISO) maxDateISO = iso;
+          }
+
+          ins.run(importId, parseInt(nrStr)||0, docFactura, dataFactura, valoareInit, rest, termen,
+                  docStingator, valoarePlata, dataDecontare, soldDupaPlata, zileIncasare, zileDepasire,
+                  agent, inc12, inc230, tipDoc, partener, codIntern, cifraAfaceri);
+          inserted++;
+        }
+      })();
+      tryGC();
+    }
+
+    for await (const line of rl) {
+      if (!line.trim()) continue;
+      const r = parseCsvLine(line);
+      lineNum++;
+
+      if (lineNum === 1) {
+        numCols = r.length;
+        hasCodeIntern = numCols >= 18;
+        hasCifraAfaceri = numCols >= 17;
+        continue;
+      }
+      if (lineNum <= 3) continue;
+
+      batch.push(r);
+      if (batch.length >= BATCH_SIZE) flushBatch();
+    }
+    flushBatch();
+
+    try { fs.unlinkSync(csvPath); } catch(e) {}
 
     const minDate = minDateISO ? isoToDDMM(minDateISO) : '';
     const maxDate = maxDateISO ? isoToDDMM(maxDateISO) : '';
     db.prepare("UPDATE incasari_imports SET rows_imported=?, period_from=?, period_to=? WHERE id=?").run(
       inserted, minDate, maxDate, importId
     );
-
     try { db.prepare('CREATE INDEX IF NOT EXISTS idx_incasari_cod_intern ON incasari_termene(cod_intern)').run(); } catch(e) {}
-
-    // Cleanup upload
-    try { require('fs').unlinkSync(req.file.path); } catch {}
+    tryGC();
 
     res.json({ ok: true, imported: inserted, skipped, importId, period: `${minDate || '?'} — ${maxDate || '?'}`, hasCodeIntern });
   } catch(e) {
