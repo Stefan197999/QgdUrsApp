@@ -7987,10 +7987,36 @@ function toggleRiscExplainer() {
 
 let _topClientsAll = [];
 
+/* Upload Vânzări ALL direct din Top Vânzări */
+async function uploadSalesFromTopVanzari() {
+  const fileEl = document.getElementById("topVanzariFile");
+  const statusEl = document.getElementById("topVanzariUploadStatus");
+  if (!fileEl || !fileEl.files[0]) return toast("Selectează fișierul Excel", "warning");
+  statusEl.innerHTML = '<span class="spinner" style="width:14px;height:14px;display:inline-block"></span> Se convertește și importă...';
+  try {
+    const fd = await buildUploadFormData(fileEl);
+    const r = await fetch("/api/sales-all/upload", { method: "POST", body: fd });
+    const d = await r.json();
+    if (d.ok) {
+      statusEl.textContent = `✅ ${(d.count||0).toLocaleString('ro-RO')} rânduri importate (${d.month}). ${d.skipped || 0} filtrate.`;
+      toast(`${(d.count||0).toLocaleString('ro-RO')} rânduri importate`, "success");
+      fileEl.value = "";
+      loadTopClienti();
+    } else {
+      statusEl.textContent = `❌ ${d.error}`;
+      toast(d.error, "error");
+    }
+  } catch (ex) { statusEl.textContent = `❌ ${ex.message}`; toast(ex.message, "error"); }
+}
+
 async function loadTopClienti() {
   const el = document.getElementById('topClientiList');
   const summaryEl = document.getElementById('topClientiSummary');
   el.innerHTML = '<div class="empty-state">Se calculează scoring...</div>';
+
+  // Show upload box for admin/spv
+  const uploadBox = document.getElementById('topVanzariUploadBox');
+  if (uploadBox && (currentRole === 'admin' || currentRole === 'spv')) uploadBox.style.display = '';
 
   if (!document.getElementById('topExplainerBanner')) {
     const banner = document.createElement('div');
