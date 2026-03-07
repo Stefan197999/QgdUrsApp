@@ -58,7 +58,7 @@ app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'", "https://unpkg.com", "https://cdnjs.cloudflare.com"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "https://unpkg.com", "https://cdnjs.cloudflare.com", "https://cdn.sheetjs.com"],
       scriptSrcAttr: ["'unsafe-inline'"],
       styleSrc: ["'self'", "'unsafe-inline'", "https://unpkg.com", "https://cdnjs.cloudflare.com", "https://fonts.googleapis.com"],
       imgSrc: ["'self'", "data:", "https://*.tile.openstreetmap.org", "blob:"],
@@ -9266,6 +9266,19 @@ app.get("/api/census-ursus/:id", auth, (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+/* ── Health / Memory monitoring ── */
+app.get("/api/health", (req, res) => {
+  const mem = process.memoryUsage();
+  res.json({
+    rss: Math.round(mem.rss / 1024 / 1024) + " MB",
+    heapUsed: Math.round(mem.heapUsed / 1024 / 1024) + " MB",
+    heapTotal: Math.round(mem.heapTotal / 1024 / 1024) + " MB",
+    external: Math.round(mem.external / 1024 / 1024) + " MB",
+    uptime: Math.round(process.uptime()) + "s",
+    xlsxLoaded: !!_xlsxLib
+  });
+});
+
 /* ── SPA fallback ── */
 app.get("*", (req, res) => {
   if (req.path.startsWith("/api/")) return res.status(404).json({ error: "Not found" });
@@ -9915,19 +9928,6 @@ app.use((err, req, res, next) => {
     return res.status(400).json({ error: err.message });
   }
   next(err);
-});
-
-/* ── Health / Memory monitoring ── */
-app.get("/api/health", (req, res) => {
-  const mem = process.memoryUsage();
-  res.json({
-    rss: Math.round(mem.rss / 1024 / 1024) + " MB",
-    heapUsed: Math.round(mem.heapUsed / 1024 / 1024) + " MB",
-    heapTotal: Math.round(mem.heapTotal / 1024 / 1024) + " MB",
-    external: Math.round(mem.external / 1024 / 1024) + " MB",
-    uptime: Math.round(process.uptime()) + "s",
-    xlsxLoaded: !!_xlsxLib
-  });
 });
 
 /* ── Start ── */

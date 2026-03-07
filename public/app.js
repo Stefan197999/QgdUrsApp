@@ -56,19 +56,28 @@ const auditSel = { sr: new Set(), agent: new Set(), city: new Set(), canal: new 
 
 /* ── Excel→CSV client-side conversion (reduce server memory) ── */
 async function excelToCsvBlob(file) {
-  if (typeof XLSX === 'undefined') return null; // fallback to raw upload
-  const ext = file.name.toLowerCase();
-  if (!ext.endsWith('.xlsx') && !ext.endsWith('.xls') && !ext.endsWith('.xlsb')) return null;
-  const data = await file.arrayBuffer();
-  const wb = XLSX.read(data, { type: 'array' });
-  const ws = wb.Sheets[wb.SheetNames[0]];
-  const csv = XLSX.utils.sheet_to_csv(ws);
-  return new Blob([csv], { type: 'text/csv' });
+  try {
+    if (typeof XLSX === 'undefined') { console.warn('[CSV] SheetJS not loaded, fallback raw'); return null; }
+    const ext = file.name.toLowerCase();
+    if (!ext.endsWith('.xlsx') && !ext.endsWith('.xls') && !ext.endsWith('.xlsb')) return null;
+    console.log('[CSV] Converting', file.name, '(' + Math.round(file.size/1024) + 'KB) to CSV...');
+    const data = await file.arrayBuffer();
+    const wb = XLSX.read(data, { type: 'array' });
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    if (!ws) { console.warn('[CSV] Empty sheet'); return null; }
+    const csv = XLSX.utils.sheet_to_csv(ws);
+    console.log('[CSV] Done, CSV size:', Math.round(csv.length/1024), 'KB');
+    return new Blob([csv], { type: 'text/csv' });
+  } catch(e) {
+    console.error('[CSV] Conversion failed:', e);
+    return null; // fallback to raw upload
+  }
 }
 
 async function buildUploadFormData(fileEl, fieldName = 'file') {
   const fd = new FormData();
   const file = fileEl.files[0];
+  if (!file) return fd;
   const csvBlob = await excelToCsvBlob(file);
   if (csvBlob) {
     fd.append(fieldName, csvBlob, file.name.replace(/\.(xlsx|xls|xlsb)$/i, '.csv'));
