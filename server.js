@@ -7072,11 +7072,13 @@ app.get('/api/incasari-termene/info', auth, (req, res) => {
   }
 });
 
-// ── RISC FINANCIAR — Scoring algoritm (IDENTIC BB/TIG) ──
+// ── RISC FINANCIAR — Scoring algoritm (COPIE EXACTA BB) ──
 app.get("/api/risc-financiar", auth, (req, res) => {
   try {
     const cenF = censusAgentFilter({ role: req.role, agent_name: req.agentDtr });
     const div = req.query.divizie;
+
+    // 1. Date din SCADENȚAR (sold curent)
     const latestImport = db.prepare("SELECT MAX(id) as id FROM scadentar_imports").get();
     if (!latestImport || !latestImport.id) {
       return res.json({ clients: [], stats: { total_clients: 0, critici: 0, ridicat: 0, mediu: 0, total_rest_risc: 0, hasIncasariData: false } });
@@ -7085,73 +7087,92 @@ app.get("/api/risc-financiar", auth, (req, res) => {
     let scadParams = [latestImport.id];
     if (cenF) { scadWhere.push(cenF.sql); scadParams.push(...cenF.params); }
     if (div && div !== '' && div !== 'ALL') { scadWhere.push('divizie=?'); scadParams.push(div); }
+
     const scadRows = db.prepare(`SELECT partener, cod_fiscal, cod_intern, rest, depasire_termen,
       valoare, agent, serie_document, is_ambalaj, blocat, limita_creditare, cifra_afaceri_curent, cifra_afaceri_prec, divizie
       FROM scadentar WHERE ${scadWhere.join(' AND ')}`).all(...scadParams);
 
-    // JavaScript grouping by cod_intern || partener (IDENTIC TIG)
+    // Group by cod_intern || partener (identic BB)
     const clientMap = {};
     for (const r of scadRows) {
       if (r.is_ambalaj) continue;
       const key = r.cod_intern || r.partener;
       if (!clientMap[key]) {
         clientMap[key] = {
-          partener: r.partener, cod_fiscal: r.cod_fiscal || '', cod_intern: r.cod_intern || '',
-          agent: r.agent || '', divizie: r.divizie || '',
+          partener: r.partener, cod_fiscal: r.cod_fiscal, cod_intern: r.cod_intern,
+          agent: r.agent, divizie: r.divizie, blocat: r.blocat,
+          limita_credit: r.limita_creditare || 0,
+          cifra_afaceri_curent: r.cifra_afaceri_curent || 0,
+          cifra_afaceri_prec: r.cifra_afaceri_prec || 0,
           total_rest: 0, max_depasire: 0, nr_facturi: 0,
           facturi_peste_30: 0, facturi_peste_60: 0, facturi_peste_90: 0,
-          sum_depasire: 0, count_depasire: 0,
-          blocat: false, limita_creditare: 0,
-          cifra_afaceri_curent: 0, cifra_afaceri_prec: 0
+          sum_depasire: 0, sum_valoare: 0,
+          zile_medii_incasare: null, pct_depasire: null, pct_inc_1_2_zile: null,
+          total_incasat_12luni: 0, nr_tranzactii_12luni: 0
         };
       }
       const c = clientMap[key];
-      c.total_rest += r.rest || 0;
+      c.total_rest += r.rest;
       c.nr_facturi++;
+      c.sum_valoare += (r.valoare || r.rest);
       if (r.depasire_termen > c.max_depasire) c.max_depasire = r.depasire_termen;
+      c.sum_depasire += Math.max(0, r.depasire_termen);
       if (r.depasire_termen > 30) c.facturi_peste_30++;
       if (r.depasire_termen > 60) c.facturi_peste_60++;
       if (r.depasire_termen > 90) c.facturi_peste_90++;
-      c.sum_depasire += r.depasire_termen || 0;
-      c.count_depasire++;
-      if (r.blocat === 'DA' || r.blocat === 1) c.blocat = true;
-      if (r.limita_creditare > c.limita_creditare) c.limita_creditare = r.limita_creditare;
-      if (r.cifra_afaceri_curent > c.cifra_afaceri_curent) c.cifra_afaceri_curent = r.cifra_afaceri_curent;
-      if (r.cifra_afaceri_prec > c.cifra_afaceri_prec) c.cifra_afaceri_prec = r.cifra_afaceri_prec;
-      if (!c.partener && r.partener) c.partener = r.partener;
-      if (!c.cod_fiscal && r.cod_fiscal) c.cod_fiscal = r.cod_fiscal;
-      if (!c.agent && r.agent) c.agent = r.agent;
-      if (!c.divizie && r.divizie) c.divizie = r.divizie;
     }
 
-    // Load încasări
+    // 2. Date din ÎNCASĂRI PE TERMENE (comportament istoric plată)
     const incInfo = db.prepare("SELECT id FROM incasari_imports ORDER BY id DESC LIMIT 1").get();
-    const incMap = {};
     if (incInfo) {
+      let incRows;
       try {
-        const incRows = db.prepare(`SELECT
+        incRows = db.prepare(`SELECT
           COALESCE(NULLIF(cod_intern,''), partener) as client_key,
-          partener, cod_intern,
+          partener,
+          cod_intern,
           COUNT(*) as nr_tranzactii,
           AVG(zile_incasare) as avg_zile_incasare,
           SUM(CASE WHEN zile_depasire > 0 THEN 1 ELSE 0 END) as nr_cu_depasire,
+          SUM(CASE WHEN zile_incasare <= 2 THEN valoare_plata ELSE 0 END) as val_inc_1_2_zile,
+          SUM(CASE WHEN zile_incasare > 30 THEN valoare_plata ELSE 0 END) as val_inc_peste_30,
+          SUM(CASE WHEN zile_incasare > 60 THEN valoare_plata ELSE 0 END) as val_inc_peste_60,
           SUM(valoare_plata) as total_incasat,
+          SUM(incasari_1_2_zile) as sum_inc_1_2,
+          SUM(incasari_2_30_zile) as sum_inc_2_30,
           AVG(zile_depasire) as avg_zile_depasire,
           MAX(zile_depasire) as max_zile_depasire_istoric
         FROM incasari_termene WHERE import_id = ?
         GROUP BY client_key`).all(incInfo.id);
-        for (const ir of incRows) {
-          incMap[ir.client_key] = ir;
-          if (ir.partener) incMap[ir.partener] = ir;
+      } catch(e) { incRows = []; }
+
+      const incMap = {};
+      for (const ir of incRows) {
+        incMap[ir.client_key] = ir;
+        if (ir.partener) incMap[ir.partener] = ir;
+      }
+
+      // Merge încasări data into clientMap
+      for (const [key, c] of Object.entries(clientMap)) {
+        const inc = incMap[key] || incMap[c.cod_intern] || incMap[c.partener];
+        if (inc) {
+          c.zile_medii_incasare = Math.round(inc.avg_zile_incasare * 10) / 10;
+          c.pct_depasire = inc.nr_tranzactii > 0 ? Math.round(inc.nr_cu_depasire / inc.nr_tranzactii * 100) : 0;
+          c.pct_inc_1_2_zile = inc.total_incasat > 0 ? Math.round(inc.val_inc_1_2_zile / inc.total_incasat * 100) : 0;
+          c.total_incasat_12luni = inc.total_incasat || 0;
+          c.nr_tranzactii_12luni = inc.nr_tranzactii || 0;
+          c.avg_zile_depasire_istoric = Math.round((inc.avg_zile_depasire || 0) * 10) / 10;
+          c.max_zile_depasire_istoric = inc.max_zile_depasire_istoric || 0;
+          c.val_inc_peste_30 = inc.val_inc_peste_30 || 0;
+          c.val_inc_peste_60 = inc.val_inc_peste_60 || 0;
         }
-      } catch(e) { console.error('Incasari lookup error:', e.message); }
+      }
     }
 
-    // Scoring (IDENTIC TIG/BB — criterii A-G)
-    const riskyClients = [];
-    for (const [key, c] of Object.entries(clientMap)) {
+    // 3. SCORING RISC (0-100, higher = worse) — identic BB
+    const clients = Object.values(clientMap);
+    for (const c of clients) {
       let score = 0;
-      const avg_dep = c.count_depasire > 0 ? c.sum_depasire / c.count_depasire : 0;
 
       // A) Depășire curentă maximă (0-25 pts)
       if (c.max_depasire > 90) score += 25;
@@ -7161,75 +7182,59 @@ app.get("/api/risc-financiar", auth, (req, res) => {
       else if (c.max_depasire > 15) score += 5;
 
       // B) Nr facturi depășite (0-15 pts)
-      if (c.facturi_peste_90 >= 3) score += 15;
-      else if (c.facturi_peste_60 >= 3) score += 12;
-      else if (c.facturi_peste_30 >= 5) score += 10;
-      else if (c.facturi_peste_30 >= 3) score += 7;
-      else if (c.facturi_peste_30 > 0) score += 4;
+      if (c.facturi_peste_60 >= 3) score += 15;
+      else if (c.facturi_peste_30 >= 5) score += 12;
+      else if (c.facturi_peste_30 >= 3) score += 8;
+      else if (c.facturi_peste_30 >= 1) score += 4;
 
-      // C) Sold vs limita credit (0-20 pts)
-      if (c.limita_creditare > 0) {
-        const ratio = c.total_rest / c.limita_creditare;
-        if (ratio > 2) score += 20;
-        else if (ratio > 1.5) score += 16;
-        else if (ratio > 1.2) score += 12;
-        else if (ratio > 1.0) score += 8;
-        else if (ratio > 0.8) score += 4;
+      // C) Sold vs limita de credit (0-20 pts)
+      if (c.limita_credit > 0) {
+        const pctUtilizare = c.total_rest / c.limita_credit * 100;
+        if (pctUtilizare > 150) score += 20;
+        else if (pctUtilizare > 120) score += 16;
+        else if (pctUtilizare > 100) score += 12;
+        else if (pctUtilizare > 80) score += 6;
       } else if (c.total_rest > 10000) {
         score += 10;
       }
 
       // D) Depășire medie curentă (0-10 pts)
-      if (avg_dep > 60) score += 10;
-      else if (avg_dep > 45) score += 8;
-      else if (avg_dep > 30) score += 6;
-      else if (avg_dep > 15) score += 3;
+      const avgDep = c.nr_facturi > 0 ? c.sum_depasire / c.nr_facturi : 0;
+      if (avgDep > 60) score += 10;
+      else if (avgDep > 30) score += 6;
+      else if (avgDep > 15) score += 3;
 
       // E) Comportament istoric încasări (0-20 pts)
-      const inc = incMap[key] || incMap[c.partener];
-      let zile_medii_incasare = null;
-      let pct_depasire = 0;
-      if (inc) {
-        zile_medii_incasare = Math.round(inc.avg_zile_incasare * 10) / 10;
-        pct_depasire = inc.nr_tranzactii > 0 ? Math.round(inc.nr_cu_depasire / inc.nr_tranzactii * 100) : 0;
-        if (zile_medii_incasare > 45) score += 10;
-        else if (zile_medii_incasare > 30) score += 7;
-        else if (zile_medii_incasare > 20) score += 4;
-        else if (zile_medii_incasare > 14) score += 2;
-        if (pct_depasire > 50) score += 10;
-        else if (pct_depasire > 30) score += 7;
-        else if (pct_depasire > 15) score += 4;
-        else if (pct_depasire > 5) score += 2;
+      if (c.zile_medii_incasare !== null) {
+        if (c.zile_medii_incasare > 45) score += 10;
+        else if (c.zile_medii_incasare > 30) score += 7;
+        else if (c.zile_medii_incasare > 20) score += 4;
+        else if (c.zile_medii_incasare > 14) score += 2;
+
+        if (c.pct_depasire > 50) score += 10;
+        else if (c.pct_depasire > 30) score += 7;
+        else if (c.pct_depasire > 15) score += 4;
+        else if (c.pct_depasire > 5) score += 2;
       }
 
-      // F) Blocat (+5 pts)
-      if (c.blocat) score += 5;
+      // F) Blocat = semnal de alarmă maxim (+5 pts)
+      if (c.blocat === 'DA' || c.blocat === 1) score += 5;
 
       // G) Sold mare absolut (0-5 pts)
       if (c.total_rest > 100000) score += 5;
       else if (c.total_rest > 50000) score += 3;
       else if (c.total_rest > 20000) score += 1;
 
-      if (score > 10) {
-        const nivel_risc = score >= 60 ? 'CRITIC' : (score >= 40 ? 'RIDICAT' : (score >= 20 ? 'MEDIU' : 'SCĂZUT'));
-        riskyClients.push({
-          partener: c.partener, cod_fiscal: c.cod_fiscal, cod_intern: c.cod_intern || key,
-          agent: c.agent, divizie: c.divizie,
-          scor_risc: score, nivel_risc,
-          total_rest: c.total_rest, max_depasire: c.max_depasire,
-          nr_facturi: c.nr_facturi,
-          facturi_peste_30: c.facturi_peste_30, facturi_peste_60: c.facturi_peste_60, facturi_peste_90: c.facturi_peste_90,
-          limita_credit: c.limita_creditare,
-          cifra_afaceri_curent: c.cifra_afaceri_curent, cifra_afaceri_prec: c.cifra_afaceri_prec,
-          zile_medii_incasare, pct_depasire,
-          total_incasat_12luni: inc ? inc.total_incasat : null,
-          nr_tranzactii_12luni: inc ? inc.nr_tranzactii : null,
-          blocat: c.blocat
-        });
-      }
+      c.scor_risc = Math.min(100, score);
+
+      if (c.scor_risc >= 60) c.nivel_risc = 'CRITIC';
+      else if (c.scor_risc >= 40) c.nivel_risc = 'RIDICAT';
+      else if (c.scor_risc >= 20) c.nivel_risc = 'MEDIU';
+      else c.nivel_risc = 'SCĂZUT';
     }
 
-    riskyClients.sort((a, b) => b.scor_risc - a.scor_risc);
+    clients.sort((a, b) => b.scor_risc - a.scor_risc || b.total_rest - a.total_rest);
+    const riskyClients = clients.filter(c => c.scor_risc > 10);
     const visibleRisc = riskyClients.filter(c => !isHiddenClient(c.partener, { username: req.username, role: req.role }));
 
     const stats = {
@@ -7237,14 +7242,14 @@ app.get("/api/risc-financiar", auth, (req, res) => {
       critici: visibleRisc.filter(c => c.nivel_risc === 'CRITIC').length,
       ridicat: visibleRisc.filter(c => c.nivel_risc === 'RIDICAT').length,
       mediu: visibleRisc.filter(c => c.nivel_risc === 'MEDIU').length,
-      total_rest_risc: visibleRisc.reduce((sum, c) => sum + c.total_rest, 0),
+      total_rest_risc: visibleRisc.reduce((s, c) => s + c.total_rest, 0),
       hasIncasariData: !!incInfo
     };
 
     res.json({ clients: visibleRisc, stats });
-  } catch(ex) {
-    console.error("[risc-financiar]", ex.message);
-    res.status(500).json({ error: ex.message });
+  } catch(e) {
+    console.error('Risc financiar error:', e);
+    res.status(500).json({ error: e.message });
   }
 });
 
