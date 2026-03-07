@@ -54,6 +54,30 @@ let cuNearbyMarkerGroup = null;
 const censusSel = { sr: new Set(), agent: new Set(), city: new Set(), canal: new Set(), format: new Set(), stare: new Set(), munic: new Set(), activ: new Set(), achizitii: new Set() };
 const auditSel = { sr: new Set(), agent: new Set(), city: new Set(), canal: new Set(), format: new Set(), achizitii: new Set() };
 
+/* ── Excel→CSV client-side conversion (reduce server memory) ── */
+async function excelToCsvBlob(file) {
+  if (typeof XLSX === 'undefined') return null; // fallback to raw upload
+  const ext = file.name.toLowerCase();
+  if (!ext.endsWith('.xlsx') && !ext.endsWith('.xls') && !ext.endsWith('.xlsb')) return null;
+  const data = await file.arrayBuffer();
+  const wb = XLSX.read(data, { type: 'array' });
+  const ws = wb.Sheets[wb.SheetNames[0]];
+  const csv = XLSX.utils.sheet_to_csv(ws);
+  return new Blob([csv], { type: 'text/csv' });
+}
+
+async function buildUploadFormData(fileEl, fieldName = 'file') {
+  const fd = new FormData();
+  const file = fileEl.files[0];
+  const csvBlob = await excelToCsvBlob(file);
+  if (csvBlob) {
+    fd.append(fieldName, csvBlob, file.name.replace(/\.(xlsx|xls|xlsb)$/i, '.csv'));
+  } else {
+    fd.append(fieldName, file);
+  }
+  return fd;
+}
+
 /* ── Toast notifications ── */
 function toast(msg, type = "info", duration = 3000) {
   const el = document.createElement("div");
@@ -3818,10 +3842,10 @@ async function uploadScadentar() {
   const fileInput = document.getElementById("scadentarFile");
   const statusEl = document.getElementById("scadentarUploadStatus");
   if (!fileInput.files.length) { toast("Selectează un fișier Excel!", "warning"); return; }
-  const fd = new FormData();
-  fd.append("file", fileInput.files[0]);
-  statusEl.innerHTML = '<span class="spinner" style="width:16px;height:16px"></span> Se importă scadențarul...';
+  statusEl.innerHTML = '<span class="spinner" style="width:16px;height:16px"></span> Se convertește fișierul...';
   try {
+    const fd = await buildUploadFormData(fileInput);
+    statusEl.innerHTML = '<span class="spinner" style="width:16px;height:16px"></span> Se importă scadențarul...';
     const r = await fetch("/api/scadentar/upload", { method: "POST", body: fd });
     const d = await r.json();
     if (!r.ok) throw new Error(d.error);
@@ -6258,26 +6282,10 @@ async function uploadSalesAllFromRapoarte() {
   const fileEl = document.getElementById("uploadSalesAllFile");
   const statusEl = document.getElementById("uploadSalesAllStatus");
   if (!fileEl || !fileEl.files[0]) return toast("Selectează fișierul Excel", "warning");
-  statusEl.innerHTML = '<span class="spinner" style="width:14px;height:14px;display:inline-block"></span> Se citește fișierul...';
+  statusEl.innerHTML = '<span class="spinner" style="width:14px;height:14px;display:inline-block"></span> Se convertește fișierul...';
   try {
-    const file = fileEl.files[0];
-    const fd = new FormData();
-
-    // Convert Excel to CSV client-side (reduces server memory usage dramatically)
-    if (typeof XLSX !== 'undefined' && (file.name.endsWith('.xlsx') || file.name.endsWith('.xls') || file.name.endsWith('.XLSX'))) {
-      statusEl.innerHTML = '<span class="spinner" style="width:14px;height:14px;display:inline-block"></span> Se convertește Excel→CSV... (poate dura câteva secunde)';
-      const data = await file.arrayBuffer();
-      const wb = XLSX.read(data, { type: 'array' });
-      const ws = wb.Sheets[wb.SheetNames[0]];
-      const csv = XLSX.utils.sheet_to_csv(ws);
-      const blob = new Blob([csv], { type: 'text/csv' });
-      fd.append("file", blob, file.name.replace(/\.(xlsx|xls|XLSX)$/i, '.csv'));
-      statusEl.innerHTML = '<span class="spinner" style="width:14px;height:14px;display:inline-block"></span> Se importă CSV... (poate dura 10-30s)';
-    } else {
-      fd.append("file", file);
-      statusEl.innerHTML = '<span class="spinner" style="width:14px;height:14px;display:inline-block"></span> Se importă... (poate dura 10-30s)';
-    }
-
+    const fd = await buildUploadFormData(fileEl);
+    statusEl.innerHTML = '<span class="spinner" style="width:14px;height:14px;display:inline-block"></span> Se importă... (poate dura 10-30s)';
     const r = await fetch("/api/sales-all/upload", { method: "POST", body: fd, headers: { 'X-CSRF-Token': _csrfToken } });
     const d = await r.json();
     if (d.ok) {
@@ -6294,10 +6302,10 @@ async function uploadIncasariFromRapoarte() {
   const fileEl = document.getElementById("uploadIncasariFile");
   const statusEl = document.getElementById("uploadIncasariStatus");
   if (!fileEl || !fileEl.files[0]) return toast("Selectează fișierul Excel", "warning");
-  statusEl.innerHTML = '<span class="spinner" style="width:14px;height:14px;display:inline-block"></span> Se importă încasări... (poate dura)';
-  const fd = new FormData();
-  fd.append("file", fileEl.files[0]);
+  statusEl.innerHTML = '<span class="spinner" style="width:14px;height:14px;display:inline-block"></span> Se convertește fișierul...';
   try {
+    const fd = await buildUploadFormData(fileEl);
+    statusEl.innerHTML = '<span class="spinner" style="width:14px;height:14px;display:inline-block"></span> Se importă încasări... (poate dura)';
     const r = await fetch("/api/incasari-termene/upload", { method: "POST", body: fd, headers: { 'X-CSRF-Token': _csrfToken } });
     const d = await r.json();
     if (d.ok) {
@@ -7659,8 +7667,8 @@ let _riscClientsAll = [];
 
 async function uploadIncasariTermene(input) {
   if (!input || !input.files[0]) return;
-  const fd = new FormData();
-  fd.append('file', input.files[0]);
+  toast('Se convertește fișierul...','info');
+  const fd = await buildUploadFormData(input);
   toast('Se importă încasări pe termene... (fișier mare, poate dura)','info');
   try {
     const r = await fetch('/api/incasari-termene/upload', {

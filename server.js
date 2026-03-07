@@ -17,6 +17,35 @@ const { generateContract, generateGDPR, generateContractB2B, generateGDPRB2B, ge
 const { extractFromDocument } = require("./ocrExtractor");
 const XLSX_LIB = require("xlsx");
 
+/* ── Helper: Parse uploaded file (CSV or Excel) with minimal memory ── */
+function parseUploadedFile(filePath, originalName) {
+  const fname = (originalName || '').toLowerCase();
+  if (fname.endsWith('.csv') || fname.endsWith('.txt')) {
+    const csvContent = require('fs').readFileSync(filePath, 'utf8');
+    const rows = csvContent.split('\n').map(line => {
+      const result = [];
+      let current = '';
+      let inQuotes = false;
+      for (let c = 0; c < line.length; c++) {
+        if (line[c] === '"') { inQuotes = !inQuotes; }
+        else if (line[c] === ',' && !inQuotes) { result.push(current); current = ''; }
+        else { current += line[c]; }
+      }
+      result.push(current);
+      return result;
+    }).filter(r => r.length > 1 || (r.length === 1 && r[0].trim()));
+    return rows;
+  }
+  // Excel — use memory-reducing options
+  const wb = XLSX_LIB.readFile(filePath, { cellStyles:false, cellHTML:false, cellFormula:false, cellDates:false, sheetStubs:false, bookDeps:false, bookFiles:false, bookProps:false, bookSheets:false, bookVBA:false });
+  const ws = wb.Sheets[wb.SheetNames[0]];
+  if (!ws) return [];
+  const rows = XLSX_LIB.utils.sheet_to_json(ws, { header: 1, defval: "" });
+  // Free workbook immediately
+  wb.Sheets = {}; wb.SheetNames = [];
+  return rows;
+}
+
 const app = express();
 
 /* ───────── Security Headers (helmet) ───────── */
@@ -6437,10 +6466,7 @@ app.post("/api/scadentar/upload", auth, scadentarUpload.single("file"), (req, re
   if (req.role === "agent") return res.status(403).json({ error: "Doar SPV/Admin pot încărca scadențarul" });
   if (!req.file) return res.status(400).json({ error: "Fișier lipsă" });
   try {
-    const wb = XLSX_LIB.readFile(req.file.path);
-    const ws = wb.Sheets[wb.SheetNames[0]];
-    if (!ws) return res.status(400).json({ error: "Fișier Excel gol" });
-    const rows = XLSX_LIB.utils.sheet_to_json(ws, { header: 1, defval: "" });
+    const rows = parseUploadedFile(req.file.path, req.file.originalname);
     if (!rows || rows.length < 3) return res.status(400).json({ error: "Fișier prea scurt" });
 
     // Detect column count to handle both formats (8-col divisional, 10-col BB, 12-col Quatro)
@@ -6802,11 +6828,7 @@ app.post("/api/financial-risk/upload", auth, balanceUpload.single("file"), (req,
   if (!req.file) return res.status(400).json({ error: "Fișier lipsă" });
   try {
 
-    const wb = XLSX_LIB.readFile(req.file.path);
-    const ws = wb.Sheets[wb.SheetNames[0]];
-    if (!ws) return res.status(400).json({ error: "Fișier Excel gol" });
-
-    const sheetRows = XLSX_LIB.utils.sheet_to_json(ws, { header: 1, defval: "" });
+    const sheetRows = parseUploadedFile(req.file.path, req.file.originalname);
     if (!sheetRows || sheetRows.length === 0) return res.status(400).json({ error: "Fișier Excel gol" });
 
     const today = new Date().toISOString().slice(0, 10);
@@ -6865,10 +6887,7 @@ app.post('/api/incasari-termene/upload', auth, incasariUpload.single('file'), (r
       return res.status(403).json({ error: 'Doar admin/SPV pot încărca date' });
     }
     if (!req.file) return res.status(400).json({ error: 'Fișier lipsă' });
-    const XLSX = require('xlsx');
-    const wb = XLSX.readFile(req.file.path);
-    const ws = wb.Sheets[wb.SheetNames[0]];
-    const data = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+    const data = parseUploadedFile(req.file.path, req.file.originalname);
 
     const headerRow = data[0] || [];
     const numCols = headerRow.length;
