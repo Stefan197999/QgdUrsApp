@@ -7533,6 +7533,116 @@ app.get("/api/top-clienti", auth, (req, res) => {
   }
 });
 
+/* ═══════════════════════════════════════════════════════════
+   ALERTĂ FACTURARE — Clienți cu restanțe >60z care au facturi noi
+   ═══════════════════════════════════════════════════════════ */
+app.get("/api/alerta-facturare", auth, (req, res) => {
+  try {
+    const latestImport = db.prepare("SELECT MAX(id) as id FROM scadentar_imports").get();
+    if (!latestImport || !latestImport.id) {
+      return res.json({ clients: [], stats: { total: 0, critici: 0, atentie: 0, info: 0, total_rest_vechi: 0, total_facturat_nou: 0 }, agentSummary: [] });
+    }
+
+    const reqDiv = req.query.divizie || '';
+    let whereParts = ['s.import_id = ?', 's.rest > 10', 's.depasire_termen <= 1000', 's.is_ambalaj = 0'];
+    let params = [latestImport.id];
+    if (reqDiv) { whereParts.push('s.divizie = ?'); params.push(reqDiv); }
+
+    const cenF = censusAgentFilter({ role: req.role, agent_name: req.agentDtr });
+    if (cenF) { whereParts.push(cenF.sql.replace(/cod_intern/g, 's.cod_intern').replace(/cod_fiscal/g, 's.cod_fiscal')); params.push(...cenF.params); }
+
+    const rows = db.prepare(`
+      SELECT s.partener, s.document, s.valoare, s.rest, s.depasire_termen, s.agent,
+             COALESCE(s.divizie,'NECUNOSCUT') as divizie, s.cod_fiscal, s.blocat,
+             COALESCE(NULLIF(TRIM(s.cod_intern),''), COALESCE(NULLIF(TRIM(s.cod_fiscal),''), s.partener)) as key_id,
+             s.limita_creditare, s.cifra_afaceri_curent
+      FROM scadentar s
+      WHERE ${whereParts.join(' AND ')}
+      ORDER BY s.partener, s.depasire_termen DESC
+    `).all(...params);
+
+    const clientMap = {};
+    for (const r of rows) {
+      const key = r.key_id;
+      if (!clientMap[key]) {
+        clientMap[key] = {
+          partener: r.partener, cod_fiscal: r.cod_fiscal, key_id: key,
+          agent: r.agent, divizie: r.divizie, blocat: r.blocat,
+          limita_credit: r.limita_creditare || 0,
+          facturi_vechi: [], facturi_noi: [],
+          total_rest_vechi: 0, total_rest_nou: 0,
+          max_depasire: 0, nr_facturi_total: 0
+        };
+      }
+      const c = clientMap[key];
+      c.nr_facturi_total++;
+      if (r.depasire_termen > c.max_depasire) c.max_depasire = r.depasire_termen;
+      if (!c.agent && r.agent) c.agent = r.agent;
+      if (r.depasire_termen > 60) {
+        c.facturi_vechi.push({ doc: r.document, rest: r.rest, depasire: r.depasire_termen, valoare: r.valoare });
+        c.total_rest_vechi += r.rest;
+      }
+      if (r.depasire_termen <= 5) {
+        c.facturi_noi.push({ doc: r.document, rest: r.rest, depasire: r.depasire_termen, valoare: r.valoare });
+        c.total_rest_nou += r.rest;
+      }
+    }
+
+    const alerts = [];
+    for (const key of Object.keys(clientMap)) {
+      const c = clientMap[key];
+      if (c.facturi_vechi.length > 0 && c.facturi_noi.length > 0) {
+        c.ratio = c.total_rest_vechi > 0 ? Math.round(c.total_rest_nou / c.total_rest_vechi * 100) : 0;
+        c.nr_facturi_vechi = c.facturi_vechi.length;
+        c.nr_facturi_noi = c.facturi_noi.length;
+        let nivel = 'INFO';
+        if (c.max_depasire > 90 && c.total_rest_nou > 5000) nivel = 'CRITIC';
+        else if (c.max_depasire > 90 && c.total_rest_nou > 1000) nivel = 'CRITIC';
+        else if (c.max_depasire > 60 && c.total_rest_nou > 10000) nivel = 'CRITIC';
+        else if (c.max_depasire > 60 && c.total_rest_nou > 2000) nivel = 'ATENȚIE';
+        else if (c.max_depasire > 60 && c.nr_facturi_noi >= 3) nivel = 'ATENȚIE';
+        if (c.blocat === 'DA' || c.blocat === '1') {
+          if (nivel === 'INFO') nivel = 'ATENȚIE';
+          else if (nivel === 'ATENȚIE') nivel = 'CRITIC';
+        }
+        c.nivel = nivel;
+        c.top_facturi_vechi = c.facturi_vechi.slice(0, 5).map(f => `${f.doc} (${f.depasire}z, ${Math.round(f.rest).toLocaleString()} RON)`);
+        c.top_facturi_noi = c.facturi_noi.slice(0, 5).map(f => `${f.doc} (${Math.round(f.rest).toLocaleString()} RON)`);
+        delete c.facturi_vechi; delete c.facturi_noi;
+        alerts.push(c);
+      }
+    }
+
+    const nivelOrd = { 'CRITIC': 0, 'ATENȚIE': 1, 'INFO': 2 };
+    alerts.sort((a, b) => (nivelOrd[a.nivel] - nivelOrd[b.nivel]) || (b.total_rest_vechi - a.total_rest_vechi));
+
+    const stats = {
+      total: alerts.length,
+      critici: alerts.filter(c => c.nivel === 'CRITIC').length,
+      atentie: alerts.filter(c => c.nivel === 'ATENȚIE').length,
+      info: alerts.filter(c => c.nivel === 'INFO').length,
+      total_rest_vechi: Math.round(alerts.reduce((s, c) => s + c.total_rest_vechi, 0)),
+      total_facturat_nou: Math.round(alerts.reduce((s, c) => s + c.total_rest_nou, 0))
+    };
+
+    const agentMap = {};
+    for (const c of alerts) {
+      const ag = c.agent || 'NECUNOSCUT';
+      if (!agentMap[ag]) agentMap[ag] = { agent: ag, nr_clienti: 0, nr_critici: 0, total_rest_vechi: 0, total_facturat_nou: 0, divizie: c.divizie };
+      agentMap[ag].nr_clienti++;
+      if (c.nivel === 'CRITIC') agentMap[ag].nr_critici++;
+      agentMap[ag].total_rest_vechi += c.total_rest_vechi;
+      agentMap[ag].total_facturat_nou += c.total_rest_nou;
+    }
+    const agentSummary = Object.values(agentMap).sort((a, b) => b.nr_clienti - a.nr_clienti);
+
+    res.json({ clients: alerts, stats, agentSummary });
+  } catch(e) {
+    console.error('alerta-facturare error:', e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 /* GET /api/facturi-ambalaj — Packaging invoices from scadentar */
 app.get("/api/facturi-ambalaj", auth, (req, res) => {
   try {

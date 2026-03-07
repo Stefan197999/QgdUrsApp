@@ -188,6 +188,7 @@ function switchTab(tab) {
   else if (tab === "escaladari") loadEscalations();
   else if (tab === "alertaClient") loadClientAlerts();
   else if (tab === "riscFinanciar") loadRiscFinanciar();
+  else if (tab === "alertaFacturare") loadAlertaFacturare();
   else if (tab === "topClienti") loadTopClienti();
   else if (tab === "facturiAmbalaj") loadFacturiAmbalaj();
   else if (tab === "cuiVerify") loadCuiVerifications();
@@ -8007,6 +8008,199 @@ async function uploadSalesFromTopVanzari() {
       toast(d.error, "error");
     }
   } catch (ex) { statusEl.textContent = `❌ ${ex.message}`; toast(ex.message, "error"); }
+}
+
+// ═══ 3.1d ALERTĂ FACTURARE ═════════════════════════
+let _alertaClientsAll = [];
+let _alertaSortCol = '', _alertaSortDir = 'desc';
+
+async function loadAlertaFacturare() {
+  const el = document.getElementById('alertaList');
+  const summaryEl = document.getElementById('alertaSummary');
+  const rankingEl = document.getElementById('alertaAgentRanking');
+  el.innerHTML = '<div class="empty-state">Se analizează facturările...</div>';
+
+  try {
+    const data = await mApi('/api/alerta-facturare');
+    if (!data || !data.clients) { el.innerHTML = '<div class="empty-state">Eroare la încărcare.</div>'; return; }
+    if (!data.clients.length) {
+      el.innerHTML = '<div class="empty-state">✅ Nicio alertă de facturare. Nu există clienți cu restanțe >60 zile care au primit facturi noi.</div>';
+      summaryEl.innerHTML = '';
+      rankingEl.innerHTML = '';
+      return;
+    }
+
+    _alertaClientsAll = data.clients;
+    const s = data.stats;
+
+    summaryEl.innerHTML = `
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin:8px 0">
+      <div onclick="alertaQuickFilter('CRITIC')" style="cursor:pointer;background:#dc262622;border:1px solid #dc262666;border-radius:10px;padding:10px 16px;min-width:130px;transition:transform .15s" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform=''">
+        <div style="font-size:11px;color:#fca5a5">🔴 CRITIC</div>
+        <div style="font-size:22px;font-weight:800;color:#f87171">${s.critici}</div>
+      </div>
+      <div onclick="alertaQuickFilter('ATENȚIE')" style="cursor:pointer;background:#ea580c22;border:1px solid #ea580c66;border-radius:10px;padding:10px 16px;min-width:130px;transition:transform .15s" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform=''">
+        <div style="font-size:11px;color:#fdba74">🟠 ATENȚIE</div>
+        <div style="font-size:22px;font-weight:800;color:#fb923c">${s.atentie}</div>
+      </div>
+      <div onclick="alertaQuickFilter('INFO')" style="cursor:pointer;background:#ca8a0422;border:1px solid #ca8a0466;border-radius:10px;padding:10px 16px;min-width:130px;transition:transform .15s" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform=''">
+        <div style="font-size:11px;color:#fde047">🟡 INFO</div>
+        <div style="font-size:22px;font-weight:800;color:#facc15">${s.info}</div>
+      </div>
+      <div onclick="alertaQuickFilter('')" style="cursor:pointer;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:10px 16px;min-width:160px">
+        <div style="font-size:11px;color:var(--text2)">💰 REST VECHI >60z</div>
+        <div style="font-size:18px;font-weight:800;color:#ef4444">${fmtMoney(s.total_rest_vechi)} RON</div>
+      </div>
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:10px 16px;min-width:160px">
+        <div style="font-size:11px;color:var(--text2)">📄 FACTURAT NOU</div>
+        <div style="font-size:18px;font-weight:800;color:#f97316">${fmtMoney(s.total_facturat_nou)} RON</div>
+      </div>
+      <div onclick="alertaQuickFilter('')" style="cursor:pointer;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:10px 16px;min-width:100px">
+        <div style="font-size:11px;color:var(--text2)">📊 TOTAL ALERTE</div>
+        <div style="font-size:18px;font-weight:800;color:var(--text)">${s.total}</div>
+      </div>
+    </div>`;
+
+    // Agent ranking table
+    if (data.agentSummary && data.agentSummary.length > 0) {
+      rankingEl.innerHTML = `
+      <details style="margin:4px 0" open>
+        <summary style="cursor:pointer;font-weight:700;font-size:13px;color:var(--text);padding:6px 0">👤 Ranking Agenți — Facturări Riscante</summary>
+        <div style="overflow-x:auto;margin-top:4px">
+        <table style="width:100%;border-collapse:collapse;font-size:12px">
+          <thead><tr style="background:var(--bg2)">
+            <th style="padding:5px;text-align:left">Agent</th>
+            <th style="padding:5px;text-align:center">Nr. Clienți</th>
+            <th style="padding:5px;text-align:center;color:#dc2626">Critici</th>
+            <th style="padding:5px;text-align:right">Rest Vechi</th>
+            <th style="padding:5px;text-align:right">Facturat Nou</th>
+          </tr></thead>
+          <tbody>${data.agentSummary.map(a => `
+            <tr style="border-bottom:1px solid var(--border)" onclick="alertaQuickFilterAgent('${escH(a.agent)}')" style="cursor:pointer">
+              <td style="padding:5px;font-weight:600">${escH(a.agent)}</td>
+              <td style="padding:5px;text-align:center;font-weight:700">${a.nr_clienti}</td>
+              <td style="padding:5px;text-align:center;font-weight:700;color:${a.nr_critici > 0 ? '#dc2626' : 'var(--text2)'}">${a.nr_critici}</td>
+              <td style="padding:5px;text-align:right;color:#ef4444">${fmtMoney(a.total_rest_vechi)}</td>
+              <td style="padding:5px;text-align:right;color:#f97316">${fmtMoney(a.total_facturat_nou)}</td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+        </div>
+      </details>`;
+    } else {
+      rankingEl.innerHTML = '';
+    }
+
+    filterAlertaFacturare();
+  } catch(ex) {
+    console.error('loadAlertaFacturare error:', ex);
+    el.innerHTML = '<div class="empty-state">Nu sunt date disponibile.</div>';
+  }
+}
+
+function alertaQuickFilter(nivel) {
+  const sel = document.getElementById('alertaFiltNivel');
+  if (sel) sel.value = nivel;
+  filterAlertaFacturare();
+}
+
+function alertaQuickFilterAgent(agent) {
+  const sel = document.getElementById('alertaHdrAgent');
+  if (sel) sel.value = agent;
+  filterAlertaFacturare();
+}
+
+function filterAlertaFacturare() {
+  const nivel = document.getElementById('alertaFiltNivel')?.value || '';
+  const filtAgent = document.getElementById('alertaHdrAgent')?.value || '';
+  let clients = _alertaClientsAll;
+  if (nivel) clients = clients.filter(c => c.nivel === nivel);
+  if (filtAgent) clients = clients.filter(c => c.agent === filtAgent);
+  if (_alertaSortCol) {
+    const dir = _alertaSortDir === 'asc' ? 1 : -1;
+    clients = [...clients].sort((a, b) => {
+      let va = a[_alertaSortCol], vb = b[_alertaSortCol];
+      if (va == null) va = -999; if (vb == null) vb = -999;
+      return (va > vb ? 1 : va < vb ? -1 : 0) * dir;
+    });
+  }
+  renderAlertaList(clients);
+}
+
+function alertaSort(col) {
+  if (_alertaSortCol === col) _alertaSortDir = _alertaSortDir === 'desc' ? 'asc' : 'desc';
+  else { _alertaSortCol = col; _alertaSortDir = 'desc'; }
+  filterAlertaFacturare();
+}
+
+function renderAlertaList(clients) {
+  const el = document.getElementById('alertaList');
+  if (!clients.length) { el.innerHTML = '<div class="empty-state">Nicio alertă pentru filtrele selectate.</div>'; return; }
+
+  const _prevAgent = document.getElementById('alertaHdrAgent')?.value || '';
+  const sArr = col => _alertaSortCol === col ? (_alertaSortDir === 'desc' ? ' ▼' : ' ▲') : '';
+  const nivelBg = n => n === 'CRITIC' ? '#dc2626' : n === 'ATENȚIE' ? '#ea580c' : '#ca8a04';
+  const nivelEmoji = n => n === 'CRITIC' ? '🔴' : n === 'ATENȚIE' ? '🟠' : '🟡';
+
+  el.innerHTML = `<div style="overflow:auto;max-height:calc(100vh - 280px)"><table style="width:100%;border-collapse:collapse;font-size:13px">
+  <thead>
+  <tr style="background:var(--bg2);position:sticky;top:0;z-index:3">
+    <th style="padding:6px;text-align:center;width:70px">Nivel</th>
+    <th style="padding:6px;text-align:left;cursor:pointer" onclick="alertaSort('partener')">Client${sArr('partener')}</th>
+    <th style="padding:6px;text-align:right;cursor:pointer" onclick="alertaSort('total_rest_vechi')">Rest >60z${sArr('total_rest_vechi')}</th>
+    <th style="padding:6px;text-align:right;cursor:pointer" onclick="alertaSort('total_rest_nou')">Facturat Nou${sArr('total_rest_nou')}</th>
+    <th style="padding:6px;text-align:center;cursor:pointer" onclick="alertaSort('max_depasire')">Max Dep.${sArr('max_depasire')}</th>
+    <th style="padding:6px;text-align:center;cursor:pointer" onclick="alertaSort('nr_facturi_vechi')">Fact. Vechi${sArr('nr_facturi_vechi')}</th>
+    <th style="padding:6px;text-align:center;cursor:pointer" onclick="alertaSort('nr_facturi_noi')">Fact. Noi${sArr('nr_facturi_noi')}</th>
+    <th style="padding:6px;text-align:center;cursor:pointer" onclick="alertaSort('ratio')">Raport%${sArr('ratio')}</th>
+    <th style="padding:6px;text-align:left;cursor:pointer" onclick="alertaSort('agent')">Agent${sArr('agent')}</th>
+  </tr>
+  <tr style="background:var(--bg2);position:sticky;top:28px;z-index:2">
+    <th colspan="8"></th>
+    <th style="padding:2px 4px"><select id="alertaHdrAgent" onchange="filterAlertaFacturare()" style="width:100%;font-size:11px;padding:2px;border-radius:4px;border:1px solid var(--border);background:var(--bg1);color:var(--text)">
+      <option value="">Toți</option>${[...new Set((_alertaClientsAll||clients).map(c=>c.agent).filter(Boolean))].sort().map(a=>`<option value="${escH(a)}">${escH(a)}</option>`).join('')}
+    </select></th>
+  </tr>
+  </thead>
+  <tbody>${clients.map((c, idx) => {
+    const rowBg = c.nivel === 'CRITIC' ? '#dc262615' : c.nivel === 'ATENȚIE' ? '#ea580c15' : '';
+    return `
+    <tr style="border-bottom:1px solid var(--border);cursor:pointer;background:${rowBg}" onclick="toggleAlertaDetail(${idx})" onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background='${rowBg}'">
+      <td style="padding:5px;text-align:center"><span style="background:${nivelBg(c.nivel)};color:#fff;padding:3px 8px;border-radius:6px;font-weight:700;font-size:11px">${nivelEmoji(c.nivel)} ${c.nivel}</span></td>
+      <td style="padding:5px;font-weight:600">${c.blocat === 'DA' || c.blocat === '1' ? '🔒 ' : ''}${escH(c.partener)}</td>
+      <td style="padding:5px;text-align:right;font-weight:700;color:#ef4444">${fmtMoney(c.total_rest_vechi)}</td>
+      <td style="padding:5px;text-align:right;font-weight:700;color:#f97316">${fmtMoney(c.total_rest_nou)}</td>
+      <td style="padding:5px;text-align:center"><span style="color:${c.max_depasire>90?'#ef4444':'#f97316'};font-weight:700">${c.max_depasire}z</span></td>
+      <td style="padding:5px;text-align:center;font-weight:600;color:#ef4444">${c.nr_facturi_vechi}</td>
+      <td style="padding:5px;text-align:center;font-weight:600;color:#f97316">${c.nr_facturi_noi}</td>
+      <td style="padding:5px;text-align:center;font-weight:600">${c.ratio}%</td>
+      <td style="padding:5px;font-size:12px">${escH(c.agent)}</td>
+    </tr>
+    <tr id="alertaDetail_${idx}" style="display:none">
+      <td colspan="9" style="padding:8px 20px;background:var(--bg2);font-size:12px">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div style="background:var(--bg1);padding:8px 12px;border-radius:8px;border:1px solid #ef444444">
+            <div style="font-size:10px;color:#ef4444;text-transform:uppercase;font-weight:700">Facturi Vechi >60 zile (${c.nr_facturi_vechi})</div>
+            <div style="margin-top:4px;font-size:11px;line-height:1.6">${(c.top_facturi_vechi||[]).map(f => \`📄 \${f}\`).join('<br>') || '—'}${c.nr_facturi_vechi > 5 ? '<br><em>... și alte ' + (c.nr_facturi_vechi - 5) + '</em>' : ''}</div>
+            <div style="margin-top:6px;font-weight:700;color:#ef4444">Total: ${fmtMoney(c.total_rest_vechi)} RON</div>
+          </div>
+          <div style="background:var(--bg1);padding:8px 12px;border-radius:8px;border:1px solid #f9731644">
+            <div style="font-size:10px;color:#f97316;text-transform:uppercase;font-weight:700">Facturi Noi ≤5 zile (${c.nr_facturi_noi})</div>
+            <div style="margin-top:4px;font-size:11px;line-height:1.6">${(c.top_facturi_noi||[]).map(f => \`📄 \${f}\`).join('<br>') || '—'}${c.nr_facturi_noi > 5 ? '<br><em>... și alte ' + (c.nr_facturi_noi - 5) + '</em>' : ''}</div>
+            <div style="margin-top:6px;font-weight:700;color:#f97316">Total: ${fmtMoney(c.total_rest_nou)} RON</div>
+          </div>
+        </div>
+        ${c.blocat === 'DA' || c.blocat === '1' ? '<div style="margin-top:8px;padding:4px 8px;background:#dc262622;border-radius:6px;color:#ef4444;font-weight:700;font-size:11px">🔒 CLIENT BLOCAT — facturare necesită aprobare SPV</div>' : ''}
+      </td>
+    </tr>`;
+  }).join('')}</tbody></table></div>`;
+
+  if (_prevAgent) { const s = document.getElementById('alertaHdrAgent'); if (s) s.value = _prevAgent; }
+}
+
+function toggleAlertaDetail(idx) {
+  const row = document.getElementById('alertaDetail_' + idx);
+  if (row) row.style.display = row.style.display === 'none' ? '' : 'none';
 }
 
 async function loadTopClienti() {

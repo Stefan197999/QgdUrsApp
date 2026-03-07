@@ -71,6 +71,7 @@
         <div class="tab-group-items">
           <button id="tabSolduri" class="tab-menu-item" onclick="selectTab('solduri','SCADENȚAR')">Scadențar</button>
           <button id="tabRiscFinanciar" class="tab-menu-item" onclick="selectTab('riscFinanciar','RISC FINANCIAR')">Risc Financiar</button>
+          <button id="tabAlertaFacturare" class="tab-menu-item" onclick="selectTab('alertaFacturare','ALERTĂ FACTURARE')">Alertă Facturare</button>
           <button id="tabTopClienti" class="tab-menu-item" onclick="selectTab('topClienti','TOP VÂNZĂRI')">Top Vânzări</button>
           <button id="tabFacturiAmbalaj" class="tab-menu-item" onclick="selectTab('facturiAmbalaj','FACTURI AMBALAJ')">Ambalaj</button>
           <button id="tabCuiVerify" class="tab-menu-item" onclick="selectTab('cuiVerify','VERIFICARE CUI')">Verificare CUI</button>
@@ -1276,6 +1277,29 @@
       <div id="riscIncasariInfo" style="font-size:12px;color:var(--text2);padding:4px 12px"></div>
       <div id="riscSummary" style="padding:4px 12px"></div>
       <div id="riscList" class="card-list"></div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════
+         TAB: ALERTĂ FACTURARE
+         ═══════════════════════════════════════════ -->
+    <div id="panelAlertaFacturare" class="tab-panel" style="display:none">
+      <div class="panel-header">
+        <h3>🚨 Alertă Facturare — Facturări la Clienți cu Restanțe >60 Zile</h3>
+        <div class="panel-header-actions">
+          <button class="btn btn-sm" onclick="loadAlertaFacturare()" style="font-size:13px;background:#dc2626;color:#fff">🔄 Reîncarcă</button>
+        </div>
+      </div>
+      <div id="alertaFiltru" style="display:flex;flex-wrap:wrap;gap:8px;padding:8px 12px;align-items:center">
+        <select id="alertaFiltNivel" onchange="filterAlertaFacturare()" style="padding:6px;border-radius:6px;border:1px solid var(--border);font-size:13px">
+          <option value="">Toate nivelurile</option>
+          <option value="CRITIC">🔴 Critic</option>
+          <option value="ATENȚIE">🟠 Atenție</option>
+          <option value="INFO">🟡 Info</option>
+        </select>
+      </div>
+      <div id="alertaSummary" style="padding:4px 12px"></div>
+      <div id="alertaAgentRanking" style="padding:4px 12px"></div>
+      <div id="alertaList" class="card-list"></div>
     </div>
 
     <!-- ═══════════════════════════════════════════
