@@ -15,7 +15,12 @@ const { getCartier } = require("./cartiere");
 const emailReports = require("./emailReports");
 const { generateContract, generateGDPR, generateContractB2B, generateGDPRB2B, generateContractB2C, generateGDPRB2C } = require("./docxGenerator");
 const { extractFromDocument } = require("./ocrExtractor");
-const XLSX_LIB = require("xlsx");
+/* Lazy-load XLSX — saves ~80MB RAM at startup */
+let _xlsxLib = null;
+function getXLSX() { if (!_xlsxLib) _xlsxLib = require("xlsx"); return _xlsxLib; }
+const XLSX_LIB = new Proxy({}, {
+  get(_, prop) { return getXLSX()[prop]; }
+});
 
 /* ── Helper: Parse uploaded file (CSV or Excel) with minimal memory ── */
 function parseUploadedFile(filePath, originalName) {
@@ -5821,7 +5826,7 @@ app.post("/api/visits/import-routes", auth, multer({ storage: multer.memoryStora
   if (!req.file) return res.status(400).json({ error: "Fișier lipsă" });
 
   try {
-    const XLSX = require("xlsx");
+    const XLSX = getXLSX();
     const wb = XLSX.read(req.file.buffer);
 
     // Skip "Sumar Rute" sheet - process only agent sheets
@@ -9910,6 +9915,19 @@ app.use((err, req, res, next) => {
     return res.status(400).json({ error: err.message });
   }
   next(err);
+});
+
+/* ── Health / Memory monitoring ── */
+app.get("/api/health", (req, res) => {
+  const mem = process.memoryUsage();
+  res.json({
+    rss: Math.round(mem.rss / 1024 / 1024) + " MB",
+    heapUsed: Math.round(mem.heapUsed / 1024 / 1024) + " MB",
+    heapTotal: Math.round(mem.heapTotal / 1024 / 1024) + " MB",
+    external: Math.round(mem.external / 1024 / 1024) + " MB",
+    uptime: Math.round(process.uptime()) + "s",
+    xlsxLoaded: !!_xlsxLib
+  });
 });
 
 /* ── Start ── */
