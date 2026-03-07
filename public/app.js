@@ -6253,7 +6253,47 @@ async function loadDashboardAll() {
   }
 }
 
-/* Upload fișier vânzări ALL (suprascrie luna) */
+/* Upload Vânzări ALL din Încărcare Rapoarte */
+async function uploadSalesAllFromRapoarte() {
+  const fileEl = document.getElementById("uploadSalesAllFile");
+  const statusEl = document.getElementById("uploadSalesAllStatus");
+  if (!fileEl || !fileEl.files[0]) return toast("Selectează fișierul Excel", "warning");
+  statusEl.innerHTML = '<span class="spinner" style="width:14px;height:14px;display:inline-block"></span> Se importă... (poate dura 10-30s)';
+  const fd = new FormData();
+  fd.append("file", fileEl.files[0]);
+  try {
+    const r = await fetch("/api/sales-all/upload", { method: "POST", body: fd, headers: { 'X-CSRF-Token': _csrfToken } });
+    const d = await r.json();
+    if (d.ok) {
+      statusEl.textContent = `✅ ${(d.count||0).toLocaleString('ro-RO')} rânduri importate (luna ${d.month}). ${d.skipped || 0} filtrate.`;
+      toast(`${(d.count||0).toLocaleString('ro-RO')} rânduri importate`, "success");
+    } else {
+      statusEl.textContent = `❌ ${d.error}`;
+    }
+  } catch (ex) { statusEl.textContent = `❌ ${ex.message}`; }
+}
+
+/* Upload Încasări din Încărcare Rapoarte */
+async function uploadIncasariFromRapoarte() {
+  const fileEl = document.getElementById("uploadIncasariFile");
+  const statusEl = document.getElementById("uploadIncasariStatus");
+  if (!fileEl || !fileEl.files[0]) return toast("Selectează fișierul Excel", "warning");
+  statusEl.innerHTML = '<span class="spinner" style="width:14px;height:14px;display:inline-block"></span> Se importă încasări... (poate dura)';
+  const fd = new FormData();
+  fd.append("file", fileEl.files[0]);
+  try {
+    const r = await fetch("/api/incasari-termene/upload", { method: "POST", body: fd, headers: { 'X-CSRF-Token': _csrfToken } });
+    const d = await r.json();
+    if (d.ok) {
+      statusEl.textContent = `✅ ${(d.imported||0).toLocaleString('ro-RO')} tranzacții importate! Perioada: ${d.period}`;
+      toast(`Importat ${(d.imported||0).toLocaleString('ro-RO')} tranzacții`, "success");
+    } else {
+      statusEl.textContent = `❌ ${d.error}`;
+    }
+  } catch (ex) { statusEl.textContent = `❌ ${ex.message}`; }
+}
+
+/* Upload fișier vânzări ALL din Dashboard (suprascrie luna) */
 async function uploadDashSalesAll() {
   const fileEl = document.getElementById("dashSalesFile");
   const statusEl = document.getElementById("dashUploadStatus");
@@ -7605,7 +7645,7 @@ async function uploadIncasariTermene(input) {
   if (!input || !input.files[0]) return;
   const fd = new FormData();
   fd.append('file', input.files[0]);
-  showToast('Se importă încasări pe termene... (fișier mare, poate dura)','info');
+  toast('Se importă încasări pe termene... (fișier mare, poate dura)','info');
   try {
     const r = await fetch('/api/incasari-termene/upload', {
       method: 'POST',
@@ -7614,17 +7654,17 @@ async function uploadIncasariTermene(input) {
     });
     const data = await r.json();
     if (r.ok && data.ok) {
-      showToast(`Importat ${data.imported} tranzacții! Perioada: ${data.period}`,'success');
+      toast(`Importat ${data.imported} tranzacții! Perioada: ${data.period}`,'success');
       loadRiscFinanciar();
       const status = document.getElementById('incasariUploadStatus');
       if (status) status.innerHTML = `✓ Importate ${data.imported} rânduri, perioda ${data.period}`;
     } else {
-      showToast(data.error||'Eroare import','error');
+      toast(data.error||'Eroare import','error');
       const status = document.getElementById('incasariUploadStatus');
       if (status) status.innerHTML = `✗ Eroare: ${data.error||'Necunoscut'}`;
     }
   } catch(e) {
-    showToast('Eroare la upload: ' + e.message, 'error');
+    toast('Eroare la upload: ' + e.message, 'error');
     const status = document.getElementById('incasariUploadStatus');
     if (status) status.innerHTML = `✗ Eroare: ${e.message}`;
   }

@@ -1601,13 +1601,26 @@
             <div id="uploadRapSolduriStatus" style="font-size:.8rem;margin-top:.3rem"></div>
           </div>
 
-          <!-- Upload Încasări Termene (înlocuiește fostul Coface) -->
+          <!-- Upload Vânzări ALL (pentru Top Vânzări + Dashboard) -->
+          <div style="background:var(--bg2);border-radius:8px;padding:12px;border:1px solid var(--border)">
+            <p style="font-weight:600;margin:0 0 6px;font-size:.85rem">📊 Vânzări ALL (Raport Zilnic)</p>
+            <p style="font-size:.75rem;color:var(--muted);margin:0 0 8px">Upload fișier vânzări zilnic (VANZARI PENTRU TARGETE ALL). Datele vechi ale lunii se suprascriu.</p>
+            <div class="btn-row">
+              <input type="file" id="uploadSalesAllFile" accept=".xlsx,.xls,.xlsb" style="font-size:.8rem;max-width:220px">
+              <button class="btn success small" onclick="uploadSalesAllFromRapoarte()">📤 Import</button>
+            </div>
+            <div id="uploadSalesAllStatus" style="font-size:.8rem;margin-top:.3rem"></div>
+          </div>
+
+          <!-- Upload Încasări Termene (pentru Risc Financiar) -->
           <div style="background:var(--bg2);border-radius:8px;padding:12px;border:1px solid var(--border)">
             <p style="font-weight:600;margin:0 0 6px;font-size:.85rem">📊 Risc Financiar — Încasări</p>
             <p style="font-size:.75rem;color:var(--muted);margin:0 0 8px">Upload fișier încasări pe termene (se poate face și din meniul Risc Financiar)</p>
             <div class="btn-row">
-              <input type="file" accept=".xlsx,.xls" onchange="uploadIncasariTermene(this)" style="font-size:.8rem;max-width:220px">
+              <input type="file" id="uploadIncasariFile" accept=".xlsx,.xls" style="font-size:.8rem;max-width:220px">
+              <button class="btn success small" onclick="uploadIncasariFromRapoarte()">📤 Import</button>
             </div>
+            <div id="uploadIncasariStatus" style="font-size:.8rem;margin-top:.3rem"></div>
           </div>
 
           <!-- Upload Targete -->
